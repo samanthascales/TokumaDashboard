@@ -475,7 +475,7 @@ export function GettingStarted() {
     { label: 'Complete your business profile', body: 'Name, industry and what you make.', done: !!profile.businessName.trim(), to: '/onboarding', cta: 'Set up profile' },
     { label: 'Add your first product', body: 'List its materials so Tokuma can score circularity.', done: products.length > 0, to: '/app/products?new=product', cta: 'Add product' },
     { label: 'Add a supplier', body: 'Lead times drive your automatic reorder points.', done: suppliers.length > 0, to: '/app/supply-chain?new=supplier', cta: 'Add supplier' },
-    { label: 'Log your first sale', body: 'Sales power revenue, circularity and customer insights.', done: transactions.some((t) => t.type === 'inflow'), to: '/app/transactions?new=txn', cta: 'Log sale' },
+    { label: 'Log your first sale', body: 'Sales power revenue, circularity and customer insights. You can also import them from a spreadsheet.', done: transactions.some((t) => t.type === 'inflow'), to: '/app/transactions?new=txn', cta: 'Log sale' },
   ];
   const done = steps.filter((s) => s.done).length;
   if (done === steps.length) return null;
