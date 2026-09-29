@@ -27,6 +27,7 @@ import {
   recommendations,
   reliabilityScore,
   seasonalPeakLift,
+  avgKnown,
   historyDays,
   totalsFor,
   type CircularityStats,
@@ -56,7 +57,7 @@ interface Persisted {
   role: Role;
   dismissedInsights: string[];
   notifications: AppNotification[];
-  fundingSeen: { apr: number; maxEligibility: number; rate: number } | null;
+  fundingSeen: { apr: number | null; maxEligibility: number | null; rate: number } | null;
 }
 
 // v2: accounts start empty (v1 stored the old sample data, so it is ignored).
@@ -78,10 +79,28 @@ function defaultState(): Persisted {
   };
 }
 
+/**
+ * Earlier versions pre-filled new suppliers with 14-day lead time, 90% on-time,
+ * sustainability 75 and 1,000 kg carbon, and new products with a low-stock
+ * threshold of 10 and safety stock of 5. Records still holding exactly those
+ * untouched values get them cleared, so no number appears that wasn't entered.
+ */
+function clearOldFormDefaults(s: Persisted): Persisted {
+  return {
+    ...s,
+    suppliers: s.suppliers.map((x) =>
+      x.avgLeadTimeDays === 14 && x.onTimeDeliveryRate === 90 && x.sustainabilityRating === 75 && x.carbonEmissionsKg === 1000
+        ? { ...x, avgLeadTimeDays: null, onTimeDeliveryRate: null, sustainabilityRating: null, carbonEmissionsKg: null }
+        : x,
+    ),
+    products: s.products.map((p) => (p.lowStockThreshold === 10 && p.safetyStock === 5 ? { ...p, lowStockThreshold: 0, safetyStock: 0 } : p)),
+  };
+}
+
 function loadState(): Persisted {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return { ...defaultState(), ...(JSON.parse(raw) as Partial<Persisted>) };
+    if (raw) return clearOldFormDefaults({ ...defaultState(), ...(JSON.parse(raw) as Partial<Persisted>) });
   } catch {
     /* storage unavailable */
   }
@@ -225,8 +244,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const stats = useMemo(() => customerStats(customers, transactions), [customers, transactions]);
   const funding = useMemo(() => {
     const yr = totalsFor(ledger, lastNDays(365));
-    const avgSust = state.suppliers.length ? state.suppliers.reduce((s, x) => s + x.sustainabilityRating, 0) / state.suppliers.length : 50;
-    return fundingTerms(circ30.rate, yr.revenue, avgSust, yr.revenue ? yr.profit / yr.revenue : 0);
+    const avgSust = avgKnown(state.suppliers.map((x) => x.sustainabilityRating));
+    return fundingTerms(circ30.hasData ? circ30.rate : null, yr.revenue, avgSust, yr.revenue ? yr.profit / yr.revenue : 0);
   }, [ledger, state.suppliers, circ30.rate]);
   const recs = useMemo(() => recommendations(state.products, units90), [state.products, units90]);
   const verification = useMemo(() => {
@@ -252,22 +271,25 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   }, [materialFilter, state.products]);
 
   // Celebrate circularity changes so the "data unlocks capital" link is felt app-wide.
-  const prevRate = useRef(circ30.rate);
+  // Only when both the old and new rate come from real sales — the first sale
+  // isn't an "improvement" from 0%.
+  const prevRate = useRef<number | null>(circ30.hasData ? circ30.rate : null);
   const prevApr = useRef(funding.apr);
   useEffect(() => {
     const before = prevRate.current;
     const aprBefore = prevApr.current;
-    prevRate.current = circ30.rate;
+    const now = circ30.hasData ? circ30.rate : null;
+    prevRate.current = now;
     prevApr.current = funding.apr;
-    if (Math.abs(before - circ30.rate) < 0.05) return;
+    if (before === null || now === null || Math.abs(before - now) < 0.05) return;
     setFlashFunding((n) => n + 1);
-    const up = circ30.rate > before;
+    const up = now > before;
     toast({
       kind: up ? 'success' : 'info',
-      title: `Circularity ${fmtPct(before)} → ${fmtPct(circ30.rate)}`,
-      body: `Estimated APR ${up ? 'improved' : 'changed'} ${aprBefore.toFixed(2)}% → ${funding.apr.toFixed(2)}%`,
+      title: `Circularity ${fmtPct(before)} → ${fmtPct(now)}`,
+      body: aprBefore !== null && funding.apr !== null ? `Estimated APR ${aprBefore.toFixed(2)}% → ${funding.apr.toFixed(2)}%` : undefined,
     });
-  }, [circ30.rate, funding.apr, toast]);
+  }, [circ30.hasData, circ30.rate, funding.apr, toast]);
 
   // Low stock notifications when a product newly crosses its threshold.
   const prevCritical = useRef<Set<string> | null>(null);
@@ -376,7 +398,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     (r) => {
       const id = uid('fr');
       patch((s) => ({
-        fundingRequests: [{ id, ...r, submittedDate: toISO(startOfToday()), status: 'Pending', apr: r.type === 'Loan' ? funding.apr : undefined }, ...s.fundingRequests],
+        fundingRequests: [{ id, ...r, submittedDate: toISO(startOfToday()), status: 'Pending', apr: r.type === 'Loan' ? funding.apr ?? undefined : undefined }, ...s.fundingRequests],
       }));
       toast({ kind: 'success', title: 'Funding request submitted', body: `${r.type} · $${r.amount.toLocaleString()}` });
       // Simulate a lender decision arriving later.

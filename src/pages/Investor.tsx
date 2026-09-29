@@ -4,7 +4,7 @@ import { BadgeCheck, FileText, Landmark, Leaf, Recycle, ShieldCheck, TrendingUp 
 import { useStore } from '../store/AppStore';
 import { useChartColors, useSimulatedLoad } from '../lib/hooks';
 import { fmtCompactMoney, fmtKg, fmtMoney, fmtPct } from '../lib/format';
-import { buildSeries, lastNDays, reliabilityScore, riskLevel, totalsFor } from '../lib/metrics';
+import { avgKnown, buildSeries, lastNDays, reliabilityScore, riskLevel, totalsFor } from '../lib/metrics';
 import { AnimatedNumber, Badge, Card, CardHeader, CardSkeleton, Gauge, PageHeader } from '../components/ui';
 import { TooltipBox } from '../components/charts/ChartTooltip';
 import { openReport } from '../components/layout/nav';
@@ -15,7 +15,7 @@ export default function Investor() {
   const ready = useSimulatedLoad('investor');
   const series = useMemo(() => buildSeries(ledger, products, lastNDays(365)), [ledger, products]);
   const yr = useMemo(() => totalsFor(ledger, lastNDays(365)), [ledger]);
-  const avgRel = suppliers.length ? Math.round(suppliers.reduce((s, x) => s + reliabilityScore(x), 0) / suppliers.length) : 0;
+  const avgRel = avgKnown(suppliers.map((x) => reliabilityScore(x)));
   const open = fundingRequests.find((r) => r.status === 'Pending');
 
   return (
@@ -38,7 +38,7 @@ export default function Investor() {
             <Badge tone="amber">Verification in progress</Badge>
           )}
           {profile.founded && <Badge>Founded {profile.founded}</Badge>}
-          <Badge>{profile.employees} people</Badge>
+          {profile.employees && <Badge>{profile.employees} people</Badge>}
         </div>
       </PageHeader>
       {!ready ? (
@@ -54,7 +54,7 @@ export default function Investor() {
           {[
             { label: 'Trailing 12m revenue', v: yr.revenue, f: fmtMoney, icon: TrendingUp },
             { label: 'Net margin', v: yr.revenue ? (yr.profit / yr.revenue) * 100 : 0, f: (n: number) => fmtPct(n), icon: Landmark },
-            { label: 'Circularity rate', v: circ30.rate, f: (n: number) => fmtPct(n), icon: Recycle },
+            { label: 'Circularity rate', v: circ30.hasData ? circ30.rate : null, f: (n: number) => fmtPct(n), icon: Recycle },
             { label: 'Circular material (30d)', v: circ30.circularKg, f: fmtKg, icon: Leaf },
           ].map((k) => (
             <Card key={k.label} className="col-span-6 p-5 lg:col-span-3">
@@ -98,11 +98,11 @@ export default function Investor() {
             <div className="grid w-full grid-cols-2 gap-3 text-left">
               <div className="rounded-lg bg-gray-50 p-3 dark:bg-white/[0.03]">
                 <p className="muted text-xs">Max eligibility</p>
-                <p className="num">{fmtMoney(funding.maxEligibility)}</p>
+                <p className="num">{funding.maxEligibility === null ? '—' : fmtMoney(funding.maxEligibility)}</p>
               </div>
               <div className="rounded-lg bg-gray-50 p-3 dark:bg-white/[0.03]">
                 <p className="muted text-xs">Est. APR</p>
-                <p className="num">{funding.apr.toFixed(2)}%</p>
+                <p className="num">{funding.apr === null ? '—' : `${funding.apr.toFixed(2)}%`}</p>
               </div>
             </div>
             {open && (
@@ -112,7 +112,7 @@ export default function Investor() {
             )}
           </Card>
           <Card className="col-span-12">
-            <CardHeader title="Supply-chain risk" sub={`Average supplier reliability ${avgRel}/100`} right={<ShieldCheck className="h-4 w-4 text-gray-400" />} />
+            <CardHeader title="Supply-chain risk" sub={avgRel === null ? 'Reliability needs each supplier’s lead time and on-time delivery' : `Average supplier reliability ${Math.round(avgRel)}/100`} right={<ShieldCheck className="h-4 w-4 text-gray-400" />} />
             <div className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-5">
               {suppliers.length === 0 && <p className="muted text-sm sm:col-span-2 lg:col-span-5">No suppliers added yet.</p>}
               {suppliers.map((s) => {
@@ -123,8 +123,8 @@ export default function Investor() {
                     <p className="truncate text-sm font-medium">{s.name}</p>
                     <p className="muted text-xs">{s.country}</p>
                     <div className="mt-2 flex items-center justify-between">
-                      <span className="num text-lg">{sc}</span>
-                      <Badge tone={r === 'Low' ? 'green' : r === 'Moderate' ? 'amber' : 'red'}>{r} risk</Badge>
+                      <span className="num text-lg">{sc ?? '—'}</span>
+                      <Badge tone={r === 'Low' ? 'green' : r === 'Moderate' ? 'amber' : r === 'High' ? 'red' : 'gray'}>{sc === null ? r : `${r} risk`}</Badge>
                     </div>
                   </div>
                 );

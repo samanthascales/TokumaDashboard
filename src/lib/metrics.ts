@@ -136,7 +136,9 @@ export function totalsFor(ledger: Ledger, w: Window, productFilter?: Set<string>
 }
 
 export interface CircularityStats {
-  rate: number; // 0-100
+  /** False until products with materials have actually been sold in the window. */
+  hasData: boolean;
+  rate: number; // 0-100 (0 when hasData is false — show "—", not 0%)
   totalKg: number;
   circularKg: number;
   virginKg: number;
@@ -146,17 +148,16 @@ export interface CircularityStats {
 }
 
 /**
- * Circularity computed from what was actually sold: units per product (from
- * transactions) × that product's material bill. Falls back to one unit of each
- * catalog product when there are no sales in the window, so it never sits at 0%.
+ * Circularity computed only from what was actually sold: units per product
+ * (from transactions) × that product's material bill. With no sales there is
+ * no rate (hasData = false) — the catalog alone is never treated as sales.
  */
 export function circularityFrom(products: Product[], units: Record<string, number>): CircularityStats {
   const byClass: Record<MaterialClass, number> = { Recycled: 0, Reused: 0, Virgin: 0 };
   const byMat = new Map<string, { name: string; cls: MaterialClass; kg: number }>();
-  const hasSales = Object.values(units).some((u) => u > 0);
   const byProduct: CircularityStats['byProduct'] = [];
   for (const p of products) {
-    const u = hasSales ? units[p.id] ?? 0 : 1;
+    const u = units[p.id] ?? 0;
     const kg = productWeight(p) * u;
     byProduct.push({ id: p.id, name: p.name, score: materialCircularity(p.materials), kg, units: u });
     if (!u) continue;
@@ -173,6 +174,7 @@ export function circularityFrom(products: Product[], units: Record<string, numbe
   const totalKg = byClass.Recycled + byClass.Reused + byClass.Virgin;
   const circularKg = byClass.Recycled + byClass.Reused;
   return {
+    hasData: totalKg > 0,
     rate: totalKg ? (circularKg / totalKg) * 100 : 0,
     totalKg,
     circularKg,
@@ -295,14 +297,14 @@ export interface InventoryRow {
   product: Product;
   supplier?: Supplier;
   avgDaily: number;
-  leadTime: number;
-  reorderPoint: number;
+  /** From the linked supplier; null when no supplier or no lead time was entered. */
+  leadTime: number | null;
+  /** null until a lead time is known — never computed from an assumed lead time. */
+  reorderPoint: number | null;
   daysOfCover: number;
   status: StockStatus;
-  suggestedOrder: number;
+  suggestedOrder: number | null;
 }
-
-export const DEFAULT_LEAD_TIME = 14;
 
 /** reorderPoint = (avgDailySales × supplierLeadTime) + safetyStock */
 export function reorderPoint(avgDaily: number, leadTime: number, safetyStock: number) {
@@ -312,14 +314,14 @@ export function reorderPoint(avgDaily: number, leadTime: number, safetyStock: nu
 export function inventoryRows(products: Product[], suppliers: Supplier[], ledger: Ledger): InventoryRow[] {
   return products.map((p) => {
     const supplier = suppliers.find((s) => s.id === p.supplierId);
-    const leadTime = supplier?.avgLeadTimeDays ?? DEFAULT_LEAD_TIME;
+    const leadTime = supplier?.avgLeadTimeDays ?? null;
     const avgDaily = avgDailySales(ledger, p.id);
-    const rop = reorderPoint(avgDaily, leadTime, p.safetyStock);
-    const status: StockStatus = p.stockOnHand <= p.lowStockThreshold ? 'critical' : p.stockOnHand <= rop ? 'reorder' : 'healthy';
+    const rop = leadTime === null ? null : reorderPoint(avgDaily, leadTime, p.safetyStock);
+    const status: StockStatus = p.stockOnHand <= p.lowStockThreshold ? 'critical' : rop !== null && p.stockOnHand <= rop ? 'reorder' : 'healthy';
     const daysOfCover = avgDaily ? p.stockOnHand / avgDaily : Infinity;
     // Order enough to cover lead time + 30 days of demand + safety stock.
-    const target = Math.ceil(avgDaily * (leadTime + 30) + p.safetyStock);
-    return { product: p, supplier, avgDaily, leadTime, reorderPoint: rop, daysOfCover, status, suggestedOrder: Math.max(0, target - p.stockOnHand) };
+    const suggestedOrder = leadTime === null || !avgDaily ? null : Math.max(0, Math.ceil(avgDaily * (leadTime + 30) + p.safetyStock) - p.stockOnHand);
+    return { product: p, supplier, avgDaily, leadTime, reorderPoint: rop, daysOfCover, status, suggestedOrder };
   });
 }
 
@@ -333,12 +335,25 @@ export const leadTimeScore = (days: number) => clamp(((45 - days) / 40) * 100, 0
 /** Each recognised certification is worth 35 points, capped at 100. */
 export const certificationScore = (certs: string[]) => clamp(certs.length * 35, 0, 100);
 
-/** Reliability = 0.3 × leadTimeScore + 0.5 × onTimeDelivery + 0.2 × certificationScore */
-export function reliabilityScore(s: Pick<Supplier, 'avgLeadTimeDays' | 'onTimeDeliveryRate' | 'certifications'>) {
+/**
+ * Reliability = 0.3 × leadTimeScore + 0.5 × onTimeDelivery + 0.2 × certificationScore.
+ * Returns null until both lead time and on-time delivery have been entered.
+ */
+export function reliabilityScore(s: Pick<Supplier, 'avgLeadTimeDays' | 'onTimeDeliveryRate' | 'certifications'>): number | null {
+  if (s.avgLeadTimeDays === null || s.onTimeDeliveryRate === null) return null;
   return Math.round(0.3 * leadTimeScore(s.avgLeadTimeDays) + 0.5 * s.onTimeDeliveryRate + 0.2 * certificationScore(s.certifications));
 }
 
-export function riskLevel(score: number): 'Low' | 'Moderate' | 'High' {
+/** Average of the values that were actually entered; null when none were. */
+export function avgKnown(values: (number | null)[]) {
+  const known = values.filter((v): v is number => v !== null);
+  return known.length ? known.reduce((a, b) => a + b, 0) / known.length : null;
+}
+
+export type RiskLevel = 'Low' | 'Moderate' | 'High' | 'Needs data';
+
+export function riskLevel(score: number | null): RiskLevel {
+  if (score === null) return 'Needs data';
   if (score >= 80) return 'Low';
   if (score >= 65) return 'Moderate';
   return 'High';
@@ -385,18 +400,33 @@ export function customerStats(customers: Customer[], txs: Transaction[], today =
 /* ------------------------------------------------------------------ */
 
 export interface FundingTerms {
-  score: number;
-  maxEligibility: number;
-  apr: number;
+  /** False until there is logged revenue and a circularity rate from real sales. */
+  ready: boolean;
+  score: number | null;
+  maxEligibility: number | null;
+  apr: number | null;
   annualRevenue: number;
 }
 
-export function fundingTerms(circularityRate: number, annualRevenue: number, avgSustainability: number, margin: number): FundingTerms {
+/**
+ * Funding estimate from the business's own numbers. With no sales there is no
+ * estimate. Supplier sustainability counts only when at least one rating was
+ * entered; otherwise it's left out of the score and APR rather than assumed.
+ */
+export function fundingTerms(circularityRate: number | null, annualRevenue: number, avgSustainability: number | null, margin: number): FundingTerms {
+  if (circularityRate === null || annualRevenue <= 0) return { ready: false, score: null, maxEligibility: null, apr: null, annualRevenue };
   const marginScore = clamp(margin * 250, 0, 100); // 40% margin → 100
-  const score = Math.round(0.5 * circularityRate + 0.3 * avgSustainability + 0.2 * marginScore);
+  const parts: [number, number][] = [
+    [0.5, circularityRate],
+    [0.2, marginScore],
+  ];
+  if (avgSustainability !== null) parts.push([0.3, avgSustainability]);
+  const weight = parts.reduce((s, [w]) => s + w, 0);
+  const score = Math.round(parts.reduce((s, [w, v]) => s + w * v, 0) / weight);
   const maxEligibility = Math.round((annualRevenue * (0.12 + (0.3 * circularityRate) / 100)) / 500) * 500;
-  const apr = +clamp(12.5 - 0.07 * circularityRate - 0.025 * (avgSustainability - 50), 4.5, 14).toFixed(2);
-  return { score, maxEligibility, apr, annualRevenue };
+  const sustAdj = avgSustainability === null ? 0 : 0.025 * (avgSustainability - 50);
+  const apr = +clamp(12.5 - 0.07 * circularityRate - sustAdj, 4.5, 14).toFixed(2);
+  return { ready: true, score, maxEligibility, apr, annualRevenue };
 }
 
 /* ------------------------------------------------------------------ */
@@ -476,7 +506,10 @@ export function recommendations(products: Product[], units: Record<string, numbe
       });
     });
   }
-  return recs.sort((a, b) => b.gain - a.gain).slice(0, limit);
+  return recs
+    .filter((r) => r.gain > 0.05)
+    .sort((a, b) => b.gain - a.gain)
+    .slice(0, limit);
 }
 
 export function generateInsights(ctx: {
@@ -489,13 +522,16 @@ export function generateInsights(ctx: {
 }): Insight[] {
   const out: Insight[] = [];
   for (const r of ctx.inventory.filter((i) => i.status !== 'healthy')) {
-    const lost = Math.round(r.avgDaily * r.leadTime * r.product.price);
+    const cover = Number.isFinite(r.daysOfCover) ? ` ≈ ${Math.floor(r.daysOfCover)} days of cover at your current sales rate` : '';
+    const lead = r.leadTime !== null ? ` ${r.supplier?.name} needs ${r.leadTime} days to deliver.` : ' Add a supplier lead time to get a reorder point.';
+    const order = r.suggestedOrder ? ` Suggested order: ${r.suggestedOrder} units.` : '';
+    const lost = r.leadTime !== null ? Math.round(r.avgDaily * r.leadTime * r.product.price) : 0;
     out.push({
       id: `ins_stock_${r.product.id}`,
       kind: 'alert',
-      title: `${r.product.name} ${r.status === 'critical' ? 'is below its low-stock threshold' : 'has hit its reorder point'}`,
-      body: `${r.product.stockOnHand} units on hand ≈ ${Number.isFinite(r.daysOfCover) ? Math.floor(r.daysOfCover) : '∞'} days of cover, but ${r.supplier?.name ?? 'the supplier'} needs ${r.leadTime} days to deliver. Suggested order: ${r.suggestedOrder} units.`,
-      impact: `Protects ~${fmtMoney(lost)} in sales`,
+      title: `${r.product.name} ${r.status === 'critical' ? 'is at or below its low-stock threshold' : 'has hit its reorder point'}`,
+      body: `${r.product.stockOnHand} units on hand${cover}.${lead}${order}`,
+      impact: lost > 0 ? `Protects ~${fmtMoney(lost)} in sales` : 'Restock soon',
       confidence: 'High',
       actionLabel: 'Open inventory',
       action: { type: 'navigate', to: '/app/products/inventory' },
@@ -513,7 +549,10 @@ export function generateInsights(ctx: {
       action: { type: 'apply-material', productId: rec.productId, materialName: rec.materialName },
     });
   });
-  const weak = [...ctx.suppliers].map((s) => ({ s, score: reliabilityScore(s) })).sort((a, b) => a.score - b.score)[0];
+  const weak = ctx.suppliers
+    .map((s) => ({ s, score: reliabilityScore(s) }))
+    .filter((x): x is { s: Supplier; score: number } => x.score !== null)
+    .sort((a, b) => a.score - b.score)[0];
   if (weak && weak.score < 75) {
     out.push({
       id: `ins_sup_${weak.s.id}`,
@@ -526,11 +565,11 @@ export function generateInsights(ctx: {
       action: { type: 'navigate', to: '/app/supply-chain/reliability' },
     });
   }
-  if (ctx.funding.maxEligibility > 0) out.push({
+  if (ctx.funding.ready && ctx.funding.maxEligibility) out.push({
     id: 'ins_funding',
     kind: 'opportunity',
-    title: `You qualify for up to ${fmtMoney(ctx.funding.maxEligibility)}`,
-    body: `Your circularity and supplier data unlock an estimated ${ctx.funding.apr.toFixed(2)}% APR — below the small-business average.`,
+    title: `You qualify for up to ${fmtMoney(ctx.funding.maxEligibility!)}`,
+    body: `Your circularity and supplier data unlock an estimated ${ctx.funding.apr!.toFixed(2)}% APR.`,
     impact: `Score ${ctx.funding.score}/100`,
     confidence: 'High',
     actionLabel: 'View funding',

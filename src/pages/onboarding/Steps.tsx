@@ -82,6 +82,7 @@ export function StepFields({ step, p, set, touched }: { step: StepKey; p: Busine
         </Field>
         <Field label="Industry">
           <select className="input" value={p.industry} onChange={(e) => set('industry', e.target.value)}>
+            <option value="">Select an industry</option>
             {INDUSTRIES.map((i) => (
               <option key={i}>{i}</option>
             ))}
@@ -95,6 +96,7 @@ export function StepFields({ step, p, set, touched }: { step: StepKey; p: Busine
         </Field>
         <Field label="Team size">
           <select className="input" value={p.employees} onChange={(e) => set('employees', e.target.value)}>
+            <option value="">Select team size</option>
             {['Just me', '2–5', '6–10', '11–50', '50+'].map((i) => (
               <option key={i}>{i}</option>
             ))}
@@ -190,7 +192,7 @@ export function ProfilePreview({ p, pct }: { p: BusinessProfile; pct: number }) 
           {pct === 100 && <Badge tone="green">Verified</Badge>}
         </div>
         <p className="muted flex items-center gap-1.5 text-xs">
-          <Globe className="h-3 w-3" /> {p.country || 'Country'} · {p.industry} {p.founded && `· est. ${p.founded}`}
+          <Globe className="h-3 w-3" /> {[p.country || 'Country', p.industry, p.founded && `est. ${p.founded}`].filter(Boolean).join(' · ')}
         </p>
         <p className={clsx('mt-3 text-sm leading-relaxed', !p.description && 'text-gray-300 dark:text-gray-600')}>{p.description || 'Your description will appear here…'}</p>
         {p.primaryMaterials.length > 0 && (

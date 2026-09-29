@@ -269,13 +269,19 @@ function Inventory({ onOpen }: { onOpen: (p: Product) => void }) {
                     </td>
                     <td className="td text-right tabular-nums">{r.avgDaily.toFixed(2)}</td>
                     <td className="td text-right tabular-nums">
-                      <Tip content={r.supplier ? `Pulled from ${r.supplier.name}` : 'Default — link a supplier'}>
-                        <span className={clsx('border-b border-dashed border-gray-300 dark:border-gray-600', !r.supplier && 'text-gray-400')}>{r.leadTime}d</span>
-                      </Tip>
+                      {r.leadTime === null ? (
+                        <Tip content={r.supplier ? `${r.supplier.name} has no lead time entered` : 'Link a supplier to this product'}>
+                          <span className="text-gray-400">—</span>
+                        </Tip>
+                      ) : (
+                        <Tip content={`From ${r.supplier!.name}`}>
+                          <span className="border-b border-dashed border-gray-300 dark:border-gray-600">{r.leadTime}d</span>
+                        </Tip>
+                      )}
                     </td>
                     <td className="td text-right tabular-nums">{r.product.safetyStock}</td>
-                    <td className="td text-right font-semibold tabular-nums">{r.reorderPoint}</td>
-                    <td className={clsx('td text-right tabular-nums', r.daysOfCover < r.leadTime && 'font-semibold text-red-600 dark:text-red-400')}>
+                    <td className="td text-right font-semibold tabular-nums">{r.reorderPoint ?? <span className="font-normal text-gray-400">—</span>}</td>
+                    <td className={clsx('td text-right tabular-nums', r.leadTime !== null && r.daysOfCover < r.leadTime && 'font-semibold text-red-600 dark:text-red-400')}>
                       {Number.isFinite(r.daysOfCover) ? `${Math.floor(r.daysOfCover)}d` : '—'}
                     </td>
                     <td className="td">
@@ -286,7 +292,7 @@ function Inventory({ onOpen }: { onOpen: (p: Product) => void }) {
                         className={r.status === 'healthy' ? 'btn-secondary btn-sm' : 'btn-primary btn-sm'}
                         onClick={() => {
                           setRestocking(r);
-                          setQty(r.suggestedOrder || 50);
+                          setQty(r.suggestedOrder ?? 0);
                         }}
                       >
                         <PackagePlus className="h-3.5 w-3.5" /> Restock
@@ -326,8 +332,8 @@ function Inventory({ onOpen }: { onOpen: (p: Product) => void }) {
       >
         {restocking && (
           <div className="space-y-4">
-            <Field label="Quantity" hint={`Suggested: ${restocking.suggestedOrder} units (covers lead time + 30 days + safety stock)`}>
-              <input type="number" min={1} className="input" value={qty} onChange={(e) => setQty(Math.max(0, +e.target.value))} />
+            <Field label="Quantity received" hint={restocking.suggestedOrder ? `Suggested: ${restocking.suggestedOrder} units (covers lead time + 30 days of your sales + safety stock)` : 'How many units arrived?'}>
+              <input type="number" min={1} className="input" value={qty || ''} onChange={(e) => setQty(Math.max(0, +e.target.value))} />
             </Field>
             <div className="rounded-lg bg-gray-50 p-3 text-sm dark:bg-white/[0.03]">
               <div className="flex justify-between">

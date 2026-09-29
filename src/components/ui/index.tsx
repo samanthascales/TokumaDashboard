@@ -85,8 +85,10 @@ export function Delta({ value, suffix = '%', invert, className }: { value: numbe
 
 /* ---------------- Animated number ---------------- */
 
-export function AnimatedNumber({ value, format, duration, className }: { value: number; format: (n: number) => string; duration?: number; className?: string }) {
-  const v = useCountUp(value, duration);
+/** Counts up to `value`. Pass null when there's no real data yet — it shows "—" instead of a number. */
+export function AnimatedNumber({ value, format, duration, className }: { value: number | null; format: (n: number) => string; duration?: number; className?: string }) {
+  const v = useCountUp(value ?? 0, duration);
+  if (value === null) return <span className={clsx('tabular-nums text-gray-300 dark:text-gray-600', className)}>—</span>;
   return <span className={clsx('tabular-nums', className)}>{format(v)}</span>;
 }
 
@@ -323,22 +325,23 @@ export function Sparkline({ data, className, height = 36 }: { data: number[]; cl
 
 /* ---------------- Stock bar ---------------- */
 
-export function StockBar({ stock, threshold, reorderPoint, compact }: { stock: number; threshold: number; reorderPoint: number; compact?: boolean }) {
-  const max = Math.max(stock, reorderPoint * 2.2, threshold * 3, 1);
+export function StockBar({ stock, threshold, reorderPoint, compact }: { stock: number; threshold: number; reorderPoint: number | null; compact?: boolean }) {
+  const rop = reorderPoint ?? 0;
+  const max = Math.max(stock, rop * 2.2, threshold * 3, 1);
   const pct = (v: number) => `${Math.min(100, (v / max) * 100)}%`;
-  const status = stock <= threshold ? 'critical' : stock <= reorderPoint ? 'reorder' : 'healthy';
+  const status = stock <= threshold ? 'critical' : reorderPoint !== null && stock <= reorderPoint ? 'reorder' : 'healthy';
   const fill = status === 'critical' ? 'bg-red-500' : status === 'reorder' ? 'bg-amber-400' : 'bg-brand-500';
   return (
     <div className={clsx('w-full', compact ? 'min-w-[120px]' : '')}>
       <div className="relative h-2 w-full overflow-visible rounded-full bg-gray-100 dark:bg-white/[0.06]">
         <div className={clsx('h-full rounded-full transition-all duration-700 ease-out', fill)} style={{ width: pct(stock) }} />
-        <span className="absolute -top-1 h-4 w-0.5 -translate-x-1/2 rounded bg-red-400/80" style={{ left: pct(threshold) }} title={`Low-stock threshold: ${threshold}`} />
-        <span className="absolute -top-1 h-4 w-0.5 -translate-x-1/2 rounded bg-amber-500/80" style={{ left: pct(reorderPoint) }} title={`Reorder point: ${reorderPoint}`} />
+        {threshold > 0 && <span className="absolute -top-1 h-4 w-0.5 -translate-x-1/2 rounded bg-red-400/80" style={{ left: pct(threshold) }} title={`Low-stock threshold: ${threshold}`} />}
+        {reorderPoint !== null && <span className="absolute -top-1 h-4 w-0.5 -translate-x-1/2 rounded bg-amber-500/80" style={{ left: pct(reorderPoint) }} title={`Reorder point: ${reorderPoint}`} />}
       </div>
       {!compact && (
         <div className="mt-1.5 flex justify-between text-[11px] text-gray-500 dark:text-gray-400">
           <span className="tabular-nums">{stock} on hand</span>
-          <span className="tabular-nums">ROP {reorderPoint}</span>
+          <span className="tabular-nums">{reorderPoint === null ? 'No reorder point' : `ROP ${reorderPoint}`}</span>
         </div>
       )}
     </div>
@@ -353,7 +356,9 @@ export function StatusBadge({ status }: { status: 'critical' | 'reorder' | 'heal
 
 /* ---------------- Gauge ---------------- */
 
-export function Gauge({ value, size = 96, label, stroke = 9 }: { value: number; size?: number; label?: string; stroke?: number }) {
+/** A 270° score gauge. Pass null when there isn't enough input for a score; it shows "—" instead of a number. */
+export function Gauge({ value: raw, size = 96, label, stroke = 9 }: { value: number | null; size?: number; label?: string; stroke?: number }) {
+  const value = raw ?? 0;
   const [shown, setShown] = useState(0);
   const mounted = useRef(false);
   useEffect(() => {
@@ -369,7 +374,7 @@ export function Gauge({ value, size = 96, label, stroke = 9 }: { value: number; 
     <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="rotate-[135deg]">
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} strokeLinecap="round" className="stroke-gray-100 dark:stroke-white/[0.07]" strokeDasharray={`${c * arc} ${c}`} />
-        <circle
+        {raw !== null && <circle
           cx={size / 2}
           cy={size / 2}
           r={r}
@@ -378,10 +383,10 @@ export function Gauge({ value, size = 96, label, stroke = 9 }: { value: number; 
           strokeLinecap="round"
           className={clsx(color, 'transition-[stroke-dasharray] duration-1000 ease-out')}
           strokeDasharray={`${(c * arc * shown) / 100} ${c}`}
-        />
+        />}
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <AnimatedNumber value={value} format={(n) => Math.round(n).toString()} className="text-xl font-bold" />
+        {raw === null ? <span className="text-xl font-bold text-gray-400">—</span> : <AnimatedNumber value={value} format={(n) => Math.round(n).toString()} className="text-xl font-bold" />}
         {label && <span className="-mt-0.5 text-[10px] uppercase tracking-wider text-gray-500 dark:text-gray-400">{label}</span>}
       </div>
     </div>
