@@ -1,8 +1,9 @@
 import { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
-import { AlertTriangle, Bell, BriefcaseBusiness, Check, ChevronDown, Landmark, LogOut, Menu, Moon, Search, Settings, Sparkles, Store, Sun, Truck } from 'lucide-react';
+import { AlertTriangle, Bell, BriefcaseBusiness, Check, ChevronDown, CloudCheck, CloudOff, Landmark, Loader2, LogOut, Menu, Moon, Search, Settings, Sparkles, Store, Sun, Truck } from 'lucide-react';
 import { useStore } from '../../store/AppStore';
+import { useCloud } from '../../store/CloudProvider';
 import { useOnClickOutside } from '../../lib/hooks';
 import { fmtRelative } from '../../lib/format';
 import { Avatar } from '../ui';
@@ -81,6 +82,7 @@ function Notifications() {
 
 function RoleSwitcher() {
   const { role, setRole, profile } = useStore();
+  const cloud = useCloud();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const close = useCallback(() => setOpen(false), []);
@@ -123,12 +125,38 @@ function RoleSwitcher() {
           <button onClick={() => { setOpen(false); navigate('/app/settings'); }} className="flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-sm hover:bg-gray-50 dark:hover:bg-white/5">
             <Settings className="h-4 w-4 text-gray-500" /> Settings
           </button>
-          <button onClick={() => navigate('/')} className="flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-sm hover:bg-gray-50 dark:hover:bg-white/5">
+          {cloud.user?.email && <p className="truncate px-2.5 pb-1 text-xs text-gray-400">Signed in as {cloud.user.email}</p>}
+          <button
+            onClick={async () => {
+              setOpen(false);
+              if (cloud.enabled) await cloud.signOut();
+              navigate('/');
+            }}
+            className="flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-sm hover:bg-gray-50 dark:hover:bg-white/5"
+          >
             <LogOut className="h-4 w-4 text-gray-500" /> Sign out
           </button>
         </div>
       )}
     </div>
+  );
+}
+
+/** Save state for accounts stored in the database. Hidden in local mode. */
+function SyncStatus() {
+  const cloud = useCloud();
+  if (!cloud.enabled || !cloud.dataReady || cloud.supportView) return null;
+  if (cloud.status === 'error')
+    return (
+      <button className="mr-1 inline-flex items-center gap-1.5 rounded-lg bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-300" title={cloud.saveError ?? undefined} onClick={cloud.retrySave}>
+        <CloudOff className="h-3.5 w-3.5" /> Not saved — retry
+      </button>
+    );
+  return (
+    <span className="mr-1 hidden items-center gap-1.5 text-xs text-gray-400 sm:inline-flex" aria-live="polite">
+      {cloud.status === 'saving' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CloudCheck className="h-3.5 w-3.5" />}
+      {cloud.status === 'saving' ? 'Saving…' : 'Saved'}
+    </span>
   );
 }
 
@@ -149,6 +177,7 @@ export function Topbar({ onMenu, onSearch }: { onMenu: () => void; onSearch: () 
         <kbd className="hidden rounded border border-gray-200 bg-white px-1.5 py-0.5 font-sans text-[11px] font-medium text-gray-500 dark:border-white/10 dark:bg-white/5 dark:text-gray-400 sm:inline">{isMac ? '⌘' : 'Ctrl'} K</kbd>
       </button>
       <div className="ml-auto flex items-center gap-1">
+        <SyncStatus />
         <button className="icon-btn" onClick={() => setThemePref(theme === 'dark' ? 'light' : 'dark')} aria-label="Toggle theme">
           {theme === 'dark' ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
         </button>

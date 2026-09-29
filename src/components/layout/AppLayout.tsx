@@ -4,6 +4,7 @@ import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { CommandPalette } from './CommandPalette';
 import { ReportModal } from './ReportModal';
+import { SupportBanner } from './Account';
 
 export function AppLayout() {
   const [menu, setMenu] = useState(false);
@@ -29,6 +30,7 @@ export function AppLayout() {
     <div className="min-h-screen">
       <Sidebar open={menu} onClose={() => setMenu(false)} />
       <div className="lg:pl-64">
+        <SupportBanner />
         <Topbar onMenu={() => setMenu(true)} onSearch={() => setPalette(true)} />
         <main key={loc.pathname} className="mx-auto max-w-[1440px] animate-page-in px-4 py-6 sm:px-6 lg:px-8">
           <Outlet />

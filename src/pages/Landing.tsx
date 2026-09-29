@@ -1,8 +1,10 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight, BriefcaseBusiness, Leaf, ShieldCheck, Store } from 'lucide-react';
 import { Logo } from '../components/layout/Sidebar';
+import { useCloud } from '../store/CloudProvider';
 
 export default function Landing() {
+  const cloud = useCloud();
   return (
     <div className="relative min-h-screen overflow-hidden bg-white dark:bg-ink-950">
       <div
@@ -16,9 +18,15 @@ export default function Landing() {
       <div className="relative">
         <header className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
           <Logo />
-          <Link to="/signin" className="btn-secondary btn-sm">
-            Sign in
-          </Link>
+          {cloud.user ? (
+            <Link to="/app" className="btn-primary btn-sm">
+              Open dashboard
+            </Link>
+          ) : (
+            <Link to="/signin" className="btn-secondary btn-sm">
+              Sign in
+            </Link>
+          )}
         </header>
         <main className="mx-auto max-w-6xl px-6 pb-20 pt-14 text-center sm:pt-20">
           <span className="inline-flex items-center gap-2 rounded-full border border-brand-200 bg-white/70 px-3 py-1 text-xs font-medium text-brand-800 backdrop-blur dark:border-brand-500/30 dark:bg-white/5 dark:text-brand-200">

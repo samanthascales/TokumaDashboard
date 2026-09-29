@@ -2,7 +2,8 @@ import { NavLink, useLocation } from 'react-router-dom';
 import clsx from 'clsx';
 import { Sparkles, X } from 'lucide-react';
 import { useStore } from '../../store/AppStore';
-import { businessNav, investorNav, type NavItem } from './nav';
+import { adminNavItem, businessNav, investorNav, type NavItem } from './nav';
+import { useCloud } from '../../store/CloudProvider';
 import { AnimatedNumber } from '../ui';
 
 export function Logo({ className, light }: { className?: string; light?: boolean }) {
@@ -61,7 +62,9 @@ function Item({ item, onNavigate, depth = 0 }: { item: NavItem; onNavigate?: () 
 
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { role, circ30, profile } = useStore();
-  const nav = role === 'investor' ? investorNav : businessNav;
+  const { isAdmin } = useCloud();
+  const base = role === 'investor' ? investorNav : businessNav;
+  const nav = isAdmin ? [...base, adminNavItem] : base;
   return (
     <>
       <div className={clsx('fixed inset-0 z-40 bg-black/40 transition-opacity lg:hidden', open ? 'opacity-100' : 'pointer-events-none opacity-0')} onClick={onClose} />

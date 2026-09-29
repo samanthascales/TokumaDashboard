@@ -14,6 +14,7 @@ import type {
   Transaction,
 } from '../types';
 import { emptyProfile } from '../data/defaults';
+import { CLOUD_ENABLED } from '../lib/cloud';
 import {
   buildLedger,
   circularityFrom,
@@ -46,7 +47,7 @@ export interface Toast {
   body?: string;
 }
 
-interface Persisted {
+export interface Persisted {
   products: Product[];
   suppliers: Supplier[];
   transactions: Transaction[];
@@ -63,7 +64,7 @@ interface Persisted {
 // v2: accounts start empty (v1 stored the old sample data, so it is ignored).
 const STORAGE_KEY = 'tokuma-state-v2';
 
-function defaultState(): Persisted {
+export function defaultState(): Persisted {
   return {
     products: [],
     suppliers: [],
@@ -97,10 +98,43 @@ function clearOldFormDefaults(s: Persisted): Persisted {
   };
 }
 
-function loadState(): Persisted {
+/** Fills in any missing fields and clears legacy defaults. Used for local and cloud data alike. */
+export function normalizeState(raw: Partial<Persisted> | null | undefined): Persisted {
+  const base = defaultState();
+  const r = raw ?? {};
+  return clearOldFormDefaults({
+    ...base,
+    ...r,
+    // Nested objects are merged too, so data saved by an older version never lacks a field.
+    profile: { ...base.profile, ...(r.profile ?? {}) },
+    prefs: { ...base.prefs, ...(r.prefs ?? {}) },
+  });
+}
+
+/** Data saved in this browser before accounts existed (local mode). */
+export function readLocalState(): Partial<Persisted> | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return clearOldFormDefaults({ ...defaultState(), ...(JSON.parse(raw) as Partial<Persisted>) });
+    return raw ? (JSON.parse(raw) as Partial<Persisted>) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearLocalState() {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+function loadState(): Persisted {
+  // With accounts on, data comes from the database after sign-in — never from this browser.
+  if (CLOUD_ENABLED) return defaultState();
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return normalizeState(JSON.parse(raw) as Partial<Persisted>);
   } catch {
     /* storage unavailable */
   }
@@ -168,6 +202,10 @@ export interface AppStore extends Persisted {
   setPrefs: (p: NotificationPrefs) => void;
   markFundingSeen: () => void;
   resetData: () => void;
+  /** Replaces all persisted data at once (loading an account, or opening a support view). */
+  replaceAll: (next: Partial<Persisted> | null) => void;
+  /** The raw persisted data, for saving to the database. */
+  snapshot: Persisted;
 }
 
 const Ctx = createContext<AppStore | null>(null);
@@ -185,8 +223,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     setState((s) => ({ ...s, ...(typeof p === 'function' ? p(s) : p) }));
   }, []);
 
-  // Persist
+  // Persist locally only in local mode; with accounts on, CloudProvider saves to the database.
   useEffect(() => {
+    if (CLOUD_ENABLED) return;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch {
@@ -314,6 +353,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       for (const id of critical) {
         if (prevCritical.current.has(id)) continue;
         const r = inventory.find((x) => x.product.id === id)!;
+        // Skip if an unread alert for this product already exists (e.g. right after loading an account).
+        if (state.notifications.some((n) => n.kind === 'stock' && !n.read && n.title === `Low stock: ${r.product.name}`)) continue;
         pushNotification({ kind: 'stock', title: `Low stock: ${r.product.name}`, body: `${r.product.stockOnHand} units left (threshold ${r.product.lowStockThreshold}).`, to: '/app/products/inventory' });
       }
     }
@@ -413,14 +454,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       patch((s) => ({
         fundingRequests: [{ id, ...r, submittedDate: toISO(startOfToday()), status: 'Pending', apr: r.type === 'Loan' ? funding.apr ?? undefined : undefined }, ...s.fundingRequests],
       }));
-      toast({ kind: 'success', title: 'Funding request submitted', body: `${r.type} · $${r.amount.toLocaleString()}` });
-      // Simulate a lender decision arriving later.
-      setTimeout(() => {
-        patch((s) => ({ fundingRequests: s.fundingRequests.map((x) => (x.id === id && x.status === 'Pending' ? { ...x, status: 'Approved' } : x)) }));
-        pushNotification({ kind: 'funding', title: `${r.type} request approved`, body: `$${r.amount.toLocaleString()} for “${r.purpose}” was approved.`, to: '/app/funding' });
-      }, 20000);
+      toast({ kind: 'success', title: 'Funding request saved', body: `${r.type} · $${r.amount.toLocaleString()} · status Pending` });
     },
-    [patch, toast, funding.apr, pushNotification],
+    [patch, toast, funding.apr],
   );
   const applyMaterialSwitch: AppStore['applyMaterialSwitch'] = useCallback(
     (productId, materialName) => {
@@ -451,6 +487,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     () => patch({ fundingSeen: { apr: funding.apr, maxEligibility: funding.maxEligibility, rate: circ30.rate } }),
     [patch, funding.apr, funding.maxEligibility, circ30.rate],
   );
+  const replaceAll = useCallback((next: Partial<Persisted> | null) => {
+    setState(normalizeState(next));
+    setMaterialFilter(null);
+  }, []);
   const resetData = useCallback(() => {
     setState(defaultState());
     setMaterialFilter(null);
@@ -499,6 +539,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     setPrefs,
     markFundingSeen,
     resetData,
+    replaceAll,
+    snapshot: state,
   };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

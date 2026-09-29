@@ -11,6 +11,7 @@
     "build:artifact": "tsc -b && vite build --mode artifact --outDir dist-artifact"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.117.2",
     "clsx": "^2.1.1",
     "lucide-react": "^1.48.0",
     "papaparse": "^5.7.0",

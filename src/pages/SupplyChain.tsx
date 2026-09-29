@@ -51,14 +51,15 @@ function Overview({ onOpen }: { onOpen: (s: Supplier) => void }) {
   }, [suppliers]);
   const modes = (['Sea', 'Rail', 'Road', 'Air'] as const).map((mode) => {
     const list = suppliers.filter((s) => s.transportMethod === mode);
-    return { mode, count: list.length, carbon: list.reduce((s, x) => s + (x.carbonEmissionsKg ?? 0), 0) };
+    const known = list.filter((x) => x.carbonEmissionsKg !== null);
+    return { mode, count: list.length, carbon: known.reduce((s, x) => s + (x.carbonEmissionsKg ?? 0), 0), hasCarbon: known.length > 0 };
   });
 
   const tiles = [
     { label: 'Sustainability rating', value: avgSust === null ? '—' : `${Math.round(avgSust)}/100`, sub: avgSust === null ? 'no ratings entered yet' : 'avg of entered ratings', icon: Leaf },
     { label: 'Logistics carbon', value: withCarbon.length ? `${fmtCompact(totalCarbon)} kg` : '—', sub: withCarbon.length ? `CO₂e per year · ${withCarbon.length} of ${suppliers.length} suppliers` : 'no carbon figures entered yet', icon: Truck },
     { label: 'Avg reliability', value: avgRel === null ? '—' : `${Math.round(avgRel)}/100`, sub: avgRel === null ? 'needs lead time + on-time delivery' : `${highRisk} high-risk suppliers`, icon: ShieldCheck },
-    { label: 'Suppliers', value: suppliers.length, sub: `${byCountry.length} countries`, icon: Factory },
+    { label: 'Suppliers', value: suppliers.length, sub: `${byCountry.length} ${byCountry.length === 1 ? 'country' : 'countries'}`, icon: Factory },
   ];
 
   return (
@@ -107,7 +108,7 @@ function Overview({ onOpen }: { onOpen: (s: Supplier) => void }) {
               <div className="flex items-center justify-between text-sm">
                 <span className="font-medium">{m.mode}</span>
                 <span className="muted text-xs tabular-nums">
-                  {m.count} supplier{m.count === 1 ? '' : 's'} · {fmtInt(m.carbon)} kg
+                  {m.count} supplier{m.count === 1 ? '' : 's'} · {m.hasCarbon ? `${fmtInt(m.carbon)} kg` : '—'}
                 </span>
               </div>
               <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-white/5">
@@ -153,7 +154,7 @@ function Overview({ onOpen }: { onOpen: (s: Supplier) => void }) {
                       ))}
                     </div>
                   </td>
-                  <td className="td text-right tabular-nums">{fmtInt(c.carbon)}</td>
+                  <td className="td text-right tabular-nums">{c.suppliers.some((s) => s.carbonEmissionsKg !== null) ? fmtInt(c.carbon) : '—'}</td>
                 </tr>
               ))}
             </tbody>

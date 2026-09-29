@@ -67,7 +67,29 @@ src/
   pages/                   one file per route (+ sub-folders for page-specific parts)
 ```
 
-New accounts start empty. A **Get started** checklist on the dashboard walks through the business profile, first product, first supplier and first sale. Everything you enter (products, suppliers, transactions, funding requests, profile, preferences) is saved to `localStorage` in your browser. **Settings → Delete all data** clears it.
+New accounts start empty. A **Get started** checklist on the dashboard walks through the business profile, first product, first supplier and first sale.
+
+## Accounts and data storage
+
+The app runs in one of two modes:
+
+- **Accounts mode.** This is on when the build has `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`, for example in `.env.production`. People sign up with email and password, and each business's data is stored in Supabase and syncs across devices. Saves happen automatically, and a top-bar indicator shows *Saving… / Saved*. If the same account is edited in two tabs, the older tab loads the newer data instead of overwriting it. The first time someone signs in on a browser that already holds data from local mode, that data moves into their account.
+- **Local mode.** This is used when those settings are missing. Data is saved in the browser's `localStorage` only.
+
+**Setting up accounts:** follow [`docs/ACCOUNTS_SETUP.md`](docs/ACCOUNTS_SETUP.md). The database tables and security rules are in [`supabase/migrations/001_workspaces.sql`](supabase/migrations/001_workspaces.sql):
+- Row Level Security limits each user to their own row.
+- Support access is off by default. A business turns it on under **Settings → Account & privacy**.
+- Admins open a business's data through functions that check that consent, require a reason, and log each view. The business sees every view in its access history.
+
+**Owner admin page:** `/app/admin` is shown only to accounts listed in the `admins` table. It lists every business (names, emails, counts) and opens a read-only support view for businesses that allowed it.
+
+**Security tests:** [`supabase/tests/security.sql`](supabase/tests/security.sql) checks the rules as different users on a scratch PostgreSQL database:
+
+```bash
+psql -d scratch -f supabase/tests/local_auth_stub.sql -f supabase/migrations/001_workspaces.sql -f supabase/tests/security.sql
+```
+
+**Delete all data** (Settings → Appearance) clears the current business's data in whichever mode is active.
 
 ## Deployment
 
