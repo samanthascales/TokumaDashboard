@@ -22,7 +22,7 @@ The app uses hash routing (`/#/app/...`) and a relative base path, so `dist/` ca
 | **Business Hub** | `/app` | Low-stock banner, KPI cards with sparklines, Revenue vs Profit (30D/90D/YTD/12M/Custom, prior-period overlay, automatic peak annotation, click-to-drill modal), material-mix donut that filters the dashboard, milestone stepper with hover criteria, AI insights feed (dismiss / act, impact + confidence tags) |
 | Products | `/app/products` | Grid/table toggle, sortable table, stock bars, add/edit modal with bill-of-materials editor |
 | **Inventory** (Focus 4) | `/app/products/inventory` | `stockOnHand`, `lowStockThreshold`, auto `reorderPoint`, days of cover, suggested order, restock flow |
-| Transactions | `/app/transactions` | Filter, search, paginate, CSV export; sales link to product and customer |
+| Transactions | `/app/transactions` | Filter, search, paginate, CSV export, **import from CSV / Excel (.xlsx)**; sales link to product and customer |
 | Circularity Metrics | `/app/circularity` | Calculated live from transactions × materials, composition, trend, ranking, ranked recommendation carousel |
 | Supply Chain | `/app/supply-chain` | Sustainability, logistics carbon, transport mix, material origins, key suppliers |
 | **Supplier Reliability** (Focus 5) | `/app/supply-chain/reliability` | Computed reliability score, gauges, sortable table, supplier drill-down, add/edit supplier modal |
@@ -33,6 +33,16 @@ The app uses hash routing (`/#/app/...`) and a relative base path, so `dist/` ca
 | Investor view | `/app/investor` | Opened from the role switcher. Shows impact, funding readiness and supply-chain risk |
 
 These work across every page: the ⌘K / Ctrl K command palette, the notification bell, toasts, skeleton loading states, empty states with a call to action, page transitions, count-up numbers, and "Generate report" (a printable PDF summary).
+
+## Importing transactions
+
+**Transactions → Import CSV / Excel** reads a `.csv` or `.xlsx` file in the browser (nothing is uploaded):
+
+1. Pick the file (and the sheet, for workbooks with several).
+2. Match your columns to Tokuma's fields — Date and Amount are required; type, category, product, quantity, customer and note are optional. Column names are guessed from your headers.
+3. Review every row before it's saved. Rows that can't be read (bad date or amount) are skipped with the reason; unknown products are imported without a product link; unknown customers can be added; rows matching an existing transaction are flagged as already imported.
+
+Without a type column, negative amounts are money out. A sale without a quantity adds revenue but no units. Imports don't change stock on hand. Files in SharePoint, OneDrive or Google Sheets need to be downloaded first. Parsing uses `papaparse` and `read-excel-file`, loaded only when an import starts.
 
 ## Key formulas (`src/lib/metrics.ts`)
 

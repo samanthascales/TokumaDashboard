@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
-import { CornerDownLeft, FileText, Moon, Package, Plus, Search, Truck, User, type LucideIcon } from 'lucide-react';
+import { CornerDownLeft, FileText, Moon, Package, Plus, Search, Truck, Upload, User, type LucideIcon } from 'lucide-react';
 import { useStore } from '../../store/AppStore';
 import { allPages, openReport } from './nav';
 
@@ -39,6 +39,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       { id: 'act:supplier', group: 'Actions', label: 'Add new supplier', icon: Plus, run: go('/app/supply-chain?new=supplier') },
       { id: 'act:product', group: 'Actions', label: 'Add new product', icon: Plus, run: go('/app/products?new=product') },
       { id: 'act:txn', group: 'Actions', label: 'Log a transaction', icon: Plus, run: go('/app/transactions?new=txn') },
+      { id: 'act:import', group: 'Actions', label: 'Import transactions from CSV / Excel', icon: Upload, run: go('/app/transactions?new=import') },
       { id: 'act:theme', group: 'Actions', label: `Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`, icon: Moon, run: () => setThemePref(theme === 'dark' ? 'light' : 'dark') },
       ...products.map((p) => ({ id: `prd:${p.id}`, group: 'Products' as const, label: p.name, hint: p.sku, icon: Package, run: go(`/app/products?open=${p.id}`) })),
       ...suppliers.map((s) => ({ id: `sup:${s.id}`, group: 'Suppliers' as const, label: s.name, hint: `${s.city}, ${s.country}`, icon: Truck, run: go(`/app/supply-chain/reliability?open=${s.id}`) })),

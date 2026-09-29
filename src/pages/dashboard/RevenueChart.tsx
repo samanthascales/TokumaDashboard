@@ -55,7 +55,7 @@ export function RevenueChart() {
     for (const t of drillTx) {
       if (t.type !== 'inflow' || !t.productId) continue;
       const cur = m.get(t.productId) ?? { units: 0, revenue: 0 };
-      cur.units += t.quantity ?? 1;
+      cur.units += t.quantity ?? 0;
       cur.revenue += t.amount;
       m.set(t.productId, cur);
     }

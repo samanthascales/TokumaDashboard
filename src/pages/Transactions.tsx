@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import clsx from 'clsx';
-import { ArrowDownLeft, ArrowUpRight, ChevronLeft, ChevronRight, Download, Link2, Plus, Receipt, Search } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, ChevronLeft, ChevronRight, Download, Link2, Plus, Receipt, Search, Upload } from 'lucide-react';
+import { ImportModal } from './transactions/ImportModal';
 import { useStore } from '../store/AppStore';
 import { IS_EMBEDDED } from '../env';
 import { useSimulatedLoad } from '../lib/hooks';
@@ -137,6 +138,7 @@ export default function Transactions() {
   const { transactions, products, customers, ledger } = useStore();
   const [params, setParams] = useSearchParams();
   const [adding, setAdding] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [type, setType] = useState<'all' | 'inflow' | 'outflow'>('all');
   const [cat, setCat] = useState('All');
   const [q, setQ] = useState('');
@@ -144,8 +146,10 @@ export default function Transactions() {
   const ready = useSimulatedLoad('transactions');
 
   useEffect(() => {
-    if (params.get('new') === 'txn') {
-      setAdding(true);
+    const n = params.get('new');
+    if (n === 'txn' || n === 'import') {
+      if (n === 'txn') setAdding(true);
+      else setImporting(true);
       setParams({}, { replace: true });
     }
   }, [params, setParams]);
@@ -195,6 +199,9 @@ export default function Transactions() {
                 <Download className="h-4 w-4" /> Export CSV
               </button>
             )}
+            <button className="btn-secondary" onClick={() => setImporting(true)}>
+              <Upload className="h-4 w-4" /> Import CSV / Excel
+            </button>
             <button className="btn-primary" onClick={() => setAdding(true)}>
               <Plus className="h-4 w-4" /> Log transaction
             </button>
@@ -234,7 +241,21 @@ export default function Transactions() {
             <span className="muted ml-auto text-xs tabular-nums">{rows.length.toLocaleString()} transactions</span>
           </div>
           {rows.length === 0 ? (
-            <EmptyState icon={<Receipt className="h-6 w-6" />} title="No transactions match" body="Adjust the filters or log a new transaction." action={<button className="btn-primary btn-sm" onClick={() => setAdding(true)}>Log transaction</button>} />
+            <EmptyState
+              icon={<Receipt className="h-6 w-6" />}
+              title={transactions.length ? 'No transactions match' : 'No transactions yet'}
+              body={transactions.length ? 'Adjust the filters or log a new transaction.' : 'Log sales and expenses one at a time, or import them from a CSV or Excel file.'}
+              action={
+                <div className="flex gap-2">
+                  <button className="btn-secondary btn-sm" onClick={() => setImporting(true)}>
+                    <Upload className="h-3.5 w-3.5" /> Import file
+                  </button>
+                  <button className="btn-primary btn-sm" onClick={() => setAdding(true)}>
+                    Log transaction
+                  </button>
+                </div>
+              }
+            />
           ) : (
             <>
               <div className="overflow-x-auto">
@@ -297,6 +318,7 @@ export default function Transactions() {
         </Card>
       )}
       <AddTransactionModal open={adding} onClose={() => setAdding(false)} />
+      <ImportModal open={importing} onClose={() => setImporting(false)} />
     </>
   );
 }

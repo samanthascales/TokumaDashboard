@@ -73,7 +73,7 @@ export function buildLedger(txs: Transaction[]): Ledger {
       if (t.productId) {
         const bp = (e.byProduct[t.productId] ??= { revenue: 0, units: 0 });
         bp.revenue += t.amount;
-        bp.units += t.quantity ?? 1;
+        bp.units += t.quantity ?? 0; // a sale without a quantity adds revenue but no units — never assumed
         e.revenue += t.amount;
       } else if (!FINANCING_CATEGORIES.has(t.category)) {
         e.otherInflow += t.amount;

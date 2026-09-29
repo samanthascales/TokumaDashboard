@@ -156,6 +156,8 @@ export interface AppStore extends Persisted {
   updateSupplier: (s: Supplier) => void;
   addTransaction: (t: Omit<Transaction, 'id'>) => void;
   addCustomer: (c: Omit<Customer, 'id' | 'joinedDate'>) => string;
+  /** Adds many transactions (and any new customers they reference) in one step. Stock levels are not changed. */
+  importTransactions: (txs: Omit<Transaction, 'id'>[], newCustomers: Customer[]) => void;
   requestFunding: (r: { type: FundingType; amount: number; purpose: string }) => void;
   applyMaterialSwitch: (productId: string, materialName: string) => void;
   dismissInsight: (id: string) => void;
@@ -394,6 +396,17 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     },
     [patch],
   );
+  const importTransactions: AppStore['importTransactions'] = useCallback(
+    (txs, newCustomers) => {
+      const used = new Set(txs.map((t) => t.customerId).filter(Boolean));
+      patch((s) => ({
+        transactions: [...s.transactions, ...txs.map((t) => ({ ...t, id: uid('txn') }))],
+        customers: [...s.customers, ...newCustomers.filter((c) => used.has(c.id))],
+      }));
+      toast({ kind: 'success', title: `Imported ${txs.length.toLocaleString()} transaction${txs.length === 1 ? '' : 's'}` });
+    },
+    [patch, toast],
+  );
   const requestFunding: AppStore['requestFunding'] = useCallback(
     (r) => {
       const id = uid('fr');
@@ -475,6 +488,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     updateSupplier,
     addTransaction,
     addCustomer,
+    importTransactions,
     requestFunding,
     applyMaterialSwitch,
     dismissInsight,
