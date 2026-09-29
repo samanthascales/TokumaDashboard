@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import clsx from 'clsx';
-import { AlertTriangle, Check, ChevronDown, Lightbulb, Lock, Rocket, Sparkles, TrendingUp, X, Zap } from 'lucide-react';
+import { AlertTriangle, Check, ChevronDown, Lightbulb, Lock, Rocket, Sparkles, TrendingUp, Upload, X, Zap } from 'lucide-react';
 import { useStore } from '../../store/AppStore';
 import { useChartColors } from '../../lib/hooks';
 import { fmtDate, fmtKg, fmtMoney, fmtPct } from '../../lib/format';
@@ -468,14 +468,14 @@ export function ActivityCard() {
 
 /* ---------------- Getting started (new accounts) ---------------- */
 
-export function GettingStarted() {
+export function GettingStarted({ onImportSales }: { onImportSales: () => void }) {
   const { profile, products, suppliers, transactions } = useStore();
   const navigate = useNavigate();
   const steps = [
     { label: 'Complete your business profile', body: 'Name, industry and what you make.', done: !!profile.businessName.trim(), to: '/onboarding', cta: 'Set up profile' },
     { label: 'Add your first product', body: 'List its materials so Tokuma can score circularity.', done: products.length > 0, to: '/app/products?new=product', cta: 'Add product' },
     { label: 'Add a supplier', body: 'Lead times drive your automatic reorder points.', done: suppliers.length > 0, to: '/app/supply-chain?new=supplier', cta: 'Add supplier' },
-    { label: 'Log your first sale', body: 'Sales power revenue, circularity and customer insights. You can also import them from a spreadsheet.', done: transactions.some((t) => t.type === 'inflow'), to: '/app/transactions?new=txn', cta: 'Log sale' },
+    { label: 'Log your first sale', body: 'Sales power revenue, circularity and customer insights. Log one, or import a sales export.', done: transactions.some((t) => t.type === 'inflow'), to: '/app/transactions?new=txn', cta: 'Log sale' },
   ];
   const done = steps.filter((s) => s.done).length;
   if (done === steps.length) return null;
@@ -509,9 +509,16 @@ export function GettingStarted() {
             <p className={clsx('mt-3 text-sm font-semibold', s.done && 'text-gray-400 line-through dark:text-gray-500')}>{s.label}</p>
             <p className="muted mt-1 flex-1 text-xs">{s.body}</p>
             {!s.done && (
-              <button className={clsx('mt-3 self-start', i === next ? 'btn-primary btn-sm' : 'btn-secondary btn-sm')} onClick={() => navigate(s.to)}>
-                {s.cta}
-              </button>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button className={i === next ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'} onClick={() => navigate(s.to)}>
+                  {s.cta}
+                </button>
+                {s.cta === 'Log sale' && (
+                  <button className="btn-secondary btn-sm" onClick={onImportSales}>
+                    <Upload className="h-3.5 w-3.5" /> Import sales
+                  </button>
+                )}
+              </div>
             )}
           </li>
         ))}
