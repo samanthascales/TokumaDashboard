@@ -10,7 +10,7 @@ import { TooltipBox } from '../components/charts/ChartTooltip';
 import { openReport } from '../components/layout/nav';
 
 export default function Investor() {
-  const { profile, circ30, funding, suppliers, ledger, products, theme, fundingRequests } = useStore();
+  const { verification, profile, circ30, funding, suppliers, ledger, products, theme, fundingRequests } = useStore();
   const c = useChartColors(theme);
   const ready = useSimulatedLoad('investor');
   const series = useMemo(() => buildSeries(ledger, products, lastNDays(365)), [ledger, products]);
@@ -21,8 +21,8 @@ export default function Investor() {
   return (
     <>
       <PageHeader
-        title={profile.businessName}
-        sub={`${profile.industry} · ${profile.country} · ${profile.circularModel}`}
+        title={profile.businessName || 'Your business'}
+        sub={[profile.industry, profile.country, profile.circularModel].filter(Boolean).join(' · ')}
         actions={
           <button className="btn-primary" onClick={openReport}>
             <FileText className="h-4 w-4" /> Generate report
@@ -30,10 +30,14 @@ export default function Investor() {
         }
       >
         <div className="mt-3 flex flex-wrap gap-2">
-          <Badge tone="green">
-            <BadgeCheck className="h-3 w-3" /> Verified circular business
-          </Badge>
-          <Badge>Founded {profile.founded}</Badge>
+          {verification.verified ? (
+            <Badge tone="green">
+              <BadgeCheck className="h-3 w-3" /> Verified circular business
+            </Badge>
+          ) : (
+            <Badge tone="amber">Verification in progress</Badge>
+          )}
+          {profile.founded && <Badge>Founded {profile.founded}</Badge>}
           <Badge>{profile.employees} people</Badge>
         </div>
       </PageHeader>
@@ -110,6 +114,7 @@ export default function Investor() {
           <Card className="col-span-12">
             <CardHeader title="Supply-chain risk" sub={`Average supplier reliability ${avgRel}/100`} right={<ShieldCheck className="h-4 w-4 text-gray-400" />} />
             <div className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-5">
+              {suppliers.length === 0 && <p className="muted text-sm sm:col-span-2 lg:col-span-5">No suppliers added yet.</p>}
               {suppliers.map((s) => {
                 const sc = reliabilityScore(s);
                 const r = riskLevel(sc);

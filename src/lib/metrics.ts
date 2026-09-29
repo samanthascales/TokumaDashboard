@@ -526,7 +526,7 @@ export function generateInsights(ctx: {
       action: { type: 'navigate', to: '/app/supply-chain/reliability' },
     });
   }
-  out.push({
+  if (ctx.funding.maxEligibility > 0) out.push({
     id: 'ins_funding',
     kind: 'opportunity',
     title: `You qualify for up to ${fmtMoney(ctx.funding.maxEligibility)}`,

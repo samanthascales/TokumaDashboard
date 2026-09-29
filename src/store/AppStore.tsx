@@ -13,7 +13,7 @@ import type {
   ThemePref,
   Transaction,
 } from '../types';
-import { generateSeed, seedProducts, seedProfile, seedSuppliers } from '../data/seed';
+import { emptyProfile } from '../data/defaults';
 import {
   buildLedger,
   circularityFrom,
@@ -27,6 +27,7 @@ import {
   recommendations,
   reliabilityScore,
   seasonalPeakLift,
+  historyDays,
   totalsFor,
   type CircularityStats,
   type FundingTerms,
@@ -47,8 +48,8 @@ export interface Toast {
 interface Persisted {
   products: Product[];
   suppliers: Supplier[];
-  extraTransactions: Transaction[];
-  extraCustomers: Customer[];
+  transactions: Transaction[];
+  customers: Customer[];
   fundingRequests: FundingRequest[];
   profile: BusinessProfile;
   prefs: NotificationPrefs;
@@ -58,30 +59,21 @@ interface Persisted {
   fundingSeen: { apr: number; maxEligibility: number; rate: number } | null;
 }
 
-const STORAGE_KEY = 'tokuma-state-v1';
-const seed = generateSeed();
-
-function hoursAgo(h: number) {
-  return new Date(Date.now() - h * 3_600_000).toISOString();
-}
+// v2: accounts start empty (v1 stored the old sample data, so it is ignored).
+const STORAGE_KEY = 'tokuma-state-v2';
 
 function defaultState(): Persisted {
   return {
-    products: seedProducts,
-    suppliers: seedSuppliers,
-    extraTransactions: [],
-    extraCustomers: [],
-    fundingRequests: seed.fundingRequests,
-    profile: seedProfile,
+    products: [],
+    suppliers: [],
+    transactions: [],
+    customers: [],
+    fundingRequests: [],
+    profile: emptyProfile,
     prefs: { lowStock: true, funding: true, supplier: true, insights: true, weeklyDigest: false },
     role: 'business',
     dismissedInsights: [],
-    notifications: [
-      { id: 'n_1', kind: 'funding', title: 'Reward campaign approved', body: 'Community pre-order: denim restock was approved for $6,000.', date: hoursAgo(5), read: false, to: '/app/funding' },
-      { id: 'n_2', kind: 'supplier', title: 'WoolCycle shipment delayed', body: 'PO #1182 is running 4 days late. Lead-time average updated.', date: hoursAgo(26), read: false, to: '/app/supply-chain/reliability' },
-      { id: 'n_3', kind: 'insight', title: 'New circular insight', body: 'Switching hemp fleece to recycled could lift circularity by ~8%.', date: hoursAgo(50), read: true, to: '/app' },
-      { id: 'n_4', kind: 'system', title: 'Bank sync complete', body: '312 transactions categorised automatically.', date: hoursAgo(80), read: true, to: '/app/transactions' },
-    ],
+    notifications: [],
     fundingSeen: null,
   };
 }
@@ -114,9 +106,9 @@ function loadThemePref(): ThemePref {
 }
 
 export interface AppStore extends Persisted {
-  transactions: Transaction[];
-  customers: Customer[];
   ledger: Ledger;
+  /** Earned once there's enough real data for lenders to trust the numbers. */
+  verification: { verified: boolean; steps: { label: string; done: boolean }[] };
   circ30: CircularityStats;
   circPrev30: CircularityStats;
   units90: Record<string, number>;
@@ -154,7 +146,7 @@ export interface AppStore extends Persisted {
   setProfile: (p: BusinessProfile) => void;
   setPrefs: (p: NotificationPrefs) => void;
   markFundingSeen: () => void;
-  resetDemo: () => void;
+  resetData: () => void;
 }
 
 const Ctx = createContext<AppStore | null>(null);
@@ -222,8 +214,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   );
 
   /* ---------------- derived data ---------------- */
-  const transactions = useMemo(() => [...seed.transactions, ...state.extraTransactions], [state.extraTransactions]);
-  const customers = useMemo(() => [...seed.customers, ...state.extraCustomers], [state.extraCustomers]);
+  const { transactions, customers } = state;
   const ledger = useMemo(() => buildLedger(transactions), [transactions]);
   const units30 = useMemo(() => totalsFor(ledger, lastNDays(30)).units, [ledger]);
   const unitsPrev30 = useMemo(() => totalsFor(ledger, lastNDays(30, 30)).units, [ledger]);
@@ -238,6 +229,15 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     return fundingTerms(circ30.rate, yr.revenue, avgSust, yr.revenue ? yr.profit / yr.revenue : 0);
   }, [ledger, state.suppliers, circ30.rate]);
   const recs = useMemo(() => recommendations(state.products, units90), [state.products, units90]);
+  const verification = useMemo(() => {
+    const salesDays = historyDays(transactions.filter((t) => t.type === 'inflow' && t.productId));
+    const steps = [
+      { label: 'Add a product with its materials', done: state.products.some((p) => p.materials.length > 0) },
+      { label: 'Add a supplier', done: state.suppliers.length > 0 },
+      { label: 'Log 30 days of sales', done: salesDays >= 30 },
+    ];
+    return { verified: steps.every((s) => s.done), steps };
+  }, [state.products, state.suppliers, transactions]);
   const peakLift = useMemo(() => seasonalPeakLift(ledger), [ledger]);
   const insights = useMemo(
     () =>
@@ -327,8 +327,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         if (!p) return {};
         return {
           products: s.products.map((x) => (x.id === productId ? { ...x, stockOnHand: x.stockOnHand + qty } : x)),
-          extraTransactions: [
-            ...s.extraTransactions,
+          transactions: [
+            ...s.transactions,
             { id: uid('txn'), type: 'outflow', category: 'Inventory purchase', amount: +(qty * p.unitCost).toFixed(2), productId, quantity: qty, date: toISO(startOfToday()), note: `Restock ${qty} × ${p.name}` },
           ],
         };
@@ -358,7 +358,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           t.type === 'inflow' && t.productId && t.quantity
             ? s.products.map((p) => (p.id === t.productId ? { ...p, stockOnHand: Math.max(0, p.stockOnHand - t.quantity!) } : p))
             : s.products;
-        return { extraTransactions: [...s.extraTransactions, { ...t, id: uid('txn') }], products };
+        return { transactions: [...s.transactions, { ...t, id: uid('txn') }], products };
       });
       toast({ kind: 'success', title: 'Transaction logged', body: `${t.type === 'inflow' ? '+' : '−'}$${t.amount.toFixed(2)} · ${t.category}` });
     },
@@ -367,7 +367,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const addCustomer: AppStore['addCustomer'] = useCallback(
     (c) => {
       const id = uid('cus');
-      patch((s) => ({ extraCustomers: [...s.extraCustomers, { ...c, id, joinedDate: toISO(startOfToday()) }] }));
+      patch((s) => ({ customers: [...s.customers, { ...c, id, joinedDate: toISO(startOfToday()) }] }));
       return id;
     },
     [patch],
@@ -416,17 +416,16 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     () => patch({ fundingSeen: { apr: funding.apr, maxEligibility: funding.maxEligibility, rate: circ30.rate } }),
     [patch, funding.apr, funding.maxEligibility, circ30.rate],
   );
-  const resetDemo = useCallback(() => {
+  const resetData = useCallback(() => {
     setState(defaultState());
     setMaterialFilter(null);
-    toast({ kind: 'info', title: 'Demo data reset' });
+    toast({ kind: 'info', title: 'All data cleared' });
   }, [toast]);
 
   const value: AppStore = {
     ...state,
-    transactions,
-    customers,
     ledger,
+    verification,
     circ30,
     circPrev30,
     units90,
@@ -463,7 +462,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     setProfile,
     setPrefs,
     markFundingSeen,
-    resetDemo,
+    resetData,
   };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

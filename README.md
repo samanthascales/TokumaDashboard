@@ -29,7 +29,7 @@ The app uses hash routing (`/#/app/...`) and a relative base path, so `dist/` ca
 | Funding | `/app/funding` | Verified banner, reactive eligibility and APR (flash plus a "since your last visit" note), what-if slider, request flow, history with status badges |
 | Customers | `/app/customers` | Repeat-purchase rate, products bought, New / Repeat / At-risk segments, order history modal |
 | Education Hub | `/app/education` | Restyled to match the design system |
-| Settings | `/app/settings` | Light / dark / system theme, business profile (reuses the wizard fields), notification preferences, demo reset |
+| Settings | `/app/settings` | Light / dark / system theme, business profile (reuses the wizard fields), notification preferences, delete all data |
 | Investor view | `/app/investor` | Opened from the role switcher. Shows impact, funding readiness and supply-chain risk |
 
 These work across every page: the ⌘K / Ctrl K command palette, the notification bell, toasts, skeleton loading states, empty states with a call to action, page transitions, count-up numbers, and "Generate report" (a printable PDF summary).
@@ -49,7 +49,7 @@ These work across every page: the ⌘K / Ctrl K command palette, the notificatio
 ```
 src/
   types.ts                 data model (Product, Supplier, Transaction, Customer, …)
-  data/seed.ts             deterministic ~25-month demo dataset (EcoFab Textiles, T-Shirt, …)
+  data/defaults.ts         the empty profile a new account starts with
   lib/metrics.ts           all business calculations
   store/AppStore.tsx       app state, derived data, actions, toasts, persistence
   components/ui            design-system primitives (Card, Modal, Gauge, StockBar, Skeleton, …)
@@ -57,7 +57,7 @@ src/
   pages/                   one file per route (+ sub-folders for page-specific parts)
 ```
 
-Edits you make (products, suppliers, logged transactions, funding requests, profile, preferences) are saved to `localStorage`. Use **Settings → Reset demo data** to restore the seed.
+New accounts start empty. A **Get started** checklist on the dashboard walks through the business profile, first product, first supplier and first sale. Everything you enter (products, suppliers, transactions, funding requests, profile, preferences) is saved to `localStorage` in your browser. **Settings → Delete all data** clears it.
 
 ## Deployment
 

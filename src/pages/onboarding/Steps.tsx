@@ -78,7 +78,7 @@ export function StepFields({ step, p, set, touched }: { step: StepKey; p: Busine
     return (
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Business name" error={err('businessName')} className="sm:col-span-2">
-          {input('businessName', { placeholder: 'ThreadLoop Apparel' })}
+          {input('businessName', { placeholder: 'Your business name' })}
         </Field>
         <Field label="Industry">
           <select className="input" value={p.industry} onChange={(e) => set('industry', e.target.value)}>
@@ -104,7 +104,7 @@ export function StepFields({ step, p, set, touched }: { step: StepKey; p: Busine
           {input('website', { placeholder: 'yourbrand.com' })}
         </Field>
         <Field label="What does your business do?" error={err('description')} hint={`${p.description.length}/240`} className="sm:col-span-2">
-          <textarea rows={3} maxLength={240} className={clsx('input resize-none', err('description') && 'input-error')} value={p.description} onChange={(e) => set('description', e.target.value)} placeholder="Circular streetwear made from recycled fibres…" />
+          <textarea rows={3} maxLength={240} className={clsx('input resize-none', err('description') && 'input-error')} value={p.description} onChange={(e) => set('description', e.target.value)} placeholder="e.g. We make bags from reclaimed sailcloth and offer free repairs for life." />
         </Field>
       </div>
     );

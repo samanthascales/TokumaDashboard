@@ -4,13 +4,13 @@ import { Bell, Building2, Laptop, Moon, Palette, RotateCcw, Sun } from 'lucide-r
 import { useStore } from '../store/AppStore';
 import { Card, CardHeader, Modal, PageHeader, Toggle } from '../components/ui';
 import { completion, ProfilePreview, STEPS, StepFields, stepValid, validate } from './onboarding/Steps';
-import { seedProfile } from '../data/seed';
+import { emptyProfile } from '../data/defaults';
 import type { BusinessProfile, NotificationPrefs, ThemePref } from '../types';
 
 type Section = 'appearance' | 'profile' | 'notifications';
 
 export default function Settings() {
-  const { themePref, setThemePref, profile, setProfile, prefs, setPrefs, resetDemo, toast } = useStore();
+  const { themePref, setThemePref, profile, setProfile, prefs, setPrefs, resetData, toast } = useStore();
   const [section, setSection] = useState<Section>('appearance');
   const [draft, setDraft] = useState<BusinessProfile>(profile);
   const [touched, setTouched] = useState<Partial<Record<keyof BusinessProfile, boolean>>>({});
@@ -83,10 +83,10 @@ export default function Settings() {
                 </div>
               </Card>
               <Card>
-                <CardHeader title="Demo data" sub="Restore the seeded products, suppliers and funding requests." />
+                <CardHeader title="Your data" sub="Permanently delete every product, supplier, transaction, customer and funding request, and clear your business profile." />
                 <div className="p-5">
                   <button className="btn-secondary" onClick={() => setConfirmReset(true)}>
-                    <RotateCcw className="h-4 w-4" /> Reset demo data
+                    <RotateCcw className="h-4 w-4" /> Delete all data
                   </button>
                 </div>
               </Card>
@@ -161,8 +161,8 @@ export default function Settings() {
         open={confirmReset}
         onClose={() => setConfirmReset(false)}
         size="sm"
-        title="Reset demo data?"
-        sub="Your edits to products, suppliers, transactions and funding requests will be lost."
+        title="Delete all data?"
+        sub="This clears everything you've entered and can't be undone."
         footer={
           <>
             <button className="btn-secondary" onClick={() => setConfirmReset(false)}>
@@ -171,17 +171,17 @@ export default function Settings() {
             <button
               className="btn-danger"
               onClick={() => {
-                resetDemo();
-                setDraft(seedProfile);
+                resetData();
+                setDraft(emptyProfile);
                 setConfirmReset(false);
               }}
             >
-              Reset
+              Delete everything
             </button>
           </>
         }
       >
-        <p className="muted text-sm">Theme preference is kept.</p>
+        <p className="muted text-sm">Your theme setting is kept. You can set up your business again from Settings or the dashboard checklist.</p>
       </Modal>
     </>
   );

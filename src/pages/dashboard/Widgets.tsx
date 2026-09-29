@@ -127,6 +127,7 @@ export function MaterialMix() {
             />
           </PieChart>
         </ResponsiveContainer>
+        {circ30.totalKg === 0 && <div className="absolute inset-[4%] rounded-full border-[14px] border-gray-100 dark:border-white/[0.06]" />}
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
           <AnimatedNumber value={circ30.rate} format={(n) => `${n.toFixed(1)}%`} className="text-2xl font-bold" />
           <span className="muted text-[11px]">circular</span>
@@ -275,8 +276,8 @@ export function InsightsFeed() {
         {shown.length === 0 && (
           <EmptyState
             icon={<Check className="h-6 w-6" />}
-            title="Inbox zero"
-            body="No insights in this category right now. New ones appear as your data changes."
+            title="No insights right now"
+            body="Insights appear as you add products, suppliers and sales, and update as your data changes."
             action={dismissedInsights.length > 0 && <button className="btn-secondary btn-sm" onClick={restoreInsights}>Restore dismissed ({dismissedInsights.length})</button>}
           />
         )}
@@ -373,6 +374,11 @@ export function ActivityCard() {
                   </tr>
                 </thead>
                 <tbody>
+                  {top.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="muted px-4 py-8 text-center text-sm">Your best-selling products will appear here.</td>
+                    </tr>
+                  )}
                   {top.map(({ p, units, revenue }) => (
                     <tr key={p.id} className="tr cursor-pointer" onClick={() => navigate(`/app/products?open=${p.id}`)}>
                       <td className="td font-medium">{p.name}</td>
@@ -402,6 +408,11 @@ export function ActivityCard() {
                   </tr>
                 </thead>
                 <tbody>
+                  {inventory.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="muted px-4 py-8 text-center text-sm">Add products with stock levels to track inventory health.</td>
+                    </tr>
+                  )}
                   {inventory.map((r) => (
                     <tr key={r.product.id} className="tr cursor-pointer" onClick={() => navigate('/app/products/inventory')}>
                       <td className="td font-medium">{r.product.name}</td>
@@ -420,6 +431,11 @@ export function ActivityCard() {
             {tab === 'recent' && (
               <table className="w-full">
                 <tbody>
+                  {recent.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="muted px-4 py-8 text-center text-sm">Sales and expenses you log will appear here.</td>
+                    </tr>
+                  )}
                   {recent.map((t) => (
                     <tr key={t.id} className="tr">
                       <td className="td text-gray-500">{fmtDate(t.date)}</td>
@@ -442,6 +458,60 @@ export function ActivityCard() {
           </div>
         </div>
       </div>
+    </Card>
+  );
+}
+
+/* ---------------- Getting started (new accounts) ---------------- */
+
+export function GettingStarted() {
+  const { profile, products, suppliers, transactions } = useStore();
+  const navigate = useNavigate();
+  const steps = [
+    { label: 'Complete your business profile', body: 'Name, industry and what you make.', done: !!profile.businessName.trim(), to: '/onboarding', cta: 'Set up profile' },
+    { label: 'Add your first product', body: 'List its materials so Tokuma can score circularity.', done: products.length > 0, to: '/app/products?new=product', cta: 'Add product' },
+    { label: 'Add a supplier', body: 'Lead times drive your automatic reorder points.', done: suppliers.length > 0, to: '/app/supply-chain?new=supplier', cta: 'Add supplier' },
+    { label: 'Log your first sale', body: 'Sales power revenue, circularity and customer insights.', done: transactions.some((t) => t.type === 'inflow'), to: '/app/transactions?new=txn', cta: 'Log sale' },
+  ];
+  const done = steps.filter((s) => s.done).length;
+  if (done === steps.length) return null;
+  const next = steps.findIndex((s) => !s.done);
+  return (
+    <Card className="mb-6 overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-4">
+        <div>
+          <h3 className="card-title">Get started with Tokuma</h3>
+          <p className="card-sub mt-0.5">Your dashboard fills in as you add your own data.</p>
+        </div>
+        <span className="text-xs font-semibold tabular-nums text-brand-700 dark:text-brand-400">
+          {done} of {steps.length} done
+        </span>
+      </div>
+      <div className="mx-5 mt-3 h-1.5 overflow-hidden rounded-full bg-gray-100 dark:bg-white/5">
+        <div className="h-full rounded-full bg-brand-600 transition-all duration-700 dark:bg-brand-400" style={{ width: `${(done / steps.length) * 100}%` }} />
+      </div>
+      <ol className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-4">
+        {steps.map((s, i) => (
+          <li
+            key={s.label}
+            className={clsx(
+              'flex flex-col rounded-xl border p-4 transition',
+              s.done ? 'border-gray-100 bg-gray-50/60 dark:border-white/5 dark:bg-white/[0.02]' : i === next ? 'border-brand-200 bg-brand-50/50 dark:border-brand-500/30 dark:bg-brand-500/[0.06]' : 'border-gray-200 dark:border-white/10',
+            )}
+          >
+            <span className={clsx('flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold', s.done ? 'bg-brand-600 text-white' : 'bg-white text-gray-500 ring-1 ring-gray-200 dark:bg-ink-850 dark:text-gray-300 dark:ring-white/10')}>
+              {s.done ? <Check className="h-4 w-4" /> : i + 1}
+            </span>
+            <p className={clsx('mt-3 text-sm font-semibold', s.done && 'text-gray-400 line-through dark:text-gray-500')}>{s.label}</p>
+            <p className="muted mt-1 flex-1 text-xs">{s.body}</p>
+            {!s.done && (
+              <button className={clsx('mt-3 self-start', i === next ? 'btn-primary btn-sm' : 'btn-secondary btn-sm')} onClick={() => navigate(s.to)}>
+                {s.cta}
+              </button>
+            )}
+          </li>
+        ))}
+      </ol>
     </Card>
   );
 }
