@@ -24,7 +24,9 @@ const PREVIEW_LIMIT = 200;
 
 const cellText = (v: Cell) => (v instanceof Date ? toISO(v) : v === null ? '' : String(v));
 
-export function ImportModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+/** mode "sales": opened from the dashboard for a sales export — wording and defaults are about sales. */
+export function ImportModal({ open, onClose, mode = 'transactions' }: { open: boolean; onClose: () => void; mode?: 'transactions' | 'sales' }) {
+  const sales = mode === 'sales';
   const { products, customers, transactions, importTransactions } = useStore();
   const [step, setStep] = useState<Step>('choose');
   const [fileName, setFileName] = useState('');
@@ -57,7 +59,7 @@ export function ImportModal({ open, onClose }: { open: boolean; onClose: () => v
 
   const selectSheet = (tables: SheetTable[], idx: number) => {
     const rows = tables[idx]?.rows ?? [];
-    const m = guessMapping(rows[0] ?? []);
+    const m = guessMapping(rows[0] ?? [], { sales });
     setMapping(m);
     const d = m.date !== null ? detectDateOrder(rows.slice(1).map((r) => r[m.date!] ?? null)) : null;
     setDetected(d);
@@ -85,12 +87,14 @@ export function ImportModal({ open, onClose }: { open: boolean; onClose: () => v
     }
   };
 
-  const missingRequired = mapping ? FIELDS.filter((f) => f.required && mapping[f.key] === null) : [];
+  const missingRequired = !mapping
+    ? []
+    : [...(mapping.date === null ? ['Date'] : []), ...(mapping.amount === null && mapping.unitPrice === null ? ['Amount or Unit price'] : [])];
 
   const result = useMemo(() => {
     if (step !== 'review' || !mapping) return null;
-    return buildTransactions(table, mapping, order, { products, customers, existing: transactions, createCustomers, today: toISO(startOfToday()) });
-  }, [step, table, mapping, order, products, customers, transactions, createCustomers]);
+    return buildTransactions(table, mapping, order, { products, customers, existing: transactions, createCustomers, today: toISO(startOfToday()), sales });
+  }, [step, table, mapping, order, products, customers, transactions, createCustomers, sales]);
 
   const counts = useMemo(() => {
     const c = { ok: 0, warning: 0, error: 0, duplicate: 0 };
@@ -114,6 +118,7 @@ export function ImportModal({ open, onClose }: { open: boolean; onClose: () => v
     importTransactions(
       importable.map((r) => r.tx!),
       result.newCustomers,
+      sales ? 'sale' : 'transaction',
     );
     onClose();
   };
@@ -127,12 +132,14 @@ export function ImportModal({ open, onClose }: { open: boolean; onClose: () => v
       size="xl"
       title={
         <span className="flex items-center gap-2">
-          <FileSpreadsheet className="h-4 w-4 text-brand-600 dark:text-brand-400" /> Import transactions
+          <FileSpreadsheet className="h-4 w-4 text-brand-600 dark:text-brand-400" /> {sales ? 'Import sales' : 'Import transactions'}
         </span>
       }
       sub={
         step === 'choose'
-          ? 'From a CSV or Excel (.xlsx) file. It’s read in your browser — nothing is uploaded.'
+          ? sales
+            ? 'From a sales export (Shopify, Square, Etsy, your POS or a spreadsheet). It’s read in your browser — nothing is uploaded.'
+            : 'From a CSV or Excel (.xlsx) file. It’s read in your browser — nothing is uploaded.'
           : step === 'map'
             ? `${fileName} · match your columns to Tokuma’s fields`
             : `${fileName} · check the rows before they’re added`
@@ -157,7 +164,7 @@ export function ImportModal({ open, onClose }: { open: boolean; onClose: () => v
               <ArrowLeft className="h-4 w-4" /> Back to columns
             </button>
             <button className="btn-primary" disabled={!importable.length} onClick={confirm}>
-              Import {importable.length.toLocaleString()} transaction{importable.length === 1 ? '' : 's'}
+              Import {importable.length.toLocaleString()} {sales ? 'sale' : 'transaction'}{importable.length === 1 ? '' : 's'}
             </button>
           </>
         )
@@ -195,7 +202,15 @@ export function ImportModal({ open, onClose }: { open: boolean; onClose: () => v
             <div className="rounded-lg bg-gray-50 p-4 dark:bg-white/[0.03]">
               <p className="font-semibold">Columns Tokuma understands</p>
               <p className="muted mt-1 text-xs leading-relaxed">
-                <b>Date</b> and <b>Amount</b> are required. Optional: type (in / out), category, product, quantity, customer, note. Your column names don’t need to match — you’ll pick them on the next step.
+                {sales ? (
+                  <>
+                    One row per sale or line item. Needs a <b>date</b> and either a <b>total</b> or a <b>unit price + quantity</b>. Add product, quantity and customer columns to fill in circularity and customer insights. Column names don’t need to match — you’ll pick them next.
+                  </>
+                ) : (
+                  <>
+                    <b>Date</b> and <b>Amount</b> (or unit price + quantity) are required. Optional: type (in / out), category, product, quantity, customer, note. Your column names don’t need to match — you’ll pick them on the next step.
+                  </>
+                )}
               </p>
               {IS_EMBEDDED ? (
                 <p className="mt-3 flex items-center gap-2 rounded-md bg-white px-2 py-1.5 font-mono text-[11px] dark:bg-ink-850">
@@ -280,10 +295,11 @@ export function ImportModal({ open, onClose }: { open: boolean; onClose: () => v
               <label key={f.key} className="block">
                 <span className="label">
                   {f.label} {f.required && <span className="text-red-500">*</span>}
+                  {(f.key === 'amount' || f.key === 'unitPrice') && <span className="font-normal text-gray-400"> · this or {f.key === 'amount' ? 'Unit price' : 'Amount'} is required</span>}
                 </span>
                 <select
                   id={`map-${f.key}`}
-                  className={clsx('input', f.required && mapping[f.key] === null && 'input-error')}
+                  className={clsx('input', ((f.required && mapping[f.key] === null) || ((f.key === 'amount' || f.key === 'unitPrice') && mapping.amount === null && mapping.unitPrice === null)) && 'input-error')}
                   value={mapping[f.key] ?? ''}
                   onChange={(e) => {
                     const v = e.target.value === '' ? null : +e.target.value;
@@ -322,7 +338,9 @@ export function ImportModal({ open, onClose }: { open: boolean; onClose: () => v
               <p className="muted mt-1.5 text-xs">{detected ? 'Detected from your dates.' : 'Your dates could be read either way — check this is right.'} Excel date cells are read automatically.</p>
             </div>
             <div className="space-y-3">
-              {mapping.type === null && <p className="muted text-xs">No type column: positive amounts are imported as money in, negative amounts as money out.</p>}
+              {mapping.type === null && (
+                <p className="muted text-xs">{sales ? 'Every row is a sale. Negative amounts are recorded as refunds (money out).' : 'No type column: positive amounts are imported as money in, negative amounts as money out.'}</p>
+              )}
               {mapping.customer !== null && (
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-xs">Add customers that aren’t in Tokuma yet</span>
@@ -331,7 +349,7 @@ export function ImportModal({ open, onClose }: { open: boolean; onClose: () => v
               )}
             </div>
           </div>
-          {missingRequired.length > 0 && <p className="text-sm text-red-600 dark:text-red-400">Choose a column for {missingRequired.map((f) => f.label).join(' and ')} to continue.</p>}
+          {missingRequired.length > 0 && <p className="text-sm text-red-600 dark:text-red-400">Choose a column for {missingRequired.join(' and ')} to continue.</p>}
         </div>
       )}
 

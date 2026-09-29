@@ -34,11 +34,12 @@ export async function readSpreadsheet(file: File): Promise<SheetTable[]> {
 /* Column mapping                                                      */
 /* ------------------------------------------------------------------ */
 
-export type FieldKey = 'date' | 'amount' | 'type' | 'category' | 'product' | 'quantity' | 'customer' | 'note';
+export type FieldKey = 'date' | 'amount' | 'unitPrice' | 'type' | 'category' | 'product' | 'quantity' | 'customer' | 'note';
 
 export const FIELDS: { key: FieldKey; label: string; required?: boolean; help: string }[] = [
   { key: 'date', label: 'Date', required: true, help: 'When the money moved' },
-  { key: 'amount', label: 'Amount', required: true, help: 'Negative numbers or a Type column mark money out' },
+  { key: 'amount', label: 'Amount (line total)', help: 'Negative numbers or a Type column mark money out' },
+  { key: 'unitPrice', label: 'Unit price', help: 'Used with Quantity when a row has no line total' },
   { key: 'type', label: 'Type (in / out)', help: 'e.g. “in”, “out”, “income”, “expense”, “credit”, “debit”' },
   { key: 'category', label: 'Category', help: 'e.g. Product sale, Materials, Rent' },
   { key: 'product', label: 'Product', help: 'Matched to your products by name or SKU' },
@@ -47,14 +48,17 @@ export const FIELDS: { key: FieldKey; label: string; required?: boolean; help: s
   { key: 'note', label: 'Description / note', help: 'Any free text' },
 ];
 
+// Listed most specific first: when several headers could match, the earlier synonym wins.
+// Covers common bank exports and sales exports (Shopify, Square, Etsy, Stripe, WooCommerce).
 const SYNONYMS: Record<FieldKey, string[]> = {
-  date: ['date', 'transaction date', 'posted', 'posting date', 'day', 'order date', 'created', 'timestamp'],
-  amount: ['amount', 'total', 'value', 'price', 'sum', 'net', 'gross', 'amount ($)', 'amount (usd)'],
-  type: ['type', 'direction', 'in/out', 'flow', 'debit/credit', 'dr/cr', 'transaction type'],
+  date: ['date', 'transaction date', 'sale date', 'order date', 'created at', 'paid at', 'date created', 'posting date', 'posted', 'day', 'created', 'timestamp'],
+  amount: ['amount', 'line total', 'lineitem total', 'item total', 'total', 'net sales', 'gross sales', 'sale amount', 'order total', 'order value', 'subtotal', 'value', 'sum', 'gross', 'net', 'amount ($)', 'amount (usd)'],
+  unitPrice: ['unit price', 'lineitem price', 'item price', 'price each', 'price per unit', 'price'],
+  type: ['type', 'transaction type', 'direction', 'in/out', 'flow', 'debit/credit', 'dr/cr'],
   category: ['category', 'account', 'class', 'group', 'expense type', 'income type'],
-  product: ['product', 'item', 'sku', 'product name', 'item name', 'product/service'],
-  quantity: ['quantity', 'qty', 'units', 'count', 'unit count'],
-  customer: ['customer', 'client', 'buyer', 'customer name', 'email', 'customer email', 'payee', 'name'],
+  product: ['product', 'product name', 'lineitem name', 'item name', 'item', 'title', 'sku', 'lineitem sku', 'product/service'],
+  quantity: ['quantity', 'lineitem quantity', 'qty', 'units', 'unit count', 'count'],
+  customer: ['customer', 'customer name', 'client', 'buyer', 'billing name', 'ship name', 'customer email', 'email', 'payee', 'name'],
   note: ['note', 'notes', 'description', 'memo', 'details', 'reference', 'narration'],
 };
 
@@ -62,17 +66,35 @@ export type Mapping = Record<FieldKey, number | null>;
 
 const norm = (s: unknown) => String(s ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
 
+/** Order-level totals: on line-item exports (Shopify) they sit on one row per order, not per item. */
+const ORDER_LEVEL_TOTALS = ['total', 'subtotal', 'order total', 'order value'];
+
 /** Guesses which column holds each field from the header names. Each column is used at most once. */
-export function guessMapping(header: Cell[]): Mapping {
+export function guessMapping(header: Cell[], opts: { sales?: boolean } = {}): Mapping {
   const heads = header.map(norm);
   const used = new Set<number>();
   const m = {} as Mapping;
   for (const f of FIELDS) {
-    let idx = heads.findIndex((h, i) => !used.has(i) && SYNONYMS[f.key].includes(h));
-    if (idx < 0) idx = heads.findIndex((h, i) => !used.has(i) && h && SYNONYMS[f.key].some((s) => h.includes(s)));
+    // In a sales export "Category" is usually the product's category (e.g. "Bags"), not a transaction type.
+    if (opts.sales && (f.key === 'category' || f.key === 'type')) {
+      m[f.key] = null;
+      continue;
+    }
+    let idx = -1;
+    for (const syn of SYNONYMS[f.key]) {
+      idx = heads.findIndex((h, i) => !used.has(i) && h === syn);
+      if (idx >= 0) break;
+    }
+    if (idx < 0)
+      for (const syn of SYNONYMS[f.key]) {
+        idx = heads.findIndex((h, i) => !used.has(i) && h.length > 0 && h.includes(syn));
+        if (idx >= 0) break;
+      }
     m[f.key] = idx >= 0 ? idx : null;
     if (idx >= 0) used.add(idx);
   }
+  // With per-item price and quantity, an order-level total would double-count multi-item orders.
+  if (m.unitPrice !== null && m.quantity !== null && m.amount !== null && ORDER_LEVEL_TOTALS.includes(heads[m.amount]!)) m.amount = null;
   return m;
 }
 
@@ -204,7 +226,7 @@ export function buildTransactions(
   table: Cell[][],
   mapping: Mapping,
   order: DateOrder,
-  ctx: { products: Product[]; customers: Customer[]; existing: Transaction[]; createCustomers: boolean; today: string },
+  ctx: { products: Product[]; customers: Customer[]; existing: Transaction[]; createCustomers: boolean; today: string; /** Importing a sales export: rows default to Product sale, negatives to Refund. */ sales?: boolean },
 ): BuildResult {
   const byName = new Map<string, Product>();
   for (const p of ctx.products) {
@@ -227,11 +249,33 @@ export function buildTransactions(
     if (row.every((c) => c === null || String(c).trim() === '')) return;
     const messages: string[] = [];
     const date = parseDate(get(row, 'date'), order);
-    const rawAmount = parseAmount(get(row, 'amount'));
     if (!date) messages.push(`Date “${cellText(get(row, 'date'))}” isn’t a date`);
     else if (date > ctx.today) messages.push('Date is in the future');
-    if (rawAmount === null) messages.push(`Amount “${cellText(get(row, 'amount'))}” isn’t a number`);
-    else if (rawAmount === 0) messages.push('Amount is 0');
+
+    const qtyCell = get(row, 'quantity');
+    let quantity: number | undefined;
+    if (mapping.quantity !== null && cellText(qtyCell) !== '') {
+      const q = parseAmount(qtyCell);
+      if (q === null || q <= 0 || !Number.isInteger(q)) messages.push(`Quantity “${cellText(qtyCell)}” isn’t a whole number`);
+      else quantity = q;
+    }
+
+    // Amount: the line total if there is one, otherwise unit price × quantity.
+    const amountText = cellText(get(row, 'amount'));
+    const priceText = cellText(get(row, 'unitPrice'));
+    let rawAmount: number | null = null;
+    if (amountText !== '') {
+      rawAmount = parseAmount(get(row, 'amount'));
+      if (rawAmount === null) messages.push(`Amount “${amountText}” isn’t a number`);
+    } else if (priceText !== '') {
+      const unit = parseAmount(get(row, 'unitPrice'));
+      if (unit === null) messages.push(`Unit price “${priceText}” isn’t a number`);
+      else if (!quantity) messages.push('Has a unit price but no quantity, so the total isn’t known');
+      else rawAmount = Math.round(unit * quantity * 100) / 100;
+    } else {
+      messages.push(mapping.unitPrice !== null ? 'No amount or unit price' : 'No amount');
+    }
+    if (rawAmount === 0) messages.push('Amount is 0');
 
     let type: 'inflow' | 'outflow' | null = null;
     if (mapping.type !== null) {
@@ -240,14 +284,6 @@ export function buildTransactions(
       if (!type) messages.push(`Type “${cellText(get(row, 'type'))}” isn’t “in” or “out”`);
     } else if (rawAmount !== null) {
       type = rawAmount < 0 ? 'outflow' : 'inflow';
-    }
-
-    const qtyCell = get(row, 'quantity');
-    let quantity: number | undefined;
-    if (mapping.quantity !== null && cellText(qtyCell) !== '') {
-      const q = parseAmount(qtyCell);
-      if (q === null || q <= 0 || !Number.isInteger(q)) messages.push(`Quantity “${cellText(qtyCell)}” isn’t a whole number`);
-      else quantity = q;
     }
 
     if (messages.length) {
@@ -273,7 +309,8 @@ export function buildTransactions(
     }
 
     const categoryText = cellText(get(row, 'category'));
-    const category = categoryText || (type === 'inflow' ? (product ? 'Product sale' : 'Other income') : 'Other expense');
+    const category =
+      categoryText || (type === 'inflow' ? (product || ctx.sales ? 'Product sale' : 'Other income') : ctx.sales ? 'Refund' : 'Other expense');
     const note = cellText(get(row, 'note'));
     const tx: Omit<Transaction, 'id'> = {
       type: type!,
@@ -287,12 +324,12 @@ export function buildTransactions(
     };
     if (product && type === 'inflow' && !quantity) warnings.push('No quantity — this sale won’t count toward circularity or sales rate');
 
-    const k = key(tx);
-    if (seen.has(k)) {
+    // Only rows matching data already in the app count as duplicates — two identical
+    // sales in one file (same item, same day) are both real.
+    if (seen.has(key(tx))) {
       rows.push({ line, status: 'duplicate', messages: ['Matches a transaction you already have'], tx, productName: product?.name, customerName: customer?.name });
       return;
     }
-    seen.add(k);
     rows.push({ line, status: warnings.length ? 'warning' : 'ok', messages: warnings, tx, productName: product?.name, customerName: customer?.name });
   });
   return { rows, newCustomers };

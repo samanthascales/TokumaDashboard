@@ -42,6 +42,8 @@ These work across every page: the ⌘K / Ctrl K command palette, the notificatio
 2. Match your columns to Tokuma's fields — Date and Amount are required; type, category, product, quantity, customer and note are optional. Column names are guessed from your headers.
 3. Review every row before it's saved. Rows that can't be read (bad date or amount) are skipped with the reason; unknown products are imported without a product link; unknown customers can be added; rows matching an existing transaction are flagged as already imported.
 
+**Dashboard → Import sales** opens the same importer for sales exports (Shopify, Square, Etsy, a POS or a spreadsheet): every row is a sale, negative amounts are refunds, and a row can use either a line total or unit price × quantity. On line-item exports that also have an order-level *Total* (Shopify), the per-item price × quantity is used so multi-item orders aren't double-counted. Only rows matching data already in the app are flagged as duplicates; identical sales within one file are all kept.
+
 Without a type column, negative amounts are money out. A sale without a quantity adds revenue but no units. Imports don't change stock on hand. Files in SharePoint, OneDrive or Google Sheets need to be downloaded first. Parsing uses `papaparse` and `read-excel-file`, loaded only when an import starts.
 
 ## Key formulas (`src/lib/metrics.ts`)

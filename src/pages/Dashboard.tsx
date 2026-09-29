@@ -1,5 +1,6 @@
-import { useMemo } from 'react';
-import { DollarSign, FileText, Filter, Leaf, Recycle, TrendingUp, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { DollarSign, FileText, Filter, Leaf, Recycle, TrendingUp, Upload, X } from 'lucide-react';
+import { ImportModal } from './transactions/ImportModal';
 import { useStore } from '../store/AppStore';
 import { addDays, fmtDate, fmtKg, fmtMoney, fmtPct, startOfToday, toISO } from '../lib/format';
 import { circularityFrom, lastNDays, pctChange, totalsFor } from '../lib/metrics';
@@ -20,6 +21,8 @@ function greeting() {
 export default function Dashboard() {
   const { ledger, products, filteredProductIds, materialFilter, setMaterialFilter, profile } = useStore();
   const ready = useSimulatedLoad('dashboard', 800);
+  const [importing, setImporting] = useState(false);
+  const importSales = () => setImporting(true);
 
   const kpis = useMemo(() => {
     const scoped = filteredProductIds ? products.filter((p) => filteredProductIds.has(p.id)) : products;
@@ -55,6 +58,9 @@ export default function Dashboard() {
                 </button>
               </span>
             )}
+            <button className="btn-secondary" onClick={importSales}>
+              <Upload className="h-4 w-4" /> Import sales
+            </button>
             <button className="btn-primary" onClick={openReport}>
               <FileText className="h-4 w-4" /> Generate report
             </button>
@@ -63,7 +69,7 @@ export default function Dashboard() {
       />
 
       <LowStockBanner />
-      <GettingStarted />
+      <GettingStarted onImportSales={importSales} />
 
       <div className="grid grid-cols-12 gap-4 lg:gap-5">
         {!ready ? (
@@ -100,7 +106,7 @@ export default function Dashboard() {
             </div>
 
             <div className="col-span-12 xl:col-span-8">
-              <RevenueChart />
+              <RevenueChart onImportSales={importSales} />
             </div>
             <div className="col-span-12 md:col-span-6 xl:col-span-4">
               <MaterialMix />
@@ -118,6 +124,7 @@ export default function Dashboard() {
           </>
         )}
       </div>
+      <ImportModal open={importing} onClose={() => setImporting(false)} mode="sales" />
     </>
   );
 }
