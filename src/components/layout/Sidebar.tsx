@@ -92,11 +92,11 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           <div className="flex items-center gap-2 text-xs font-medium text-brand-200">
             <Sparkles className="h-3.5 w-3.5" /> Circularity rate
           </div>
-          <AnimatedNumber value={circ30.rate} format={(n) => `${n.toFixed(1)}%`} className="mt-1 block text-2xl font-bold text-white" />
+          <AnimatedNumber value={circ30.hasData ? circ30.rate : null} format={(n) => `${n.toFixed(1)}%`} className="mt-1 block text-2xl font-bold text-white" />
           <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
             <div className="h-full rounded-full bg-brand-400 transition-all duration-700" style={{ width: `${circ30.rate}%` }} />
           </div>
-          <p className="mt-2 text-[11px] text-gray-400">Last 30 days · from sales × materials</p>
+          <p className="mt-2 text-[11px] text-gray-400">{circ30.hasData ? 'Last 30 days · from sales × materials' : 'Log sales of products to calculate'}</p>
         </div>
       </aside>
     </>

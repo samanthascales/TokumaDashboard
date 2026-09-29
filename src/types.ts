@@ -27,12 +27,13 @@ export interface Supplier {
   country: string;
   city: string;
   transportMethod: TransportMethod;
-  sustainabilityRating: number; // 0-100
-  carbonEmissionsKg: number;
+  // Measured values are null until the business enters them — never guessed.
+  sustainabilityRating: number | null; // 0-100
+  carbonEmissionsKg: number | null;
   certifications: string[];
   materialsSupplied: string[];
-  avgLeadTimeDays: number; // Focus 5
-  onTimeDeliveryRate: number; // Focus 5, 0-100
+  avgLeadTimeDays: number | null; // Focus 5
+  onTimeDeliveryRate: number | null; // Focus 5, 0-100
 }
 
 export type TransportMethod = 'Sea' | 'Rail' | 'Road' | 'Air';

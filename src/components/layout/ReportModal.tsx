@@ -32,9 +32,9 @@ export function ReportModal() {
     ['Revenue (30d)', fmtMoney(data.cur.revenue), `${pctChange(data.cur.revenue, data.prev.revenue).toFixed(1)}% vs prior`],
     ['Net profit (30d)', fmtMoney(data.cur.profit), `${pctChange(data.cur.profit, data.prev.profit).toFixed(1)}% vs prior`],
     ['Revenue (trailing 12m)', fmtMoney(data.yr.revenue), `${fmtPct((data.yr.profit / (data.yr.revenue || 1)) * 100)} net margin`],
-    ['Circularity rate', fmtPct(s.circ30.rate), `${(s.circ30.rate - s.circPrev30.rate).toFixed(1)} pts vs prior 30d`],
+    ['Circularity rate', s.circ30.hasData ? fmtPct(s.circ30.rate) : '—', s.circ30.hasData && s.circPrev30.hasData ? `${(s.circ30.rate - s.circPrev30.rate).toFixed(1)} pts vs prior 30d` : 'needs sales of products with materials'],
     ['Circular material', fmtKg(s.circ30.circularKg), `${fmtKg(s.circ30.virginKg)} virgin`],
-    ['Funding eligibility', fmtMoney(s.funding.maxEligibility), `${s.funding.apr.toFixed(2)}% est. APR · score ${s.funding.score}`],
+    ['Funding eligibility', s.funding.ready ? fmtMoney(s.funding.maxEligibility!) : '—', s.funding.ready ? `${s.funding.apr!.toFixed(2)}% est. APR · score ${s.funding.score}` : 'available once sales are logged'],
   ];
 
   return (

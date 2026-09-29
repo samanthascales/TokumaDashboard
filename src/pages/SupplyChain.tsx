@@ -5,7 +5,7 @@ import { ArrowUpDown, Award, Clock, Factory, Globe2, Leaf, Pencil, Plus, ShieldC
 import { useStore } from '../store/AppStore';
 import { useSimulatedLoad } from '../lib/hooks';
 import { fmtCompact, fmtInt } from '../lib/format';
-import { certificationScore, leadTimeScore, reliabilityScore, riskLevel } from '../lib/metrics';
+import { avgKnown, certificationScore, leadTimeScore, reliabilityScore, riskLevel } from '../lib/metrics';
 import { Badge, Card, CardHeader, CardSkeleton, EmptyState, Gauge, Modal, PageHeader, StatusBadge, TableSkeleton, Tip } from '../components/ui';
 import { SupplierModal } from './supply/SupplierModal';
 import type { Supplier } from '../types';
@@ -25,32 +25,39 @@ function Tabs() {
   );
 }
 
-const riskTone = { Low: 'green', Moderate: 'amber', High: 'red' } as const;
+const riskTone = { Low: 'green', Moderate: 'amber', High: 'red', 'Needs data': 'gray' } as const;
+const riskLabel = (score: number | null) => (score === null ? 'Needs data' : `${riskLevel(score)} risk`);
+/** Show a measured value, or a dash when it wasn't entered. */
+const show = (v: number | null, unit = '') => (v === null ? '—' : `${v}${unit}`);
 
 function Overview({ onOpen }: { onOpen: (s: Supplier) => void }) {
   const { suppliers } = useStore();
-  const totalCarbon = suppliers.reduce((s, x) => s + x.carbonEmissionsKg, 0);
-  const avgSust = suppliers.reduce((s, x) => s + x.sustainabilityRating, 0) / suppliers.length;
-  const avgRel = suppliers.reduce((s, x) => s + reliabilityScore(x), 0) / suppliers.length;
+  // Totals and averages only include values that were actually entered.
+  const withCarbon = suppliers.filter((x) => x.carbonEmissionsKg !== null);
+  const totalCarbon = withCarbon.reduce((s, x) => s + (x.carbonEmissionsKg ?? 0), 0);
+  const avgSust = avgKnown(suppliers.map((x) => x.sustainabilityRating));
+  const scores = suppliers.map((x) => reliabilityScore(x));
+  const avgRel = avgKnown(scores);
+  const highRisk = scores.filter((x) => x !== null && x < 65).length;
   const byCountry = useMemo(() => {
     const m = new Map<string, { country: string; suppliers: Supplier[]; carbon: number }>();
     for (const s of suppliers) {
       const cur = m.get(s.country) ?? { country: s.country, suppliers: [], carbon: 0 };
       cur.suppliers.push(s);
-      cur.carbon += s.carbonEmissionsKg;
+      cur.carbon += s.carbonEmissionsKg ?? 0;
       m.set(s.country, cur);
     }
     return [...m.values()].sort((a, b) => b.carbon - a.carbon);
   }, [suppliers]);
   const modes = (['Sea', 'Rail', 'Road', 'Air'] as const).map((mode) => {
     const list = suppliers.filter((s) => s.transportMethod === mode);
-    return { mode, count: list.length, carbon: list.reduce((s, x) => s + x.carbonEmissionsKg, 0) };
+    return { mode, count: list.length, carbon: list.reduce((s, x) => s + (x.carbonEmissionsKg ?? 0), 0) };
   });
 
   const tiles = [
-    { label: 'Sustainability rating', value: `${Math.round(avgSust)}/100`, sub: 'avg across suppliers', icon: Leaf },
-    { label: 'Logistics carbon', value: `${fmtCompact(totalCarbon)} kg`, sub: 'CO₂e per year', icon: Truck },
-    { label: 'Avg reliability', value: `${Math.round(avgRel)}/100`, sub: `${suppliers.filter((s) => reliabilityScore(s) < 65).length} high-risk suppliers`, icon: ShieldCheck },
+    { label: 'Sustainability rating', value: avgSust === null ? '—' : `${Math.round(avgSust)}/100`, sub: avgSust === null ? 'no ratings entered yet' : 'avg of entered ratings', icon: Leaf },
+    { label: 'Logistics carbon', value: withCarbon.length ? `${fmtCompact(totalCarbon)} kg` : '—', sub: withCarbon.length ? `CO₂e per year · ${withCarbon.length} of ${suppliers.length} suppliers` : 'no carbon figures entered yet', icon: Truck },
+    { label: 'Avg reliability', value: avgRel === null ? '—' : `${Math.round(avgRel)}/100`, sub: avgRel === null ? 'needs lead time + on-time delivery' : `${highRisk} high-risk suppliers`, icon: ShieldCheck },
     { label: 'Suppliers', value: suppliers.length, sub: `${byCountry.length} countries`, icon: Factory },
   ];
 
@@ -77,10 +84,10 @@ function Overview({ onOpen }: { onOpen: (s: Supplier) => void }) {
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold">{s.name}</p>
                   <p className="muted text-xs">
-                    {s.city}, {s.country} · {s.transportMethod}
+                    {[s.city, s.country].filter(Boolean).join(', ')} · {s.transportMethod}
                   </p>
                   <div className="mt-1.5 flex flex-wrap gap-1">
-                    <Badge tone={riskTone[riskLevel(score)]}>{riskLevel(score)} risk</Badge>
+                    <Badge tone={riskTone[riskLevel(score)]}>{riskLabel(score)}</Badge>
                     {s.certifications.slice(0, 2).map((c) => (
                       <Badge key={c}>{c}</Badge>
                     ))}
@@ -111,7 +118,7 @@ function Overview({ onOpen }: { onOpen: (s: Supplier) => void }) {
           <p className="muted pt-2 text-xs">
             Air freight is ~20× more carbon-intensive per tonne-km than rail.
             {(() => {
-              const air = suppliers.filter((s) => s.transportMethod === 'Air').sort((a, b) => b.carbonEmissionsKg - a.carbonEmissionsKg)[0];
+              const air = suppliers.filter((s) => s.transportMethod === 'Air').sort((a, b) => (b.carbonEmissionsKg ?? 0) - (a.carbonEmissionsKg ?? 0))[0];
               return air ? ` Moving ${air.name} to sea or rail is your biggest carbon lever.` : ' No air-freight suppliers — nice.';
             })()}
           </p>
@@ -166,6 +173,8 @@ function Reliability({ onOpen }: { onOpen: (s: Supplier) => void }) {
   const rows = [...suppliers].sort((a, b) => {
     const va = val(a, sort.key);
     const vb = val(b, sort.key);
+    // Suppliers missing the sorted value always go last.
+    if (va === null || vb === null) return va === vb ? 0 : va === null ? 1 : -1;
     return (va < vb ? -1 : va > vb ? 1 : 0) * sort.dir;
   });
   const th = (k: SortKey, label: string, right = true) => (
@@ -199,13 +208,13 @@ function Reliability({ onOpen }: { onOpen: (s: Supplier) => void }) {
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
         {[...suppliers]
-          .sort((a, b) => reliabilityScore(b) - reliabilityScore(a))
+          .sort((a, b) => (reliabilityScore(b) ?? -1) - (reliabilityScore(a) ?? -1))
           .map((s) => (
             <Card key={s.id} hover className="flex cursor-pointer flex-col items-center p-4 text-center" onClick={() => onOpen(s)}>
               <Gauge value={reliabilityScore(s)} size={104} label="reliability" />
               <p className="mt-2 truncate text-sm font-semibold">{s.name}</p>
               <p className="muted text-[11px]">
-                {s.avgLeadTimeDays}d lead · {s.onTimeDeliveryRate}% on-time
+                {show(s.avgLeadTimeDays, 'd')} lead · {show(s.onTimeDeliveryRate, '%')} on-time
               </p>
             </Card>
           ))}
@@ -236,20 +245,20 @@ function Reliability({ onOpen }: { onOpen: (s: Supplier) => void }) {
                     <td className="td">
                       <p className="font-medium">{s.name}</p>
                       <p className="muted text-xs">
-                        {s.city}, {s.country} · {s.transportMethod}
+                        {[s.city, s.country].filter(Boolean).join(', ')} · {s.transportMethod}
                       </p>
                     </td>
                     <td className="td text-right">
                       <div className="inline-flex items-center gap-2">
                         <div className="h-1.5 w-16 overflow-hidden rounded-full bg-gray-100 dark:bg-white/5">
-                          <div className={clsx('h-full rounded-full', score >= 80 ? 'bg-brand-600 dark:bg-brand-400' : score >= 65 ? 'bg-amber-400' : 'bg-red-500')} style={{ width: `${score}%` }} />
+                          <div className={clsx('h-full rounded-full', score === null ? '' : score >= 80 ? 'bg-brand-600 dark:bg-brand-400' : score >= 65 ? 'bg-amber-400' : 'bg-red-500')} style={{ width: `${score ?? 0}%` }} />
                         </div>
-                        <span className="w-8 font-semibold tabular-nums">{score}</span>
+                        <span className="w-8 font-semibold tabular-nums">{score ?? '—'}</span>
                       </div>
                     </td>
-                    <td className="td text-right tabular-nums">{s.avgLeadTimeDays} d</td>
-                    <td className="td text-right tabular-nums">{s.onTimeDeliveryRate}%</td>
-                    <td className="td text-right tabular-nums">{s.sustainabilityRating}</td>
+                    <td className="td text-right tabular-nums">{show(s.avgLeadTimeDays, ' d')}</td>
+                    <td className="td text-right tabular-nums">{show(s.onTimeDeliveryRate, '%')}</td>
+                    <td className="td text-right tabular-nums">{show(s.sustainabilityRating)}</td>
                     <td className="td">
                       <div className="flex gap-1">
                         {s.certifications.map((c) => (
@@ -281,8 +290,8 @@ function SupplierDetail({ supplier, onClose, onEdit }: { supplier: Supplier | nu
   const score = reliabilityScore(supplier);
   const linked = inventory.filter((r) => r.product.supplierId === supplier.id);
   const parts = [
-    { label: 'Lead-time score', raw: leadTimeScore(supplier.avgLeadTimeDays), w: 0.3, icon: Clock, detail: `${supplier.avgLeadTimeDays} days` },
-    { label: 'On-time delivery', raw: supplier.onTimeDeliveryRate, w: 0.5, icon: Truck, detail: `${supplier.onTimeDeliveryRate}%` },
+    { label: 'Lead-time score', raw: supplier.avgLeadTimeDays === null ? null : leadTimeScore(supplier.avgLeadTimeDays), w: 0.3, icon: Clock, detail: supplier.avgLeadTimeDays === null ? 'not entered' : `${supplier.avgLeadTimeDays} days` },
+    { label: 'On-time delivery', raw: supplier.onTimeDeliveryRate, w: 0.5, icon: Truck, detail: supplier.onTimeDeliveryRate === null ? 'not entered' : `${supplier.onTimeDeliveryRate}%` },
     { label: 'Certification score', raw: certificationScore(supplier.certifications), w: 0.2, icon: Award, detail: supplier.certifications.join(', ') || 'None' },
   ];
   return (
@@ -291,7 +300,7 @@ function SupplierDetail({ supplier, onClose, onEdit }: { supplier: Supplier | nu
       onClose={onClose}
       size="lg"
       title={supplier.name}
-      sub={`${supplier.city}, ${supplier.country} · ships by ${supplier.transportMethod.toLowerCase()}`}
+      sub={`${[supplier.city, supplier.country].filter(Boolean).join(', ')} · ships by ${supplier.transportMethod.toLowerCase()}`}
       footer={
         role === 'business' && (
           <button className="btn-secondary" onClick={() => onEdit(supplier)}>
@@ -304,7 +313,7 @@ function SupplierDetail({ supplier, onClose, onEdit }: { supplier: Supplier | nu
         <div className="flex flex-col items-center">
           <Gauge value={score} size={132} label="reliability" />
           <Badge tone={riskTone[riskLevel(score)]} className="mt-2">
-            {riskLevel(score)} risk
+            {riskLabel(score)}
           </Badge>
         </div>
         <div className="space-y-3">
@@ -316,22 +325,22 @@ function SupplierDetail({ supplier, onClose, onEdit }: { supplier: Supplier | nu
                   <span className="muted text-xs">({p.detail})</span>
                 </span>
                 <span className="font-semibold tabular-nums">
-                  {Math.round(p.raw)} <span className="muted font-normal">× {p.w} = {(p.raw * p.w).toFixed(1)}</span>
+                  {p.raw === null ? '—' : <>{Math.round(p.raw)} <span className="muted font-normal">× {p.w} = {(p.raw * p.w).toFixed(1)}</span></>}
                 </span>
               </div>
               <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-white/5">
-                <div className="h-full rounded-full bg-brand-600 transition-all duration-700 dark:bg-brand-400" style={{ width: `${p.raw}%` }} />
+                <div className="h-full rounded-full bg-brand-600 transition-all duration-700 dark:bg-brand-400" style={{ width: `${p.raw ?? 0}%` }} />
               </div>
             </div>
           ))}
           <div className="grid grid-cols-2 gap-3 pt-2 text-sm">
             <div className="rounded-lg bg-gray-50 p-3 dark:bg-white/[0.03]">
               <p className="muted text-xs">Sustainability</p>
-              <p className="num text-lg">{supplier.sustainabilityRating}/100</p>
+              <p className="num text-lg">{supplier.sustainabilityRating === null ? '—' : `${supplier.sustainabilityRating}/100`}</p>
             </div>
             <div className="rounded-lg bg-gray-50 p-3 dark:bg-white/[0.03]">
               <p className="muted text-xs">Logistics carbon</p>
-              <p className="num text-lg">{fmtInt(supplier.carbonEmissionsKg)} kg</p>
+              <p className="num text-lg">{supplier.carbonEmissionsKg === null ? '—' : `${fmtInt(supplier.carbonEmissionsKg)} kg`}</p>
             </div>
           </div>
         </div>
@@ -347,9 +356,13 @@ function SupplierDetail({ supplier, onClose, onEdit }: { supplier: Supplier | nu
                 <tr key={r.product.id} className="tr">
                   <td className="td pl-0 font-medium">{r.product.name}</td>
                   <td className="td text-right tabular-nums">
-                    <Tip content={`(${r.avgDaily.toFixed(2)}/day × ${r.leadTime}d) + ${r.product.safetyStock}`}>
-                      <span className="border-b border-dashed border-gray-300 dark:border-gray-600">ROP {r.reorderPoint}</span>
-                    </Tip>
+                    {r.reorderPoint === null ? (
+                      <span className="muted">No reorder point — lead time not entered</span>
+                    ) : (
+                      <Tip content={`(${r.avgDaily.toFixed(2)}/day × ${r.leadTime}d) + ${r.product.safetyStock}`}>
+                        <span className="border-b border-dashed border-gray-300 dark:border-gray-600">ROP {r.reorderPoint}</span>
+                      </Tip>
+                    )}
                   </td>
                   <td className="td text-right tabular-nums">{r.product.stockOnHand} on hand</td>
                   <td className="td pr-0 text-right">

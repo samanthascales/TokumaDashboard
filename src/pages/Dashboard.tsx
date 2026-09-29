@@ -9,6 +9,9 @@ import { openReport } from '../components/layout/nav';
 import { RevenueChart } from './dashboard/RevenueChart';
 import { ActivityCard, GettingStarted, InsightsFeed, KpiCard, LowStockBanner, MaterialMix, MilestoneCard } from './dashboard/Widgets';
 
+/** % change vs the prior period, or null when there's nothing to compare against. */
+const change = (cur: number, prev: number) => (prev ? pctChange(cur, prev) : null);
+
 function greeting() {
   const h = new Date().getHours();
   return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
@@ -76,24 +79,24 @@ export default function Dashboard() {
         ) : (
           <>
             <div className="col-span-12 sm:col-span-6 xl:col-span-3">
-              <KpiCard label="Monthly revenue" icon={<DollarSign className="h-3.5 w-3.5" />} value={kpis.cur.revenue} format={fmtMoney} delta={pctChange(kpis.cur.revenue, kpis.prev.revenue)} spark={kpis.weeks.map((w) => w.rev)} />
+              <KpiCard label="Monthly revenue" icon={<DollarSign className="h-3.5 w-3.5" />} value={kpis.cur.revenue} format={fmtMoney} delta={change(kpis.cur.revenue, kpis.prev.revenue)} spark={kpis.weeks.map((w) => w.rev)} />
             </div>
             <div className="col-span-12 sm:col-span-6 xl:col-span-3">
               <KpiCard
                 label="Circularity rate"
                 icon={<Recycle className="h-3.5 w-3.5" />}
-                value={kpis.cC.rate}
+                value={kpis.cC.hasData ? kpis.cC.rate : null}
                 format={(n) => fmtPct(n)}
-                delta={kpis.cC.rate - kpis.cP.rate}
-                hint="pts vs previous 30 days"
+                delta={kpis.cC.hasData && kpis.cP.hasData ? kpis.cC.rate - kpis.cP.rate : null}
+                hint={kpis.cC.hasData ? 'pts vs previous 30 days' : 'needs sales of products with materials'}
                 spark={kpis.weeks.map((w) => w.rate)}
               />
             </div>
             <div className="col-span-12 sm:col-span-6 xl:col-span-3">
-              <KpiCard label="Net profit" icon={<TrendingUp className="h-3.5 w-3.5" />} value={kpis.cur.profit} format={fmtMoney} delta={pctChange(kpis.cur.profit, kpis.prev.profit)} spark={kpis.weeks.map((w) => w.profit)} />
+              <KpiCard label="Net profit" icon={<TrendingUp className="h-3.5 w-3.5" />} value={kpis.cur.profit} format={fmtMoney} delta={change(kpis.cur.profit, kpis.prev.profit)} spark={kpis.weeks.map((w) => w.profit)} />
             </div>
             <div className="col-span-12 sm:col-span-6 xl:col-span-3">
-              <KpiCard label="Material saved" icon={<Leaf className="h-3.5 w-3.5" />} value={kpis.cC.circularKg} format={fmtKg} delta={pctChange(kpis.cC.circularKg, kpis.cP.circularKg)} hint="recycled + reused, vs prior 30d" spark={kpis.weeks.map((w) => w.kg)} />
+              <KpiCard label="Material saved" icon={<Leaf className="h-3.5 w-3.5" />} value={kpis.cC.circularKg} format={fmtKg} delta={change(kpis.cC.circularKg, kpis.cP.circularKg)} hint="recycled + reused, vs prior 30d" spark={kpis.weeks.map((w) => w.kg)} />
             </div>
 
             <div className="col-span-12 xl:col-span-8">

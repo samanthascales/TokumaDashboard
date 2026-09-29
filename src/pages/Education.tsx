@@ -5,10 +5,10 @@ import { useSimulatedLoad } from '../lib/hooks';
 import { Badge, Card, CardSkeleton, EmptyState, PageHeader, Segmented } from '../components/ui';
 
 const COURSES = [
-  { id: 1, title: 'Circular economy fundamentals', cat: 'Basics', kind: 'Course', mins: 25, progress: 100, desc: 'The butterfly diagram, material loops and why “take-make-waste” is a cost centre.' },
-  { id: 2, title: 'Measuring your circularity rate', cat: 'Metrics', kind: 'Guide', mins: 12, progress: 60, desc: 'How Tokuma calculates circularity from sales and bills of materials — and how to improve it.' },
+  { id: 1, title: 'Circular economy fundamentals', cat: 'Basics', kind: 'Course', mins: 25, progress: 0, desc: 'The butterfly diagram, material loops and why “take-make-waste” is a cost centre.' },
+  { id: 2, title: 'Measuring your circularity rate', cat: 'Metrics', kind: 'Guide', mins: 12, progress: 0, desc: 'How Tokuma calculates circularity from sales and bills of materials — and how to improve it.' },
   { id: 3, title: 'Designing for disassembly', cat: 'Design', kind: 'Course', mins: 40, progress: 0, desc: 'Mono-materials, reversible fasteners and labelling that make recycling possible.' },
-  { id: 4, title: 'Running a take-back programme', cat: 'Operations', kind: 'Playbook', mins: 18, progress: 20, desc: 'Logistics, incentives and resale economics for collecting used products.' },
+  { id: 4, title: 'Running a take-back programme', cat: 'Operations', kind: 'Playbook', mins: 18, progress: 0, desc: 'Logistics, incentives and resale economics for collecting used products.' },
   { id: 5, title: 'Choosing reliable circular suppliers', cat: 'Supply chain', kind: 'Guide', mins: 15, progress: 0, desc: 'Certifications that matter (GRS, GOTS, C2C) and how lead time affects your stock.' },
   { id: 6, title: 'Pitching circularity to lenders', cat: 'Funding', kind: 'Video', mins: 9, progress: 0, desc: 'Turn verified impact data into better loan terms and grant applications.' },
   { id: 7, title: 'Inventory planning for seasonal peaks', cat: 'Operations', kind: 'Guide', mins: 14, progress: 0, desc: 'Reorder points, safety stock and planning ahead of holiday demand.' },

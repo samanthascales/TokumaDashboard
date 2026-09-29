@@ -4,7 +4,7 @@ import { BadgeCheck, Coins, FileClock, Gift, HandCoins, Landmark, PieChart, Spar
 import { useStore } from '../store/AppStore';
 import { useSimulatedLoad } from '../lib/hooks';
 import { fmtDate, fmtMoney, fmtPct } from '../lib/format';
-import { fundingTerms, lastNDays, totalsFor } from '../lib/metrics';
+import { avgKnown, fundingTerms, lastNDays, totalsFor } from '../lib/metrics';
 import { AnimatedNumber, Badge, Card, CardHeader, CardSkeleton, EmptyState, Field, Modal, PageHeader } from '../components/ui';
 import type { FundingStatus, FundingType } from '../types';
 
@@ -21,17 +21,17 @@ export default function Funding() {
   const { verification, funding, circ30, fundingSeen, markFundingSeen, flashFunding, fundingRequests, requestFunding, suppliers, ledger, role } = useStore();
   const ready = useSimulatedLoad('funding');
   const [req, setReq] = useState<FundingType | null>(null);
-  const [amount, setAmount] = useState(10000);
+  const [amount, setAmount] = useState<number | null>(null);
   const [purpose, setPurpose] = useState('');
   const [touched, setTouched] = useState(false);
-  const [sim, setSim] = useState(Math.round(circ30.rate));
+  const [sim, setSim] = useState(circ30.hasData ? Math.round(circ30.rate) : 50);
   const [flash, setFlash] = useState(false);
   const seenRef = useRef(fundingSeen);
 
   // Highlight numbers when they've moved since the last visit or while on the page.
   useEffect(() => {
     const prev = seenRef.current;
-    if (prev && (Math.abs(prev.apr - funding.apr) > 0.001 || prev.maxEligibility !== funding.maxEligibility)) setFlash(true);
+    if (prev && prev.apr !== null && funding.apr !== null && (Math.abs(prev.apr - funding.apr) > 0.001 || prev.maxEligibility !== funding.maxEligibility)) setFlash(true);
     const t = setTimeout(markFundingSeen, 2500);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -48,16 +48,16 @@ export default function Funding() {
 
   const simTerms = useMemo(() => {
     const yr = totalsFor(ledger, lastNDays(365));
-    // Same default as the store's estimate (50) when no suppliers exist yet.
-    const avgSust = suppliers.length ? suppliers.reduce((s, x) => s + x.sustainabilityRating, 0) / suppliers.length : 50;
+    const avgSust = avgKnown(suppliers.map((x) => x.sustainabilityRating));
     return fundingTerms(sim, yr.revenue, avgSust, yr.revenue ? yr.profit / yr.revenue : 0);
   }, [sim, ledger, suppliers]);
 
   const prev = seenRef.current;
-  const changed = prev && Math.abs(prev.rate - circ30.rate) > 0.05;
+  const changed = prev && circ30.hasData && prev.apr !== null && funding.apr !== null && Math.abs(prev.rate - circ30.rate) > 0.05;
   const pending = fundingRequests.filter((r) => r.status === 'Pending').length;
   const funded = fundingRequests.filter((r) => r.status === 'Funded').reduce((s, r) => s + r.amount, 0);
-  const amountErr = amount <= 0 ? 'Enter an amount' : req === 'Loan' && amount > funding.maxEligibility ? `Max loan eligibility is ${fmtMoney(funding.maxEligibility)}` : null;
+  const overMax = req === 'Loan' && amount !== null && funding.maxEligibility !== null && amount > funding.maxEligibility;
+  const amountErr = amount === null || amount <= 0 ? 'Enter an amount' : overMax ? `Max loan eligibility is ${fmtMoney(funding.maxEligibility!)}` : null;
   const purposeErr = purpose.trim().length < 5 ? 'Describe what the funds are for' : null;
 
   if (!ready)
@@ -106,7 +106,7 @@ export default function Funding() {
           </div>
           <div className="text-right">
             <p className="text-xs uppercase tracking-wider text-brand-200">Funding score</p>
-            <AnimatedNumber value={funding.score} format={(n) => `${Math.round(n)}/100`} className="text-3xl font-bold" />
+            {funding.score === null ? <p className="text-3xl font-bold text-white/50">—</p> : <AnimatedNumber value={funding.score} format={(n) => `${Math.round(n)}/100`} className="text-3xl font-bold" />}
           </div>
         </div>
       </div>
@@ -114,7 +114,7 @@ export default function Funding() {
       {changed && (
         <div className="mb-5 flex animate-page-in items-center gap-3 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-800 dark:border-brand-500/20 dark:bg-brand-500/[0.07] dark:text-brand-200">
           <Sparkles className="h-4 w-4 shrink-0" />
-          Since your last visit circularity moved {fmtPct(prev!.rate)} → {fmtPct(circ30.rate)}, so your APR went {prev!.apr.toFixed(2)}% → {funding.apr.toFixed(2)}% and eligibility {fmtMoney(prev!.maxEligibility)} → {fmtMoney(funding.maxEligibility)}.
+          Since your last visit circularity moved {fmtPct(prev!.rate)} → {fmtPct(circ30.rate)}, so your estimated APR went {prev!.apr!.toFixed(2)}% → {funding.apr!.toFixed(2)}%{prev!.maxEligibility !== null && funding.maxEligibility !== null && ` and eligibility ${fmtMoney(prev!.maxEligibility)} → ${fmtMoney(funding.maxEligibility)}`}.
         </div>
       )}
 
@@ -123,19 +123,27 @@ export default function Funding() {
           <p className="muted flex items-center gap-1.5 text-xs">
             <Coins className="h-3.5 w-3.5" /> Max eligibility
           </p>
-          <AnimatedNumber value={funding.maxEligibility} format={fmtMoney} duration={1200} className="mt-2 block text-4xl font-bold tracking-tight" />
+          {funding.maxEligibility === null ? (
+            <p className="mt-2 text-4xl font-bold tracking-tight text-gray-300 dark:text-gray-600">—</p>
+          ) : (
+            <AnimatedNumber value={funding.maxEligibility} format={fmtMoney} duration={1200} className="mt-2 block text-4xl font-bold tracking-tight" />
+          )}
           <p className="muted mt-2 text-xs">
-            {funding.annualRevenue > 0
-              ? `≈ ${Math.round((funding.maxEligibility / funding.annualRevenue) * 100)}% of trailing-12-month revenue (${fmtMoney(funding.annualRevenue)})`
-              : 'Log sales to calculate how much you can borrow'}
+            {funding.maxEligibility !== null
+              ? `≈ ${Math.round((funding.maxEligibility / funding.annualRevenue) * 100)}% of your last 12 months of revenue (${fmtMoney(funding.annualRevenue)})`
+              : 'Log sales of products with materials to calculate this'}
           </p>
         </Card>
         <Card className={clsx('col-span-12 p-6 md:col-span-4', flash && 'animate-flash')}>
           <p className="muted flex items-center gap-1.5 text-xs">
             <TrendingDown className="h-3.5 w-3.5" /> Estimated APR
           </p>
-          <AnimatedNumber value={funding.apr} format={(n) => `${n.toFixed(2)}%`} duration={1200} className="mt-2 block text-4xl font-bold tracking-tight text-brand-700 dark:text-brand-400" />
-          <p className="muted mt-2 text-xs">{funding.annualRevenue > 0 ? 'vs ~11.5% typical small-business rate' : 'Starting estimate — it drops as your circularity rises'}</p>
+          {funding.apr === null ? (
+            <p className="mt-2 text-4xl font-bold tracking-tight text-gray-300 dark:text-gray-600">—</p>
+          ) : (
+            <AnimatedNumber value={funding.apr} format={(n) => `${n.toFixed(2)}%`} duration={1200} className="mt-2 block text-4xl font-bold tracking-tight text-brand-700 dark:text-brand-400" />
+          )}
+          <p className="muted mt-2 text-xs">{funding.apr !== null ? 'Estimated from your circularity rate and supplier ratings' : 'Log sales of products with materials to calculate this'}</p>
         </Card>
         <Card className="col-span-12 p-6 md:col-span-4">
           <p className="muted flex items-center gap-1.5 text-xs">
@@ -143,17 +151,21 @@ export default function Funding() {
           </p>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="text-4xl font-bold tabular-nums">{sim}%</span>
-            <span className="muted text-xs">(now {fmtPct(circ30.rate, 0)})</span>
+            <span className="muted text-xs">(now {circ30.hasData ? fmtPct(circ30.rate, 0) : '—'})</span>
           </div>
           <input type="range" min={0} max={100} value={sim} onChange={(e) => setSim(+e.target.value)} className="mt-3 w-full accent-brand-600" aria-label="Simulated circularity rate" />
-          <div className="mt-2 flex justify-between text-xs">
-            <span>
-              APR <b className="tabular-nums">{simTerms.apr.toFixed(2)}%</b>
-            </span>
-            <span>
-              Eligibility <b className="tabular-nums">{fmtMoney(simTerms.maxEligibility)}</b>
-            </span>
-          </div>
+          {simTerms.ready ? (
+            <div className="mt-2 flex justify-between text-xs">
+              <span>
+                APR <b className="tabular-nums">{simTerms.apr!.toFixed(2)}%</b>
+              </span>
+              <span>
+                Eligibility <b className="tabular-nums">{fmtMoney(simTerms.maxEligibility!)}</b>
+              </span>
+            </div>
+          ) : (
+            <p className="muted mt-2 text-xs">Needs your logged revenue to project terms.</p>
+          )}
         </Card>
 
         <div className="col-span-12 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -164,13 +176,13 @@ export default function Funding() {
               </span>
               <p className="mt-3 font-semibold">{t.type}</p>
               <p className="muted mt-1 flex-1 text-sm">{t.desc}</p>
-              <p className="mt-3 text-xs font-medium text-gray-500">{t.type === 'Loan' ? (funding.maxEligibility > 0 ? `Up to ${fmtMoney(funding.maxEligibility)} at ${funding.apr.toFixed(2)}%` : 'Available once you log sales') : t.range}</p>
+              <p className="mt-3 text-xs font-medium text-gray-500">{t.type === 'Loan' ? (funding.ready ? `Up to ${fmtMoney(funding.maxEligibility!)} at ~${funding.apr!.toFixed(2)}% (estimate)` : 'Estimate available once you log sales') : t.range}</p>
               {role === 'business' && (
                 <button
                   className="btn-secondary btn-sm mt-3"
                   onClick={() => {
                     setReq(t.type);
-                    setAmount(t.type === 'Loan' ? Math.min(25000, funding.maxEligibility) : 10000);
+                    setAmount(null);
                     setPurpose('');
                     setTouched(false);
                   }}
@@ -236,7 +248,7 @@ export default function Funding() {
               onClick={() => {
                 setTouched(true);
                 if (amountErr || purposeErr || !req) return;
-                requestFunding({ type: req, amount, purpose: purpose.trim() });
+                requestFunding({ type: req, amount: amount!, purpose: purpose.trim() });
                 setReq(null);
               }}
             >
@@ -246,13 +258,13 @@ export default function Funding() {
         }
       >
         <div className="space-y-4">
-          <Field label="Amount ($)" error={touched || amount > funding.maxEligibility ? amountErr : null}>
-            <input type="number" min={0} step={500} className={clsx('input', (touched || amount > funding.maxEligibility) && amountErr && 'input-error')} value={amount || ''} onChange={(e) => setAmount(+e.target.value)} />
+          <Field label="Amount ($)" error={touched || overMax ? amountErr : null}>
+            <input type="number" min={0} step={500} className={clsx('input', (touched || overMax) && amountErr && 'input-error')} placeholder="How much are you asking for?" value={amount ?? ''} onChange={(e) => setAmount(e.target.value.trim() === '' ? null : Number(e.target.value))} />
           </Field>
           <Field label="Purpose" error={touched ? purposeErr : null}>
             <textarea rows={3} className={clsx('input resize-none', touched && purposeErr && 'input-error')} value={purpose} onChange={(e) => setPurpose(e.target.value)} placeholder="e.g. Expand recycled-fibre inventory ahead of holiday season" />
           </Field>
-          {req === 'Loan' && (
+          {req === 'Loan' && funding.apr !== null && amount !== null && amount > 0 && (
             <div className="rounded-lg bg-gray-50 p-3 text-sm dark:bg-white/[0.03]">
               <div className="flex justify-between">
                 <span className="muted">Estimated APR</span>

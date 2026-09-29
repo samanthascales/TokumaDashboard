@@ -11,12 +11,12 @@ const empty: Draft = {
   country: '',
   city: '',
   transportMethod: 'Road',
-  sustainabilityRating: 75,
-  carbonEmissionsKg: 1000,
+  sustainabilityRating: null,
+  carbonEmissionsKg: null,
   certifications: [],
   materialsSupplied: [],
-  avgLeadTimeDays: 14,
-  onTimeDeliveryRate: 90,
+  avgLeadTimeDays: null,
+  onTimeDeliveryRate: null,
 };
 const CERTS = ['GOTS', 'GRS', 'OEKO-TEX', 'B Corp', 'Fair Trade', 'RWS', 'FSC', 'Cradle to Cradle'];
 
@@ -73,15 +73,19 @@ export function SupplierModal({ open, onClose, supplier }: { open: boolean; onCl
     () => ({
       name: d.name.trim().length < 2 ? 'Supplier name is required' : null,
       country: !d.country.trim() ? 'Country is required' : null,
-      avgLeadTimeDays: d.avgLeadTimeDays <= 0 || d.avgLeadTimeDays > 180 ? 'Enter 1–180 days' : null,
-      onTimeDeliveryRate: d.onTimeDeliveryRate < 0 || d.onTimeDeliveryRate > 100 ? 'Enter 0–100%' : null,
-      sustainabilityRating: d.sustainabilityRating < 0 || d.sustainabilityRating > 100 ? 'Enter 0–100' : null,
+      // All measurements are optional; when entered they must be in range.
+      avgLeadTimeDays: d.avgLeadTimeDays !== null && (d.avgLeadTimeDays <= 0 || d.avgLeadTimeDays > 180) ? 'Enter 1–180 days' : null,
+      onTimeDeliveryRate: d.onTimeDeliveryRate !== null && (d.onTimeDeliveryRate < 0 || d.onTimeDeliveryRate > 100) ? 'Enter 0–100%' : null,
+      sustainabilityRating: d.sustainabilityRating !== null && (d.sustainabilityRating < 0 || d.sustainabilityRating > 100) ? 'Enter 0–100' : null,
+      carbonEmissionsKg: d.carbonEmissionsKg !== null && d.carbonEmissionsKg < 0 ? 'Cannot be negative' : null,
     }),
     [d],
   );
   const show = (k: keyof typeof errors) => (touched[k] ? errors[k] : null);
   const valid = Object.values(errors).every((e) => !e);
   const score = reliabilityScore(d);
+  // Blank input → null (not entered), never 0.
+  const num = (v: string) => (v.trim() === '' ? null : Number(v));
 
   const save = () => {
     setTouched({ name: true, country: true, avgLeadTimeDays: true, onTimeDeliveryRate: true, sustainabilityRating: true });
@@ -129,17 +133,17 @@ export function SupplierModal({ open, onClose, supplier }: { open: boolean; onCl
             </select>
           </Field>
           <Field label="Logistics carbon (kg CO₂e / yr)">
-            <input type="number" min={0} className="input" value={d.carbonEmissionsKg} onChange={(e) => set('carbonEmissionsKg', +e.target.value)} />
+            <input type="number" min={0} className="input" placeholder="Optional" value={d.carbonEmissionsKg ?? ''} onChange={(e) => set('carbonEmissionsKg', num(e.target.value))} />
           </Field>
           <Field label="Sustainability rating (0–100)" error={show('sustainabilityRating')}>
-            <input type="number" min={0} max={100} className="input" value={d.sustainabilityRating} onChange={(e) => set('sustainabilityRating', +e.target.value)} />
+            <input type="number" min={0} max={100} className="input" placeholder="Optional" value={d.sustainabilityRating ?? ''} onChange={(e) => set('sustainabilityRating', num(e.target.value))} />
           </Field>
           <div />
-          <Field label="Avg lead time (days)" error={show('avgLeadTimeDays')} hint={`Lead-time score ${Math.round(leadTimeScore(d.avgLeadTimeDays))}/100`}>
-            <input type="number" min={1} className={`input ${show('avgLeadTimeDays') ? 'input-error' : ''}`} value={d.avgLeadTimeDays} onChange={(e) => set('avgLeadTimeDays', +e.target.value)} />
+          <Field label="Avg lead time (days)" error={show('avgLeadTimeDays')} hint={d.avgLeadTimeDays !== null ? `Lead-time score ${Math.round(leadTimeScore(d.avgLeadTimeDays))}/100` : 'Days from order to delivery'}>
+            <input type="number" min={1} className={`input ${show('avgLeadTimeDays') ? 'input-error' : ''}`} placeholder="e.g. 12" value={d.avgLeadTimeDays ?? ''} onChange={(e) => set('avgLeadTimeDays', num(e.target.value))} />
           </Field>
           <Field label="On-time delivery (%)" error={show('onTimeDeliveryRate')}>
-            <input type="number" min={0} max={100} className={`input ${show('onTimeDeliveryRate') ? 'input-error' : ''}`} value={d.onTimeDeliveryRate} onChange={(e) => set('onTimeDeliveryRate', +e.target.value)} />
+            <input type="number" min={0} max={100} className={`input ${show('onTimeDeliveryRate') ? 'input-error' : ''}`} placeholder="e.g. 95" value={d.onTimeDeliveryRate ?? ''} onChange={(e) => set('onTimeDeliveryRate', num(e.target.value))} />
           </Field>
           <div className="sm:col-span-2">
             <span className="label">Certifications</span>
@@ -168,21 +172,24 @@ export function SupplierModal({ open, onClose, supplier }: { open: boolean; onCl
           <div className="my-3">
             <Gauge value={score} size={120} label="score" />
           </div>
+          {score === null && <p className="muted -mt-1 mb-3 text-xs">Enter lead time and on-time delivery to calculate a score.</p>}
           <div className="w-full space-y-2 text-left text-xs">
-            {[
-              ['Lead time', leadTimeScore(d.avgLeadTimeDays), 0.3],
-              ['On-time delivery', d.onTimeDeliveryRate, 0.5],
-              ['Certifications', certificationScore(d.certifications), 0.2],
-            ].map(([k, v, w]) => (
-              <div key={k as string}>
+            {(
+              [
+                ['Lead time', d.avgLeadTimeDays === null ? null : leadTimeScore(d.avgLeadTimeDays), 0.3],
+                ['On-time delivery', d.onTimeDeliveryRate, 0.5],
+                ['Certifications', certificationScore(d.certifications), 0.2],
+              ] as [string, number | null, number][]
+            ).map(([k, v, w]) => (
+              <div key={k}>
                 <div className="flex justify-between">
                   <span className="muted">
                     {k} × {w}
                   </span>
-                  <span className="font-semibold tabular-nums">{((v as number) * (w as number)).toFixed(1)}</span>
+                  <span className="font-semibold tabular-nums">{v === null ? '—' : (v * w).toFixed(1)}</span>
                 </div>
                 <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-gray-200 dark:bg-white/10">
-                  <div className="h-full rounded-full bg-brand-600 transition-all dark:bg-brand-400" style={{ width: `${v}%` }} />
+                  <div className="h-full rounded-full bg-brand-600 transition-all dark:bg-brand-400" style={{ width: `${v ?? 0}%` }} />
                 </div>
               </div>
             ))}

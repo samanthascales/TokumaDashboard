@@ -104,10 +104,11 @@ export default function Circularity() {
   const drillProduct = products.find((p) => p.id === drill);
 
   const tiles = [
-    { label: 'Circularity rate', value: circ30.rate, fmt: (n: number) => fmtPct(n), delta: circ30.rate - circPrev30.rate, icon: Recycle, suffix: ' pts' },
-    { label: 'Total circular weight', value: circ30.circularKg, fmt: fmtKg, delta: circPrev30.circularKg ? ((circ30.circularKg - circPrev30.circularKg) / circPrev30.circularKg) * 100 : 0, icon: Leaf, suffix: '%' },
-    { label: 'Virgin material use', value: circ30.virginKg, fmt: fmtKg, delta: circPrev30.virginKg ? ((circ30.virginKg - circPrev30.virginKg) / circPrev30.virginKg) * 100 : 0, icon: Scale, suffix: '%', invert: true },
-    { label: 'Products tracked', value: products.length, fmt: (n: number) => Math.round(n).toString(), delta: 0, icon: Package, suffix: '' },
+    // Deltas are null (hidden) unless both periods have real sales to compare.
+    { label: 'Circularity rate', value: circ30.hasData ? circ30.rate : null, fmt: (n: number) => fmtPct(n), delta: circ30.hasData && circPrev30.hasData ? circ30.rate - circPrev30.rate : null, icon: Recycle, suffix: ' pts' },
+    { label: 'Total circular weight', value: circ30.hasData ? circ30.circularKg : null, fmt: fmtKg, delta: circPrev30.circularKg ? ((circ30.circularKg - circPrev30.circularKg) / circPrev30.circularKg) * 100 : null, icon: Leaf, suffix: '%' },
+    { label: 'Virgin material use', value: circ30.hasData ? circ30.virginKg : null, fmt: fmtKg, delta: circPrev30.virginKg ? ((circ30.virginKg - circPrev30.virginKg) / circPrev30.virginKg) * 100 : null, icon: Scale, suffix: '%', invert: true },
+    { label: 'Products tracked', value: products.length, fmt: (n: number) => Math.round(n).toString(), delta: null, icon: Package, suffix: '' },
   ];
 
   return (
@@ -136,7 +137,7 @@ export default function Circularity() {
                 <t.icon className="h-3.5 w-3.5" /> {t.label}
               </p>
               <AnimatedNumber value={t.value} format={t.fmt} className="mt-2 block text-[26px] font-bold leading-none" />
-              {t.suffix && (
+              {t.delta !== null && (
                 <div className="mt-2 flex items-center gap-1.5">
                   <Delta value={t.delta} suffix={t.suffix} invert={t.invert} />
                   <span className="muted text-[11px]">vs prior 30d</span>

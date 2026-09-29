@@ -6,15 +6,16 @@ import { AlertTriangle, Check, ChevronDown, Lightbulb, Lock, Rocket, Sparkles, T
 import { useStore } from '../../store/AppStore';
 import { useChartColors } from '../../lib/hooks';
 import { fmtDate, fmtKg, fmtMoney, fmtPct } from '../../lib/format';
-import { historyDays, lastNDays, milestoneStages, reliabilityScore, totalsFor } from '../../lib/metrics';
+import { historyDays, lastNDays, milestoneStages, reliabilityScore, totalsFor, avgKnown } from '../../lib/metrics';
 import { AnimatedNumber, Badge, Card, CardHeader, EmptyState, Segmented, Sparkline, StatusBadge, StockBar, Tip } from '../../components/ui';
 import { TooltipBox } from '../../components/charts/ChartTooltip';
 import type { InsightKind, MaterialClass } from '../../types';
 
 /* ---------------- KPI card ---------------- */
 
-export function KpiCard({ label, value, format, delta, spark, icon, invert, hint }: { label: string; value: number; format: (n: number) => string; delta: number; spark: number[]; icon: React.ReactNode; invert?: boolean; hint?: string }) {
-  const good = invert ? delta < 0 : delta >= 0;
+/** value / delta are null when there's no real data to show or compare against — the card shows "—" and no change badge. */
+export function KpiCard({ label, value, format, delta, spark, icon, invert, hint }: { label: string; value: number | null; format: (n: number) => string; delta: number | null; spark: number[]; icon: React.ReactNode; invert?: boolean; hint?: string }) {
+  const good = delta === null ? true : invert ? delta < 0 : delta >= 0;
   return (
     <Card hover className="group relative overflow-hidden p-5">
       <div className="flex items-center justify-between">
@@ -22,15 +23,17 @@ export function KpiCard({ label, value, format, delta, spark, icon, invert, hint
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-50 text-gray-500 ring-1 ring-gray-100 dark:bg-white/5 dark:text-gray-400 dark:ring-white/5">{icon}</span>
           {label}
         </span>
-        <span
-          className={clsx(
-            'rounded-full px-1.5 py-0.5 text-[11px] font-semibold tabular-nums',
-            Math.abs(delta) < 0.05 ? 'bg-gray-100 text-gray-500 dark:bg-white/5' : good ? 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300' : 'bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-300',
-          )}
-        >
-          {delta >= 0 ? '+' : '−'}
-          {Math.abs(delta).toFixed(1)}%
-        </span>
+        {delta !== null && (
+          <span
+            className={clsx(
+              'rounded-full px-1.5 py-0.5 text-[11px] font-semibold tabular-nums',
+              Math.abs(delta) < 0.05 ? 'bg-gray-100 text-gray-500 dark:bg-white/5' : good ? 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300' : 'bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-300',
+            )}
+          >
+            {delta >= 0 ? '+' : '−'}
+            {Math.abs(delta).toFixed(1)}%
+          </span>
+        )}
       </div>
       <AnimatedNumber value={value} format={format} className="mt-3 block text-[28px] font-bold leading-none tracking-tight" />
       <div className="mt-1 flex items-end justify-between gap-3">
@@ -127,9 +130,9 @@ export function MaterialMix() {
             />
           </PieChart>
         </ResponsiveContainer>
-        {circ30.totalKg === 0 && <div className="absolute inset-[4%] rounded-full border-[14px] border-gray-100 dark:border-white/[0.06]" />}
+        {circ30.totalKg === 0 && <div className="absolute left-1/2 top-1/2 h-[184px] w-[184px] -translate-x-1/2 -translate-y-1/2 rounded-full border-[14px] border-gray-100 dark:border-white/[0.06]" />}
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-          <AnimatedNumber value={circ30.rate} format={(n) => `${n.toFixed(1)}%`} className="text-2xl font-bold" />
+          <AnimatedNumber value={circ30.hasData ? circ30.rate : null} format={(n) => `${n.toFixed(1)}%`} className="text-2xl font-bold" />
           <span className="muted text-[11px]">circular</span>
         </div>
       </div>
@@ -159,13 +162,14 @@ export function MaterialMix() {
 
 export function MilestoneCard() {
   const { circ30, suppliers, products, transactions } = useStore();
-  const avgRel = suppliers.length ? suppliers.reduce((s, x) => s + reliabilityScore(x), 0) / suppliers.length : 0;
+  const avgRel = avgKnown(suppliers.map((x) => reliabilityScore(x))) ?? 0;
+  const rate = circ30.hasData ? circ30.rate : 0;
   const hist = useMemo(() => historyDays(transactions), [transactions]);
-  const stages = milestoneStages({ rate: circ30.rate, suppliers: suppliers.length, products: products.length, avgReliability: avgRel, historyDays: hist });
+  const stages = milestoneStages({ rate, suppliers: suppliers.length, products: products.length, avgReliability: avgRel, historyDays: hist });
   const achieved = stages.map((s) => s.criteria.every((c) => c.met));
   const currentIdx = Math.max(0, achieved.lastIndexOf(true));
   const next = stages[currentIdx + 1];
-  const progress = next ? Math.min(100, (circ30.rate / next.min) * 100) : 100;
+  const progress = next ? Math.min(100, (rate / next.min) * 100) : 100;
   const icons = [Sparkles, TrendingUp, Rocket];
 
   return (
@@ -225,7 +229,7 @@ export function MilestoneCard() {
           <div className="flex items-center justify-between">
             <span className="muted">Circularity toward {next.name}</span>
             <span className="font-semibold tabular-nums">
-              {fmtPct(circ30.rate)} / {next.min}%
+              {circ30.hasData ? fmtPct(circ30.rate) : '—'} / {next.min}%
             </span>
           </div>
           <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-200 dark:bg-white/10">
@@ -370,7 +374,7 @@ export function ActivityCard() {
                     <th className="th">Product</th>
                     <th className="th">Revenue (30d)</th>
                     <th className="th text-right">Units</th>
-                    <th className="th text-right">Circularity</th>
+                    <th className="th text-right" title="Share of this product’s weight from recycled or reused materials">Material circularity</th>
                   </tr>
                 </thead>
                 <tbody>
