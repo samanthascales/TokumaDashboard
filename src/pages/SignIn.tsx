@@ -51,9 +51,6 @@ export default function SignIn() {
             </>
           )}
         </p>
-        <Link to="/app" className="mt-2 block text-xs text-gray-400 hover:text-gray-600" onClick={() => setRole('business')}>
-          Skip to demo dashboard
-        </Link>
       </div>
     </div>
   );

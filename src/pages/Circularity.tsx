@@ -11,14 +11,18 @@ import { LegendItem, TooltipBox } from '../components/charts/ChartTooltip';
 import type { MaterialClass } from '../types';
 
 function RecommendationCarousel() {
-  const { recs, applyMaterialSwitch, theme, role } = useStore();
+  const { recs, applyMaterialSwitch, theme, role, products } = useStore();
   const c = useChartColors(theme);
   const [i, setI] = useState(0);
   if (!recs.length)
     return (
       <Card className="h-full">
         <CardHeader title="Strategy recommendations" />
-        <EmptyState icon={<Recycle className="h-6 w-6" />} title="Fully circular" body="Every material in your catalog is recycled or reused. Nothing left to switch." />
+        {products.length === 0 ? (
+          <EmptyState icon={<Recycle className="h-6 w-6" />} title="No recommendations yet" body="Add products with their materials and log a few sales. Tokuma will rank the material switches that raise your circularity the most." />
+        ) : (
+          <EmptyState icon={<Recycle className="h-6 w-6" />} title="Fully circular" body="Every material in your catalog is recycled or reused. Nothing left to switch." />
+        )}
       </Card>
     );
   const idx = Math.min(i, recs.length - 1);
@@ -205,6 +209,7 @@ export default function Circularity() {
           <Card className="col-span-12 lg:col-span-5">
             <CardHeader title="Product circularity ranking" sub="Click a product for its material breakdown" />
             <ul className="space-y-1 p-3">
+              {circ30.byProduct.length === 0 && <li className="muted px-2 py-8 text-center text-sm">Products you add will be ranked here by circularity.</li>}
               {circ30.byProduct.map((p, i) => (
                 <li key={p.id}>
                   <button onClick={() => setDrill(p.id)} className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition hover:bg-gray-50 dark:hover:bg-white/[0.03]">

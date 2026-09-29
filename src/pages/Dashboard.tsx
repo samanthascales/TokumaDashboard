@@ -7,7 +7,7 @@ import { useSimulatedLoad } from '../lib/hooks';
 import { CardSkeleton, PageHeader } from '../components/ui';
 import { openReport } from '../components/layout/nav';
 import { RevenueChart } from './dashboard/RevenueChart';
-import { ActivityCard, InsightsFeed, KpiCard, LowStockBanner, MaterialMix, MilestoneCard } from './dashboard/Widgets';
+import { ActivityCard, GettingStarted, InsightsFeed, KpiCard, LowStockBanner, MaterialMix, MilestoneCard } from './dashboard/Widgets';
 
 function greeting() {
   const h = new Date().getHours();
@@ -34,13 +34,13 @@ export default function Dashboard() {
     return { cur, prev, cC, cP, weeks };
   }, [ledger, products, filteredProductIds]);
 
-  const firstName = profile.ownerName.split(' ')[0];
+  const firstName = profile.ownerName.trim().split(' ')[0];
 
   return (
     <>
       <PageHeader
-        title={`${greeting()}, ${firstName}`}
-        sub={`Here's how ${profile.businessName} is performing · ${fmtDate(toISO(addDays(startOfToday(), -29)))} – ${fmtDate(toISO(startOfToday()))}`}
+        title={firstName ? `${greeting()}, ${firstName}` : greeting()}
+        sub={`Here's how ${profile.businessName || 'your business'} is performing · ${fmtDate(toISO(addDays(startOfToday(), -29)))} – ${fmtDate(toISO(startOfToday()))}`}
         actions={
           <>
             {materialFilter && (
@@ -60,6 +60,7 @@ export default function Dashboard() {
       />
 
       <LowStockBanner />
+      <GettingStarted />
 
       <div className="grid grid-cols-12 gap-4 lg:gap-5">
         {!ready ? (

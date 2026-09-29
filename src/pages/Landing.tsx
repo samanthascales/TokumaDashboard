@@ -1,10 +1,8 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight, BriefcaseBusiness, Leaf, ShieldCheck, Store } from 'lucide-react';
-import { useCountUp } from '../lib/hooks';
 import { Logo } from '../components/layout/Sidebar';
 
 export default function Landing() {
-  const count = useCountUp(527, 1800);
   return (
     <div className="relative min-h-screen overflow-hidden bg-white dark:bg-ink-950">
       <div
@@ -30,8 +28,8 @@ export default function Landing() {
             Run your business. <span className="text-brand-600 dark:text-brand-400">Prove your impact.</span> Unlock capital.
           </h1>
           <p className="muted mx-auto mt-5 max-w-xl text-lg">Tokuma turns everyday operations — sales, materials, suppliers — into a verified circularity score that lenders and investors trust.</p>
-          <p className="mt-6 text-sm text-gray-600 dark:text-gray-300">
-            Trusted by <span className="font-bold tabular-nums text-gray-900 dark:text-white">{Math.round(count)}+</span> circular businesses
+          <p className="mt-6 inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+            <span className="h-2 w-2 rounded-full bg-brand-500" /> Now in early access — set up your business in a few minutes
           </p>
 
           <div className="mx-auto mt-12 grid max-w-4xl gap-5 text-left md:grid-cols-2">

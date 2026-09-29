@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Area, CartesianGrid, ComposedChart, Line, ReferenceDot, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { CalendarRange, MousePointerClick } from 'lucide-react';
 import { useStore } from '../../store/AppStore';
@@ -17,6 +18,7 @@ const RANGES: { value: RangeKey; label: string }[] = [
 ];
 
 export function RevenueChart() {
+  const navigate = useNavigate();
   const { ledger, products, filteredProductIds, theme, transactions } = useStore();
   const c = useChartColors(theme);
   // Default to 12 months so the holiday peak / summer bump are visible.
@@ -101,7 +103,16 @@ export function RevenueChart() {
           </button>
         </div>
       </div>
-      <div className="h-[300px] flex-1 px-2 pb-2 pt-3">
+      <div className="relative h-[300px] flex-1 px-2 pb-2 pt-3">
+        {totals.rev === 0 && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 text-center">
+            <p className="text-sm font-semibold">No sales in this period yet</p>
+            <p className="muted max-w-xs text-xs">Log sales to see revenue, profit and seasonal trends here.</p>
+            <button className="btn-primary btn-sm mt-1" onClick={() => navigate('/app/transactions?new=txn')}>
+              Log a sale
+            </button>
+          </div>
+        )}
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart
             data={data}

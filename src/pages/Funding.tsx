@@ -18,7 +18,7 @@ const TYPES: { type: FundingType; icon: typeof Coins; desc: string; range: strin
 const statusTone: Record<FundingStatus, 'amber' | 'blue' | 'green' | 'red'> = { Pending: 'amber', Approved: 'blue', Funded: 'green', Declined: 'red' };
 
 export default function Funding() {
-  const { funding, circ30, fundingSeen, markFundingSeen, flashFunding, fundingRequests, requestFunding, suppliers, ledger, role } = useStore();
+  const { verification, funding, circ30, fundingSeen, markFundingSeen, flashFunding, fundingRequests, requestFunding, suppliers, ledger, role } = useStore();
   const ready = useSimulatedLoad('funding');
   const [req, setReq] = useState<FundingType | null>(null);
   const [amount, setAmount] = useState(10000);
@@ -48,7 +48,8 @@ export default function Funding() {
 
   const simTerms = useMemo(() => {
     const yr = totalsFor(ledger, lastNDays(365));
-    const avgSust = suppliers.reduce((s, x) => s + x.sustainabilityRating, 0) / Math.max(1, suppliers.length);
+    // Same default as the store's estimate (50) when no suppliers exist yet.
+    const avgSust = suppliers.length ? suppliers.reduce((s, x) => s + x.sustainabilityRating, 0) / suppliers.length : 50;
     return fundingTerms(sim, yr.revenue, avgSust, yr.revenue ? yr.profit / yr.revenue : 0);
   }, [sim, ledger, suppliers]);
 
@@ -84,8 +85,24 @@ export default function Funding() {
             <BadgeCheck className="h-6 w-6" />
           </div>
           <div className="flex-1">
-            <p className="text-lg font-semibold">Verified Circular Business</p>
-            <p className="text-sm text-brand-100/80">Your transactions, materials and supplier data are verified. Lenders see a live circularity score of {fmtPct(circ30.rate)}.</p>
+            {verification.verified ? (
+              <>
+                <p className="text-lg font-semibold">Verified Circular Business</p>
+                <p className="text-sm text-brand-100/80">Your transactions, materials and supplier data are verified. Lenders see a live circularity score of {fmtPct(circ30.rate)}.</p>
+              </>
+            ) : (
+              <>
+                <p className="text-lg font-semibold">Get verified to unlock funding</p>
+                <ul className="mt-1.5 flex flex-wrap gap-x-5 gap-y-1 text-sm text-brand-100/90">
+                  {verification.steps.map((s) => (
+                    <li key={s.label} className="flex items-center gap-1.5">
+                      <span className={clsx('flex h-4 w-4 items-center justify-center rounded-full text-[10px]', s.done ? 'bg-white text-brand-800' : 'ring-1 ring-white/40')}>{s.done ? '✓' : ''}</span>
+                      {s.label}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
           </div>
           <div className="text-right">
             <p className="text-xs uppercase tracking-wider text-brand-200">Funding score</p>
@@ -107,14 +124,18 @@ export default function Funding() {
             <Coins className="h-3.5 w-3.5" /> Max eligibility
           </p>
           <AnimatedNumber value={funding.maxEligibility} format={fmtMoney} duration={1200} className="mt-2 block text-4xl font-bold tracking-tight" />
-          <p className="muted mt-2 text-xs">≈ {Math.round((funding.maxEligibility / (funding.annualRevenue || 1)) * 100)}% of trailing-12-month revenue ({fmtMoney(funding.annualRevenue)})</p>
+          <p className="muted mt-2 text-xs">
+            {funding.annualRevenue > 0
+              ? `≈ ${Math.round((funding.maxEligibility / funding.annualRevenue) * 100)}% of trailing-12-month revenue (${fmtMoney(funding.annualRevenue)})`
+              : 'Log sales to calculate how much you can borrow'}
+          </p>
         </Card>
         <Card className={clsx('col-span-12 p-6 md:col-span-4', flash && 'animate-flash')}>
           <p className="muted flex items-center gap-1.5 text-xs">
             <TrendingDown className="h-3.5 w-3.5" /> Estimated APR
           </p>
           <AnimatedNumber value={funding.apr} format={(n) => `${n.toFixed(2)}%`} duration={1200} className="mt-2 block text-4xl font-bold tracking-tight text-brand-700 dark:text-brand-400" />
-          <p className="muted mt-2 text-xs">vs ~11.5% typical small-business rate</p>
+          <p className="muted mt-2 text-xs">{funding.annualRevenue > 0 ? 'vs ~11.5% typical small-business rate' : 'Starting estimate — it drops as your circularity rises'}</p>
         </Card>
         <Card className="col-span-12 p-6 md:col-span-4">
           <p className="muted flex items-center gap-1.5 text-xs">
@@ -143,7 +164,7 @@ export default function Funding() {
               </span>
               <p className="mt-3 font-semibold">{t.type}</p>
               <p className="muted mt-1 flex-1 text-sm">{t.desc}</p>
-              <p className="mt-3 text-xs font-medium text-gray-500">{t.type === 'Loan' ? `Up to ${fmtMoney(funding.maxEligibility)} at ${funding.apr.toFixed(2)}%` : t.range}</p>
+              <p className="mt-3 text-xs font-medium text-gray-500">{t.type === 'Loan' ? (funding.maxEligibility > 0 ? `Up to ${fmtMoney(funding.maxEligibility)} at ${funding.apr.toFixed(2)}%` : 'Available once you log sales') : t.range}</p>
               {role === 'business' && (
                 <button
                   className="btn-secondary btn-sm mt-3"

@@ -78,7 +78,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           </button>
         </div>
         <div className="mx-3 mb-3 rounded-lg bg-white/[0.04] px-3 py-2.5 ring-1 ring-white/5">
-          <p className="truncate text-xs font-medium text-gray-200">{profile.businessName}</p>
+          <p className="truncate text-xs font-medium text-gray-200">{profile.businessName || 'Your business'}</p>
           <p className="text-[11px] text-gray-500">{role === 'investor' ? 'Investor view' : 'Business workspace'}</p>
         </div>
         <nav className="scrollbar-thin flex-1 overflow-y-auto px-3 pb-4">

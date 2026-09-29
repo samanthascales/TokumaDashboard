@@ -7,29 +7,12 @@ import { Logo } from '../components/layout/Sidebar';
 import { completion, ProfilePreview, STEPS, StepFields, stepValid, validate } from './onboarding/Steps';
 import type { BusinessProfile } from '../types';
 
-const blank: BusinessProfile = {
-  ownerName: '',
-  email: '',
-  role: '',
-  businessName: '',
-  industry: 'Apparel & Textiles',
-  country: '',
-  founded: '',
-  description: '',
-  website: '',
-  employees: '2–5',
-  primaryMaterials: [],
-  circularModel: '',
-  annualRevenue: '',
-  fundingGoal: '',
-  bankConnected: false,
-};
 
 export default function Onboarding() {
-  const { setProfile, setRole } = useStore();
+  const { setProfile, setRole, profile: saved } = useStore();
   const navigate = useNavigate();
   const [i, setI] = useState(0);
-  const [p, setP] = useState<BusinessProfile>(blank);
+  const [p, setP] = useState<BusinessProfile>(saved);
   const [touched, setTouched] = useState<Partial<Record<keyof BusinessProfile, boolean>>>({});
   const step = STEPS[i]!;
   const pct = completion(p);
@@ -60,7 +43,7 @@ export default function Onboarding() {
           <Logo />
         </Link>
         <Link to="/app" className="text-sm font-medium text-gray-500 hover:text-gray-900 dark:hover:text-white">
-          Skip — explore the demo business →
+          Skip for now →
         </Link>
       </header>
       <div className="mx-auto grid max-w-6xl gap-8 px-6 pb-16 pt-4 lg:grid-cols-[1fr_360px]">

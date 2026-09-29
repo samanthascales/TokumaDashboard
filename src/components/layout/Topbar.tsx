@@ -94,9 +94,9 @@ function RoleSwitcher() {
   return (
     <div className="relative" ref={ref}>
       <button className="flex items-center gap-2 rounded-lg py-1 pl-1 pr-2 transition hover:bg-gray-100 dark:hover:bg-white/5" onClick={() => setOpen((o) => !o)}>
-        <Avatar name={profile.ownerName} />
+        <Avatar name={profile.ownerName || 'You'} />
         <span className="hidden text-left leading-tight md:block">
-          <span className="block text-[13px] font-medium">{profile.ownerName}</span>
+          <span className="block text-[13px] font-medium">{profile.ownerName || 'Your account'}</span>
           <span className="block text-[11px] text-gray-500 dark:text-gray-400">{role === 'investor' ? 'Investor' : 'Business'}</span>
         </span>
         <ChevronDown className="hidden h-4 w-4 text-gray-400 md:block" />

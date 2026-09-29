@@ -47,7 +47,7 @@ export function ReportModal() {
           <FileText className="h-4 w-4 text-brand-600" /> Circular performance report
         </span>
       }
-      sub={`${s.profile.businessName} · generated ${fmtDate(toISO(startOfToday()))}`}
+      sub={`${s.profile.businessName || 'Your business'} · generated ${fmtDate(toISO(startOfToday()))}`}
       footer={
         <>
           <button className="btn-secondary" onClick={() => setOpen(false)}>
@@ -70,8 +70,8 @@ export function ReportModal() {
         <div id="print-report" className="space-y-6 text-sm">
           <div className="flex items-start justify-between border-b border-gray-200 pb-4 dark:border-white/10">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-400">Tokuma · Verified circular business</p>
-              <h3 className="mt-1 text-xl font-bold">{s.profile.businessName}</h3>
+              <p className="text-xs font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-400">Tokuma · {s.verification.verified ? 'Verified circular business' : 'Verification in progress'}</p>
+              <h3 className="mt-1 text-xl font-bold">{s.profile.businessName || 'Your business'}</h3>
               <p className="muted">
                 {s.profile.industry} · {s.profile.country}
               </p>
