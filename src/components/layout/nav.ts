@@ -8,6 +8,7 @@ import {
   Package,
   Recycle,
   Settings,
+  ShieldAlert,
   ShieldCheck,
   Truck,
   Users,
@@ -54,6 +55,9 @@ export const investorNav: NavItem[] = [
   { to: '/app/funding', label: 'Funding', icon: Landmark },
   { to: '/app/settings', label: 'Settings', icon: Settings },
 ];
+
+/** Shown only to accounts listed in the database's admins table. */
+export const adminNavItem: NavItem = { to: '/app/admin', label: 'Admin', icon: ShieldAlert };
 
 export const allPages = [
   ...businessNav.flatMap((n) => [n, ...(n.children ?? [])]),

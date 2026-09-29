@@ -1,17 +1,20 @@
 import { useState } from 'react';
 import clsx from 'clsx';
-import { Bell, Building2, Laptop, Moon, Palette, RotateCcw, Sun } from 'lucide-react';
+import { Bell, Building2, Laptop, Moon, Palette, RotateCcw, Sun, UserCog } from 'lucide-react';
 import { useStore } from '../store/AppStore';
+import { useCloud } from '../store/CloudProvider';
+import { AccountSettings } from './settings/AccountSettings';
 import { Card, CardHeader, Modal, PageHeader, Toggle } from '../components/ui';
 import { completion, ProfilePreview, STEPS, StepFields, stepValid, validate } from './onboarding/Steps';
 import { emptyProfile } from '../data/defaults';
 import type { BusinessProfile, NotificationPrefs, ThemePref } from '../types';
 
-type Section = 'appearance' | 'profile' | 'notifications';
+type Section = 'account' | 'appearance' | 'profile' | 'notifications';
 
 export default function Settings() {
   const { themePref, setThemePref, profile, setProfile, prefs, setPrefs, resetData, toast } = useStore();
-  const [section, setSection] = useState<Section>('appearance');
+  const cloud = useCloud();
+  const [section, setSection] = useState<Section>(cloud.enabled ? 'account' : 'appearance');
   const [draft, setDraft] = useState<BusinessProfile>(profile);
   const [touched, setTouched] = useState<Partial<Record<keyof BusinessProfile, boolean>>>({});
   const [confirmReset, setConfirmReset] = useState(false);
@@ -24,6 +27,7 @@ export default function Settings() {
   };
 
   const nav: { key: Section; label: string; icon: typeof Sun }[] = [
+    ...(cloud.enabled ? [{ key: 'account' as const, label: 'Account & privacy', icon: UserCog }] : []),
     { key: 'appearance', label: 'Appearance', icon: Palette },
     { key: 'profile', label: 'Business profile', icon: Building2 },
     { key: 'notifications', label: 'Notifications', icon: Bell },
@@ -131,6 +135,8 @@ export default function Settings() {
               </div>
             </div>
           )}
+
+          {section === 'account' && cloud.enabled && <AccountSettings />}
 
           {section === 'notifications' && (
             <Card>
