@@ -58,3 +58,7 @@ src/
 ```
 
 Edits you make (products, suppliers, logged transactions, funding requests, profile, preferences) are saved to `localStorage`. Use **Settings → Reset demo data** to restore the seed.
+
+## Deployment
+
+Every push to `main` runs `.github/workflows/deploy.yml`, which builds the app and publishes `dist/` to the `gh-pages` branch. GitHub Pages serves that branch at https://samanthascales.github.io/TokumaDashboard/. If the site doesn't appear, open **Settings → Pages** and set the source to **Deploy from a branch → `gh-pages` / root**.
