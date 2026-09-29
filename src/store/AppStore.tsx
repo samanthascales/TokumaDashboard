@@ -96,6 +96,13 @@ function loadState(): Persisted {
   return defaultState();
 }
 
+function hostPrefersDark() {
+  if (typeof window === 'undefined') return false;
+  const host = document.documentElement.getAttribute('data-theme');
+  if (host === 'dark' || host === 'light') return host === 'dark';
+  return window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+
 function loadThemePref(): ThemePref {
   try {
     const t = localStorage.getItem('tokuma-theme');
@@ -155,7 +162,7 @@ const Ctx = createContext<AppStore | null>(null);
 export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<Persisted>(loadState);
   const [themePref, setThemePrefState] = useState<ThemePref>(loadThemePref);
-  const [systemDark, setSystemDark] = useState(() => typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const [systemDark, setSystemDark] = useState(hostPrefersDark);
   const theme: 'light' | 'dark' = themePref === 'system' ? (systemDark ? 'dark' : 'light') : themePref;
   const [materialFilter, setMaterialFilter] = useState<MaterialClass | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -177,9 +184,15 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   // Theme
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    const h = () => setSystemDark(mq.matches);
+    const h = () => setSystemDark(hostPrefersDark());
     mq.addEventListener('change', h);
-    return () => mq.removeEventListener('change', h);
+    // An embedding host may set data-theme on <html>; follow it when present.
+    const mo = new MutationObserver(h);
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => {
+      mq.removeEventListener('change', h);
+      mo.disconnect();
+    };
   }, []);
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');

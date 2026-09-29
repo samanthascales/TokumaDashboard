@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Download, FileText, Loader2 } from 'lucide-react';
 import { useStore } from '../../store/AppStore';
 import { Modal } from '../ui';
+import { IS_EMBEDDED } from '../../env';
 import { fmtDate, fmtKg, fmtMoney, fmtPct, startOfToday, toISO } from '../../lib/format';
 import { lastNDays, pctChange, reliabilityScore, totalsFor } from '../../lib/metrics';
 
@@ -52,9 +53,11 @@ export function ReportModal() {
           <button className="btn-secondary" onClick={() => setOpen(false)}>
             Close
           </button>
-          <button className="btn-primary" disabled={building} onClick={() => window.print()}>
-            <Download className="h-4 w-4" /> Download PDF
-          </button>
+          {!IS_EMBEDDED && (
+            <button className="btn-primary" disabled={building} onClick={() => window.print()}>
+              <Download className="h-4 w-4" /> Download PDF
+            </button>
+          )}
         </>
       }
     >

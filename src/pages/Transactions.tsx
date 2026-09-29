@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import clsx from 'clsx';
 import { ArrowDownLeft, ArrowUpRight, ChevronLeft, ChevronRight, Download, Link2, Plus, Receipt, Search } from 'lucide-react';
 import { useStore } from '../store/AppStore';
+import { IS_EMBEDDED } from '../env';
 import { useSimulatedLoad } from '../lib/hooks';
 import { fmtDate, fmtMoney, fmtMoney2, startOfToday, toISO } from '../lib/format';
 import { lastNDays, totalsFor } from '../lib/metrics';
@@ -189,9 +190,11 @@ export default function Transactions() {
         sub="Every sale is linked to a product and customer, powering circularity and customer insights"
         actions={
           <>
-            <button className="btn-secondary" onClick={exportCsv}>
-              <Download className="h-4 w-4" /> Export CSV
-            </button>
+            {!IS_EMBEDDED && (
+              <button className="btn-secondary" onClick={exportCsv}>
+                <Download className="h-4 w-4" /> Export CSV
+              </button>
+            )}
             <button className="btn-primary" onClick={() => setAdding(true)}>
               <Plus className="h-4 w-4" /> Log transaction
             </button>

@@ -1,4 +1,5 @@
-import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { HashRouter, MemoryRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { IS_EMBEDDED } from './env';
 import { AppStoreProvider } from './store/AppStore';
 import { AppLayout } from './components/layout/AppLayout';
 import { Toaster } from './components/ui';
@@ -16,10 +17,12 @@ import Education from './pages/Education';
 import Settings from './pages/Settings';
 import Investor from './pages/Investor';
 
+const Router = IS_EMBEDDED ? MemoryRouter : HashRouter;
+
 export default function App() {
   return (
     <AppStoreProvider>
-      <HashRouter>
+      <Router>
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/signin" element={<SignIn />} />
@@ -41,7 +44,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <Toaster />
-      </HashRouter>
+      </Router>
     </AppStoreProvider>
   );
 }
