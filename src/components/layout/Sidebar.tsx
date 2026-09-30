@@ -1,6 +1,7 @@
+import { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import clsx from 'clsx';
-import { Sparkles, X } from 'lucide-react';
+import { ChevronDown, Sparkles, X } from 'lucide-react';
 import { useStore } from '../../store/AppStore';
 import { adminNavItem, businessNav, investorNav, type NavItem } from './nav';
 import { useCloud } from '../../store/CloudProvider';
@@ -18,12 +19,43 @@ export function Logo({ className, light }: { className?: string; light?: boolean
   );
 }
 
+const OPEN_KEY = 'tokuma-nav-open';
+
+function readOpenGroups(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem(OPEN_KEY) ?? '[]') as string[];
+  } catch {
+    return [];
+  }
+}
+
 function Item({ item, onNavigate, depth = 0 }: { item: NavItem; onNavigate?: () => void; depth?: number }) {
   const loc = useLocation();
+  const inGroup = !!item.children && (loc.pathname === item.to || item.children.some((c) => loc.pathname.startsWith(c.to)));
   const childActive = item.children?.some((c) => loc.pathname.startsWith(c.to));
+  // Groups (Products, Supply Chain) collapse; they open when you're on one of their pages
+  // and remember whether you left them open.
+  const [open, setOpen] = useState(() => inGroup || readOpenGroups().includes(item.to));
+  useEffect(() => {
+    if (inGroup) setOpen(true);
+  }, [inGroup]);
+  const toggle = () => {
+    setOpen((o) => {
+      const next = !o;
+      try {
+        const groups = new Set(readOpenGroups());
+        if (next) groups.add(item.to);
+        else groups.delete(item.to);
+        localStorage.setItem(OPEN_KEY, JSON.stringify([...groups]));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  };
   const Icon = item.icon;
   return (
-    <li>
+    <li className="relative">
       <NavLink
         to={item.to}
         end={item.end}
@@ -32,6 +64,7 @@ function Item({ item, onNavigate, depth = 0 }: { item: NavItem; onNavigate?: () 
           clsx(
             'group relative flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors duration-150',
             depth ? 'ml-5 py-1.5 pl-4' : '',
+            item.children && 'pr-9',
             isActive
               ? 'bg-white/[0.08] text-white'
               : childActive
@@ -50,11 +83,29 @@ function Item({ item, onNavigate, depth = 0 }: { item: NavItem; onNavigate?: () 
         )}
       </NavLink>
       {item.children && (
-        <ul className="relative mt-0.5 space-y-0.5 before:absolute before:bottom-2 before:left-[1.35rem] before:top-0 before:w-px before:bg-white/10">
-          {item.children.map((c) => (
-            <Item key={c.to} item={c} onNavigate={onNavigate} depth={depth + 1} />
-          ))}
-        </ul>
+        <>
+          <button
+            type="button"
+            onClick={toggle}
+            aria-expanded={open}
+            aria-label={`${open ? 'Collapse' : 'Expand'} ${item.label}`}
+            className="absolute right-1.5 top-1 flex h-7 w-7 items-center justify-center rounded-md text-gray-500 transition hover:bg-white/[0.06] hover:text-gray-200"
+          >
+            <ChevronDown className={clsx('h-4 w-4 transition-transform duration-200', !open && '-rotate-90')} />
+          </button>
+          <div className={clsx('grid transition-[grid-template-rows] duration-200 ease-out', open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}>
+            <ul
+              className="relative space-y-0.5 overflow-hidden before:absolute before:bottom-2 before:left-[1.35rem] before:top-1 before:w-px before:bg-white/10"
+              // Keeps collapsed links out of Tab order and screen readers (React 18 types lack `inert`).
+              {...({ inert: open ? undefined : '' } as object)}
+            >
+              <li className="h-0.5" aria-hidden />
+              {item.children.map((c) => (
+                <Item key={c.to} item={c} onNavigate={onNavigate} depth={depth + 1} />
+              ))}
+            </ul>
+          </div>
+        </>
       )}
     </li>
   );
