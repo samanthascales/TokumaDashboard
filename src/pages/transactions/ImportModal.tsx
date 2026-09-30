@@ -3,7 +3,8 @@ import clsx from 'clsx';
 import { AlertTriangle, ArrowLeft, CheckCircle2, Copy, Download, FileSpreadsheet, Loader2, Upload, XCircle } from 'lucide-react';
 import { useStore } from '../../store/AppStore';
 import { IS_EMBEDDED } from '../../env';
-import { fmtDate, fmtMoney2, startOfToday, toISO } from '../../lib/format';
+import { fmtDate, fmtInt, fmtMoney2, startOfToday, toISO } from '../../lib/format';
+import { useT } from '../../i18n';
 import {
   FIELDS,
   TEMPLATE_CSV,
@@ -26,6 +27,7 @@ const cellText = (v: Cell) => (v instanceof Date ? toISO(v) : v === null ? '' : 
 
 /** mode "sales": opened from the dashboard for a sales export — wording and defaults are about sales. */
 export function ImportModal({ open, onClose, mode = 'transactions' }: { open: boolean; onClose: () => void; mode?: 'transactions' | 'sales' }) {
+  const t = useT();
   const sales = mode === 'sales';
   const { products, customers, transactions, importTransactions } = useStore();
   const [step, setStep] = useState<Step>('choose');
@@ -72,15 +74,15 @@ export function ImportModal({ open, onClose, mode = 'transactions' }: { open: bo
     setLoading(true);
     try {
       const tables = await readSpreadsheet(file);
-      if (!tables.length || tables.every((t) => t.rows.length < 2)) throw new Error('That file has no rows under the header.');
-      const first = Math.max(0, tables.findIndex((t) => t.rows.length >= 2));
+      if (!tables.length || tables.every((x) => x.rows.length < 2)) throw new Error(t('That file has no rows under the header.'));
+      const first = Math.max(0, tables.findIndex((x) => x.rows.length >= 2));
       setFileName(file.name);
       setSheets(tables);
       setSheetIdx(first);
       selectSheet(tables, first);
       setStep('map');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Couldn’t read that file.');
+      setError(e instanceof Error ? e.message : t('Couldn’t read that file.'));
     } finally {
       setLoading(false);
       if (inputRef.current) inputRef.current.value = '';
@@ -89,7 +91,7 @@ export function ImportModal({ open, onClose, mode = 'transactions' }: { open: bo
 
   const missingRequired = !mapping
     ? []
-    : [...(mapping.date === null ? ['Date'] : []), ...(mapping.amount === null && mapping.unitPrice === null ? ['Amount or Unit price'] : [])];
+    : [...(mapping.date === null ? [t('Date')] : []), ...(mapping.amount === null && mapping.unitPrice === null ? [t('Amount or Unit price')] : [])];
 
   const result = useMemo(() => {
     if (step !== 'review' || !mapping) return null;
@@ -123,7 +125,7 @@ export function ImportModal({ open, onClose, mode = 'transactions' }: { open: bo
     onClose();
   };
 
-  const colOptions = header.map((h, i) => ({ i, label: cellText(h).trim() || `Column ${i + 1}` }));
+  const colOptions = header.map((h, i) => ({ i, label: cellText(h).trim() || t('Column {n}', { n: i + 1 }) }));
 
   return (
     <Modal
@@ -132,39 +134,39 @@ export function ImportModal({ open, onClose, mode = 'transactions' }: { open: bo
       size="xl"
       title={
         <span className="flex items-center gap-2">
-          <FileSpreadsheet className="h-4 w-4 text-brand-600 dark:text-brand-400" /> {sales ? 'Import sales' : 'Import transactions'}
+          <FileSpreadsheet className="h-4 w-4 text-brand-600 dark:text-brand-400" /> {sales ? t('Import sales') : t('Import transactions')}
         </span>
       }
       sub={
         step === 'choose'
           ? sales
-            ? 'From a sales export (Shopify, Square, Etsy, your POS or a spreadsheet). It’s read in your browser — nothing is uploaded.'
-            : 'From a CSV or Excel (.xlsx) file. It’s read in your browser — nothing is uploaded.'
+            ? t('From a sales export (Shopify, Square, Etsy, your POS or a spreadsheet). It’s read in your browser — nothing is uploaded.')
+            : t('From a CSV or Excel (.xlsx) file. It’s read in your browser — nothing is uploaded.')
           : step === 'map'
-            ? `${fileName} · match your columns to Tokuma’s fields`
-            : `${fileName} · check the rows before they’re added`
+            ? `${fileName} · ${t('match your columns to Tokuma’s fields')}`
+            : `${fileName} · ${t('check the rows before they’re added')}`
       }
       footer={
         step === 'choose' ? (
           <button className="btn-secondary" onClick={onClose}>
-            Cancel
+            {t('Cancel')}
           </button>
         ) : step === 'map' ? (
           <>
-            <button className="btn-ghost mr-auto" onClick={() => setStep('choose')}>
-              <ArrowLeft className="h-4 w-4" /> Choose another file
+            <button className="btn-ghost me-auto" onClick={() => setStep('choose')}>
+              <ArrowLeft className="h-4 w-4 rtl:-scale-x-100" /> {t('Choose another file')}
             </button>
             <button className="btn-primary" disabled={missingRequired.length > 0} onClick={() => setStep('review')}>
-              Review {Math.max(0, table.length - 1).toLocaleString()} rows
+              {t('Review {count} rows', { count: Math.max(0, table.length - 1) })}
             </button>
           </>
         ) : (
           <>
-            <button className="btn-ghost mr-auto" onClick={() => setStep('map')}>
-              <ArrowLeft className="h-4 w-4" /> Back to columns
+            <button className="btn-ghost me-auto" onClick={() => setStep('map')}>
+              <ArrowLeft className="h-4 w-4 rtl:-scale-x-100" /> {t('Back to columns')}
             </button>
             <button className="btn-primary" disabled={!importable.length} onClick={confirm}>
-              Import {importable.length.toLocaleString()} {sales ? 'sale' : 'transaction'}{importable.length === 1 ? '' : 's'}
+              {sales ? t('Import {count} sales', { count: importable.length }) : t('Import {count} transactions', { count: importable.length })}
             </button>
           </>
         )
@@ -189,8 +191,8 @@ export function ImportModal({ open, onClose, mode = 'transactions' }: { open: bo
             )}
           >
             {loading ? <Loader2 className="h-8 w-8 animate-spin text-brand-600" /> : <Upload className="h-8 w-8 text-gray-400" />}
-            <p className="mt-3 text-sm font-semibold">{loading ? 'Reading file…' : 'Drop a file here, or click to choose'}</p>
-            <p className="muted mt-1 text-xs">.csv or .xlsx · one row per transaction · first row is the column names</p>
+            <p className="mt-3 text-sm font-semibold">{loading ? t('Reading file…') : t('Drop a file here, or click to choose')}</p>
+            <p className="muted mt-1 text-xs">{t('.csv or .xlsx · one row per transaction · first row is the column names')}</p>
             <input id="import-file" ref={inputRef} type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="sr-only" onChange={(e) => onFile(e.target.files?.[0])} />
           </label>
           {error && (
@@ -200,24 +202,18 @@ export function ImportModal({ open, onClose, mode = 'transactions' }: { open: bo
           )}
           <div className="grid gap-4 text-sm sm:grid-cols-2">
             <div className="rounded-lg bg-gray-50 p-4 dark:bg-white/[0.03]">
-              <p className="font-semibold">Columns Tokuma understands</p>
+              <p className="font-semibold">{t('Columns Tokuma understands')}</p>
               <p className="muted mt-1 text-xs leading-relaxed">
-                {sales ? (
-                  <>
-                    One row per sale or line item. Needs a <b>date</b> and either a <b>total</b> or a <b>unit price + quantity</b>. Add product, quantity and customer columns to fill in circularity and customer insights. Column names don’t need to match — you’ll pick them next.
-                  </>
-                ) : (
-                  <>
-                    <b>Date</b> and <b>Amount</b> (or unit price + quantity) are required. Optional: type (in / out), category, product, quantity, customer, note. Your column names don’t need to match — you’ll pick them on the next step.
-                  </>
-                )}
+                {sales
+                  ? t('One row per sale or line item. Needs a date and either a total or a unit price + quantity. Add product, quantity and customer columns to fill in circularity and customer insights. Column names don’t need to match — you’ll pick them next.')
+                  : t('Date and Amount (or unit price + quantity) are required. Optional: type (in / out), category, product, quantity, customer, note. Your column names don’t need to match — you’ll pick them on the next step.')}
               </p>
               {IS_EMBEDDED ? (
                 <p className="mt-3 flex items-center gap-2 rounded-md bg-white px-2 py-1.5 font-mono text-[11px] dark:bg-ink-850">
                   {TEMPLATE_CSV.trim()}
                   <button
-                    className="ml-auto text-gray-400 hover:text-gray-700"
-                    aria-label="Copy column names"
+                    className="ms-auto text-gray-400 hover:text-gray-700"
+                    aria-label={t('Copy column names')}
                     onClick={() => navigator.clipboard?.writeText(TEMPLATE_CSV.trim()).catch(() => undefined)}
                   >
                     <Copy className="h-3.5 w-3.5" />
@@ -225,14 +221,14 @@ export function ImportModal({ open, onClose, mode = 'transactions' }: { open: bo
                 </p>
               ) : (
                 <button className="btn-secondary btn-sm mt-3" onClick={downloadTemplate}>
-                  <Download className="h-3.5 w-3.5" /> Download blank template
+                  <Download className="h-3.5 w-3.5" /> {t('Download blank template')}
                 </button>
               )}
             </div>
             <div className="rounded-lg bg-gray-50 p-4 dark:bg-white/[0.03]">
-              <p className="font-semibold">File in SharePoint, OneDrive or Google Sheets?</p>
+              <p className="font-semibold">{t('File in SharePoint, OneDrive or Google Sheets?')}</p>
               <p className="muted mt-1 text-xs leading-relaxed">
-                Download it first, then import the downloaded file. In SharePoint or OneDrive: open the file’s <b>…</b> menu → <b>Download</b>. In Google Sheets: <b>File → Download → CSV</b> or <b>Microsoft Excel</b>.
+                {t('Download it first, then import the downloaded file. In SharePoint or OneDrive: open the file’s … menu → Download. In Google Sheets: File → Download → CSV or Microsoft Excel.')}
               </p>
             </div>
           </div>
@@ -243,7 +239,7 @@ export function ImportModal({ open, onClose, mode = 'transactions' }: { open: bo
         <div className="space-y-6">
           {sheets.length > 1 && (
             <label className="block">
-              <span className="label">Sheet</span>
+              <span className="label">{t('Sheet')}</span>
               <select
                 id="import-sheet"
                 className="input w-auto"
@@ -255,7 +251,7 @@ export function ImportModal({ open, onClose, mode = 'transactions' }: { open: bo
               >
                 {sheets.map((s, i) => (
                   <option key={s.name + i} value={i}>
-                    {s.name} ({Math.max(0, s.rows.length - 1)} rows)
+                    {s.name} ({t('{count} rows', { count: Math.max(0, s.rows.length - 1) })})
                   </option>
                 ))}
               </select>
@@ -263,13 +259,13 @@ export function ImportModal({ open, onClose, mode = 'transactions' }: { open: bo
           )}
 
           <div>
-            <p className="label">Your file (first rows)</p>
+            <p className="label">{t('Your file (first rows)')}</p>
             <div className="scrollbar-thin overflow-x-auto rounded-lg border border-gray-200 dark:border-white/10">
               <table className="w-full text-xs">
                 <thead className="bg-gray-50 dark:bg-white/[0.03]">
                   <tr>
                     {colOptions.map((c) => (
-                      <th key={c.i} className="whitespace-nowrap px-3 py-2 text-left font-semibold">
+                      <th key={c.i} className="whitespace-nowrap px-3 py-2 text-start font-semibold">
                         {c.label}
                       </th>
                     ))}
@@ -294,8 +290,10 @@ export function ImportModal({ open, onClose, mode = 'transactions' }: { open: bo
             {FIELDS.map((f) => (
               <label key={f.key} className="block">
                 <span className="label">
-                  {f.label} {f.required && <span className="text-red-500">*</span>}
-                  {(f.key === 'amount' || f.key === 'unitPrice') && <span className="font-normal text-gray-400"> · this or {f.key === 'amount' ? 'Unit price' : 'Amount'} is required</span>}
+                  {t(f.label)} {f.required && <span className="text-red-500">*</span>}
+                  {(f.key === 'amount' || f.key === 'unitPrice') && (
+                    <span className="font-normal text-gray-400"> · {t('this or {field} is required', { field: f.key === 'amount' ? t('Unit price') : t('Amount') })}</span>
+                  )}
                 </span>
                 <select
                   id={`map-${f.key}`}
@@ -311,45 +309,45 @@ export function ImportModal({ open, onClose, mode = 'transactions' }: { open: bo
                     }
                   }}
                 >
-                  <option value="">{f.required ? 'Choose a column…' : '— Not in my file —'}</option>
+                  <option value="">{f.required ? t('Choose a column…') : `— ${t('Not in my file')} —`}</option>
                   {colOptions.map((c) => (
                     <option key={c.i} value={c.i}>
                       {c.label}
                     </option>
                   ))}
                 </select>
-                <span className="muted mt-1 block text-xs">{f.help}</span>
+                <span className="muted mt-1 block text-xs">{t(f.help)}</span>
               </label>
             ))}
           </div>
 
           <div className="grid gap-4 rounded-lg bg-gray-50 p-4 text-sm dark:bg-white/[0.03] sm:grid-cols-2">
             <div>
-              <p className="label">Date format</p>
+              <p className="label">{t('Date format')}</p>
               <Segmented
                 value={order}
                 onChange={setOrder}
                 options={[
-                  { value: 'MDY', label: 'MM/DD/YYYY' },
-                  { value: 'DMY', label: 'DD/MM/YYYY' },
-                  { value: 'YMD', label: 'YYYY-MM-DD' },
+                  { value: 'MDY', label: t('MM/DD/YYYY') },
+                  { value: 'DMY', label: t('DD/MM/YYYY') },
+                  { value: 'YMD', label: t('YYYY-MM-DD') },
                 ]}
               />
-              <p className="muted mt-1.5 text-xs">{detected ? 'Detected from your dates.' : 'Your dates could be read either way — check this is right.'} Excel date cells are read automatically.</p>
+              <p className="muted mt-1.5 text-xs">{detected ? t('Detected from your dates.') : t('Your dates could be read either way — check this is right.')} {t('Excel date cells are read automatically.')}</p>
             </div>
             <div className="space-y-3">
               {mapping.type === null && (
-                <p className="muted text-xs">{sales ? 'Every row is a sale. Negative amounts are recorded as refunds (money out).' : 'No type column: positive amounts are imported as money in, negative amounts as money out.'}</p>
+                <p className="muted text-xs">{sales ? t('Every row is a sale. Negative amounts are recorded as refunds (money out).') : t('No type column: positive amounts are imported as money in, negative amounts as money out.')}</p>
               )}
               {mapping.customer !== null && (
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs">Add customers that aren’t in Tokuma yet</span>
-                  <Toggle checked={createCustomers} onChange={setCreateCustomers} label="Add new customers" />
+                  <span className="text-xs">{t('Add customers that aren’t in Tokuma yet')}</span>
+                  <Toggle checked={createCustomers} onChange={setCreateCustomers} label={t('Add new customers')} />
                 </div>
               )}
             </div>
           </div>
-          {missingRequired.length > 0 && <p className="text-sm text-red-600 dark:text-red-400">Choose a column for {missingRequired.join(' and ')} to continue.</p>}
+          {missingRequired.length > 0 && <p className="text-sm text-red-600 dark:text-red-400">{t('Choose a column for {fields} to continue.', { fields: missingRequired.join(' + ') })}</p>}
         </div>
       )}
 
@@ -357,16 +355,16 @@ export function ImportModal({ open, onClose, mode = 'transactions' }: { open: bo
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
-              { label: 'Ready', n: counts.ok, cls: 'text-brand-700 dark:text-brand-400', icon: CheckCircle2 },
-              { label: 'Ready, with notes', n: counts.warning, cls: 'text-amber-600 dark:text-amber-400', icon: AlertTriangle },
-              { label: 'Already imported', n: counts.duplicate, cls: 'text-gray-500', icon: Copy },
-              { label: 'Can’t import', n: counts.error, cls: 'text-red-600 dark:text-red-400', icon: XCircle },
+              { label: t('Ready'), n: counts.ok, cls: 'text-brand-700 dark:text-brand-400', icon: CheckCircle2 },
+              { label: t('Ready, with notes'), n: counts.warning, cls: 'text-amber-600 dark:text-amber-400', icon: AlertTriangle },
+              { label: t('Already imported'), n: counts.duplicate, cls: 'text-gray-500', icon: Copy },
+              { label: t('Can’t import'), n: counts.error, cls: 'text-red-600 dark:text-red-400', icon: XCircle },
             ].map((c) => (
               <div key={c.label} className="rounded-lg border border-gray-200 p-3 dark:border-white/10">
                 <p className={clsx('flex items-center gap-1.5 text-xs font-medium', c.cls)}>
                   <c.icon className="h-3.5 w-3.5" /> {c.label}
                 </p>
-                <p className="num mt-1 text-xl">{c.n.toLocaleString()}</p>
+                <p className="num mt-1 text-xl">{fmtInt(c.n)}</p>
               </div>
             ))}
           </div>
@@ -376,14 +374,14 @@ export function ImportModal({ open, onClose, mode = 'transactions' }: { open: bo
               value={filter}
               onChange={setFilter}
               options={[
-                { value: 'all', label: `All rows (${result.rows.length})` },
-                { value: 'problems', label: `Needs a look (${counts.warning + counts.error + counts.duplicate})` },
+                { value: 'all', label: t('All rows ({count})', { count: result.rows.length }) },
+                { value: 'problems', label: t('Needs a look ({count})', { count: counts.warning + counts.error + counts.duplicate }) },
               ]}
             />
             {counts.duplicate > 0 && (
               <span className="flex items-center gap-2 text-xs">
-                Import rows that look already imported
-                <Toggle checked={includeDupes} onChange={setIncludeDupes} label="Include duplicates" />
+                {t('Import rows that look already imported')}
+                <Toggle checked={includeDupes} onChange={setIncludeDupes} label={t('Include duplicates')} />
               </span>
             )}
           </div>
@@ -393,8 +391,8 @@ export function ImportModal({ open, onClose, mode = 'transactions' }: { open: bo
               <thead className="sticky top-0 bg-gray-50 dark:bg-ink-850">
                 <tr>
                   {['Row', 'Status', 'Date', 'Type', 'Category', 'Product', 'Qty', 'Customer', 'Amount'].map((h) => (
-                    <th key={h} className={clsx('whitespace-nowrap px-3 py-2 text-left font-semibold', h === 'Amount' && 'text-right')}>
-                      {h}
+                    <th key={h} className={clsx('whitespace-nowrap px-3 py-2 font-semibold', h === 'Amount' ? 'text-end' : 'text-start')}>
+                      {t(h)}
                     </th>
                   ))}
                 </tr>
@@ -405,10 +403,10 @@ export function ImportModal({ open, onClose, mode = 'transactions' }: { open: bo
                 ))}
               </tbody>
             </table>
-            {shown.length === 0 && <p className="muted p-6 text-center text-sm">Nothing needs a look — every row is ready.</p>}
-            {shown.length > PREVIEW_LIMIT && <p className="muted border-t border-gray-100 p-3 text-center text-xs dark:border-white/5">Showing the first {PREVIEW_LIMIT} of {shown.length.toLocaleString()} rows. All ready rows will be imported.</p>}
+            {shown.length === 0 && <p className="muted p-6 text-center text-sm">{t('Nothing needs a look — every row is ready.')}</p>}
+            {shown.length > PREVIEW_LIMIT && <p className="muted border-t border-gray-100 p-3 text-center text-xs dark:border-white/5">{t('Showing the first {n} of {total} rows. All ready rows will be imported.', { n: PREVIEW_LIMIT, total: fmtInt(shown.length) })}</p>}
           </div>
-          <p className="muted text-xs">Rows marked “Can’t import” are skipped — fix them in your file and import it again. Imports don’t change stock on hand; update stock on the Inventory page if needed.</p>
+          <p className="muted text-xs">{t('Rows marked “Can’t import” are skipped — fix them in your file and import it again. Imports don’t change stock on hand; update stock on the Inventory page if needed.')}</p>
         </div>
       )}
     </Modal>
@@ -416,8 +414,9 @@ export function ImportModal({ open, onClose, mode = 'transactions' }: { open: bo
 }
 
 function ReviewRow({ r, excluded }: { r: PreviewRow; excluded: boolean }) {
+  const t = useT();
   const tone = r.status === 'ok' ? 'green' : r.status === 'warning' ? 'amber' : r.status === 'duplicate' ? 'gray' : 'red';
-  const label = r.status === 'ok' ? 'Ready' : r.status === 'warning' ? 'Ready' : r.status === 'duplicate' ? (excluded ? 'Skipped' : 'Duplicate') : 'Error';
+  const label = r.status === 'ok' || r.status === 'warning' ? t('Ready') : r.status === 'duplicate' ? (excluded ? t('Skipped') : t('Duplicate')) : t('Error');
   return (
     <>
       <tr className={clsx('border-t border-gray-100 dark:border-white/5', (r.status === 'error' || excluded) && 'opacity-60')}>
@@ -426,12 +425,12 @@ function ReviewRow({ r, excluded }: { r: PreviewRow; excluded: boolean }) {
           <Badge tone={tone}>{label}</Badge>
         </td>
         <td className="whitespace-nowrap px-3 py-1.5">{r.tx ? fmtDate(r.tx.date) : '—'}</td>
-        <td className="px-3 py-1.5">{r.tx ? (r.tx.type === 'inflow' ? 'In' : 'Out') : '—'}</td>
-        <td className="max-w-[140px] truncate px-3 py-1.5">{r.tx?.category ?? '—'}</td>
+        <td className="px-3 py-1.5">{r.tx ? (r.tx.type === 'inflow' ? t('In') : t('Out')) : '—'}</td>
+        <td className="max-w-[140px] truncate px-3 py-1.5">{r.tx ? t(r.tx.category) : '—'}</td>
         <td className="max-w-[140px] truncate px-3 py-1.5">{r.productName ?? '—'}</td>
         <td className="px-3 py-1.5 tabular-nums">{r.tx?.quantity ?? '—'}</td>
         <td className="max-w-[140px] truncate px-3 py-1.5">{r.customerName ?? '—'}</td>
-        <td className="whitespace-nowrap px-3 py-1.5 text-right font-medium tabular-nums">{r.tx ? `${r.tx.type === 'inflow' ? '+' : '−'}${fmtMoney2(r.tx.amount)}` : '—'}</td>
+        <td className="whitespace-nowrap px-3 py-1.5 text-end font-medium tabular-nums">{r.tx ? <span dir="ltr">{`${r.tx.type === 'inflow' ? '+' : '−'}${fmtMoney2(r.tx.amount)}`}</span> : '—'}</td>
       </tr>
       {r.messages.length > 0 && (
         <tr>

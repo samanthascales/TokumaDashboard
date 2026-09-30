@@ -7,10 +7,13 @@ import { useCloud } from '../store/CloudProvider';
 import { Logo } from '../components/layout/Sidebar';
 import { Field, Segmented } from '../components/ui';
 import { friendlyError, sendPasswordReset, signIn, signUp } from '../lib/cloud';
+import { tNode, useT } from '../i18n';
+import { LanguageMenu } from '../components/layout/LanguageMenu';
 
 type Mode = 'signin' | 'signup' | 'reset';
 
 export default function SignIn() {
+  const t = useT();
   const [params] = useSearchParams();
   const portal = params.get('portal') === 'investor' ? 'investor' : 'business';
   const navigate = useNavigate();
@@ -46,8 +49,8 @@ export default function SignIn() {
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return setError('Enter a valid email address.');
-    if (mode !== 'reset' && password.length < 8) return setError('Use a password of at least 8 characters.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return setError(t('Enter a valid email address.'));
+    if (mode !== 'reset' && password.length < 8) return setError(t('Use a password of at least 8 characters.'));
     setBusy(true);
     try {
       if (mode === 'signin') await signIn(email, password);
@@ -68,7 +71,8 @@ export default function SignIn() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 dark:bg-ink-950">
+    <div className="relative flex min-h-screen items-center justify-center bg-gray-50 px-4 dark:bg-ink-950">
+      <LanguageMenu className="absolute end-4 top-4" />
       <div className="card w-full max-w-sm animate-pop-in p-8">
         <Link to="/" className="flex justify-center">
           <Logo />
@@ -76,8 +80,8 @@ export default function SignIn() {
 
         {!cloud.enabled ? (
           <div className="text-center">
-            <h1 className="mt-6 text-xl font-semibold">Open the {portal} portal</h1>
-            <p className="muted mt-2 text-sm">Accounts aren’t switched on for this site yet. Your data will be saved in this browser only.</p>
+            <h1 className="mt-6 text-xl font-semibold">{portal === 'investor' ? t('Open the investor portal') : t('Open the business portal')}</h1>
+            <p className="muted mt-2 text-sm">{t('Accounts aren’t switched on for this site yet. Your data will be saved in this browser only.')}</p>
             <button
               className="btn-primary mt-6 w-full py-2.5"
               onClick={() => {
@@ -85,26 +89,22 @@ export default function SignIn() {
                 navigate(portal === 'investor' ? '/app/investor' : '/onboarding');
               }}
             >
-              Continue
+              {t('Continue')}
             </button>
           </div>
         ) : sent ? (
           <div className="text-center">
             <MailCheck className="mx-auto mt-6 h-10 w-10 text-brand-600 dark:text-brand-400" />
-            <h1 className="mt-3 text-lg font-semibold">Check your email</h1>
+            <h1 className="mt-3 text-lg font-semibold">{t('Check your email')}</h1>
             <p className="muted mt-2 text-sm">
               {sent === 'confirm' ? (
-                <>
-                  We sent a confirmation link to <b className="text-gray-900 dark:text-white">{email}</b>. Open it on this device, then sign in.
-                </>
+                tNode('We sent a confirmation link to {email}. Open it on this device, then sign in.', { email: <b className="text-gray-900 dark:text-white">{email}</b> })
               ) : (
-                <>
-                  If <b className="text-gray-900 dark:text-white">{email}</b> has an account, we sent a link to choose a new password.
-                </>
+                tNode('If {email} has an account, we sent a link to choose a new password.', { email: <b className="text-gray-900 dark:text-white">{email}</b> })
               )}
             </p>
             <button className="btn-secondary mt-6 w-full" onClick={() => setMode('signin')}>
-              Back to sign in
+              {t('Back to sign in')}
             </button>
           </div>
         ) : cloud.user ? (
@@ -113,37 +113,37 @@ export default function SignIn() {
               <>
                 <p className="text-center text-red-600 dark:text-red-400">{cloud.loadError}</p>
                 <button className="btn-secondary" onClick={() => cloud.reload()}>
-                  Try again
+                  {t('Try again')}
                 </button>
               </>
             ) : (
               <>
                 <Loader2 className="h-6 w-6 animate-spin text-brand-600" />
-                Loading your workspace…
+                {t('Loading your workspace…')}
               </>
             )}
           </div>
         ) : (
           <form onSubmit={submit} noValidate>
-            <h1 className="mt-6 text-center text-xl font-semibold">{mode === 'signup' ? 'Create your account' : mode === 'reset' ? 'Reset your password' : 'Sign in'}</h1>
-            <p className="muted mt-1 text-center text-sm">{portal === 'investor' ? 'Investor portal' : 'Business portal'}</p>
+            <h1 className="mt-6 text-center text-xl font-semibold">{mode === 'signup' ? t('Create your account') : mode === 'reset' ? t('Reset your password') : t('Sign in')}</h1>
+            <p className="muted mt-1 text-center text-sm">{portal === 'investor' ? t('Investor portal') : t('Business portal')}</p>
             {mode !== 'reset' && (
               <Segmented
                 className="mt-5 flex w-full [&>button]:flex-1"
                 value={mode}
                 onChange={setMode}
                 options={[
-                  { value: 'signin', label: 'Sign in' },
-                  { value: 'signup', label: 'Create account' },
+                  { value: 'signin', label: t('Sign in') },
+                  { value: 'signup', label: t('Create account') },
                 ]}
               />
             )}
             <div className="mt-5 space-y-4">
-              <Field label="Email">
+              <Field label={t('Email')}>
                 <input id="auth-email" type="email" autoComplete="email" className="input" value={email} onChange={(e) => setEmail(e.target.value)} />
               </Field>
               {mode !== 'reset' && (
-                <Field label="Password" hint={mode === 'signup' ? 'At least 8 characters' : undefined}>
+                <Field label={t('Password')} hint={mode === 'signup' ? t('At least 8 characters') : undefined}>
                   <input id="auth-password" type="password" autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} className="input" value={password} onChange={(e) => setPassword(e.target.value)} />
                 </Field>
               )}
@@ -151,19 +151,19 @@ export default function SignIn() {
             {error && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{error}</p>}
             <button type="submit" className="btn-primary mt-5 w-full py-2.5" disabled={busy}>
               {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-              {mode === 'signup' ? 'Create account' : mode === 'reset' ? 'Send reset link' : 'Sign in'}
+              {mode === 'signup' ? t('Create account') : mode === 'reset' ? t('Send reset link') : t('Sign in')}
             </button>
             <p className="muted mt-4 text-center text-xs">
               {mode === 'signin' ? (
                 <button type="button" className="font-medium text-brand-700 hover:underline dark:text-brand-400" onClick={() => setMode('reset')}>
-                  Forgot password?
+                  {t('Forgot password?')}
                 </button>
               ) : mode === 'reset' ? (
                 <button type="button" className="font-medium text-brand-700 hover:underline dark:text-brand-400" onClick={() => setMode('signin')}>
-                  Back to sign in
+                  {t('Back to sign in')}
                 </button>
               ) : (
-                <>By creating an account you agree to Tokuma storing your business data to provide the service.</>
+                t('By creating an account you agree to Tokuma storing your business data to provide the service.')
               )}
             </p>
           </form>
@@ -172,11 +172,11 @@ export default function SignIn() {
         <p className={clsx('muted mt-6 text-center text-xs')}>
           {portal === 'business' ? (
             <>
-              Investor? <Link className="font-medium text-brand-700 hover:underline dark:text-brand-400" to="/signin?portal=investor">Use the investor portal</Link>
+              {t('Investor?')} <Link className="font-medium text-brand-700 hover:underline dark:text-brand-400" to="/signin?portal=investor">{t('Use the investor portal')}</Link>
             </>
           ) : (
             <>
-              Running a business? <Link className="font-medium text-brand-700 hover:underline dark:text-brand-400" to="/signin?portal=business">Use the business portal</Link>
+              {t('Running a business?')} <Link className="font-medium text-brand-700 hover:underline dark:text-brand-400" to="/signin?portal=business">{t('Use the business portal')}</Link>
             </>
           )}
         </p>

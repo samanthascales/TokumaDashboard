@@ -4,6 +4,8 @@ import { useStore } from '../../store/AppStore';
 import { avgDailySales, classifyMaterial, materialCircularity, reorderPoint } from '../../lib/metrics';
 import { Field, Modal, Ring, StockBar } from '../../components/ui';
 import type { MaterialClass, Product } from '../../types';
+import { tk, useLang, useT } from '../../i18n';
+import { fmtNum, fmtPct } from '../../lib/format';
 
 // Form state keeps "not entered yet" (null / '') separate from real values, so
 // nothing is pre-filled and no number is shown until the owner types it.
@@ -43,11 +45,14 @@ const toDraft = (p: Product): Draft => ({
   ...p,
   materials: p.materials.map((m) => ({ name: m.name, weightKg: m.weightKg, type: classifyMaterial(m) })),
 });
+const NEGATIVE_MARGIN = 'negative-margin';
 const num = (v: string) => (v.trim() === '' ? null : Number(v));
 
-const CATEGORIES = ['Tops', 'Outerwear', 'Bottoms', 'Accessories', 'Home', 'Other'];
+const CATEGORIES = [tk('Tops'), tk('Outerwear'), tk('Bottoms'), tk('Accessories'), tk('Home'), tk('Other')];
 
 export function ProductModal({ open, onClose, product }: { open: boolean; onClose: () => void; product?: Product | null }) {
+  const t = useT();
+  const { lang } = useLang();
   const { suppliers, addProduct, updateProduct, deleteProduct, ledger } = useStore();
   const [d, setD] = useState<Draft>(empty);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -61,30 +66,33 @@ export function ProductModal({ open, onClose, product }: { open: boolean; onClos
 
   const errors = useMemo(() => {
     const e: Record<string, string | null> = {};
-    e.name = d.name.trim().length < 2 ? 'Give the product a name' : null;
-    e.price = d.price === null || d.price <= 0 ? 'Enter the selling price' : null;
-    e.unitCost = d.unitCost === null ? 'Enter what one unit costs you to make or buy' : d.unitCost < 0 ? 'Cost cannot be negative' : d.price && d.unitCost >= d.price ? 'Unit cost is above price — negative margin' : null;
-    e.stockOnHand = d.stockOnHand === null ? 'Enter how many you have in stock (0 if none)' : d.stockOnHand < 0 ? 'Cannot be negative' : null;
-    e.lowStockThreshold = d.lowStockThreshold !== null && d.lowStockThreshold < 0 ? 'Cannot be negative' : null;
+    e.name = d.name.trim().length < 2 ? t('Give the product a name') : null;
+    e.price = d.price === null || d.price <= 0 ? t('Enter the selling price') : null;
+    e.unitCost = d.unitCost === null ? t('Enter what one unit costs you to make or buy') : d.unitCost < 0 ? t('Cost cannot be negative') : d.price && d.unitCost >= d.price ? NEGATIVE_MARGIN : null;
+    e.stockOnHand = d.stockOnHand === null ? t('Enter how many you have in stock (0 if none)') : d.stockOnHand < 0 ? t('Cannot be negative') : null;
+    e.lowStockThreshold = d.lowStockThreshold !== null && d.lowStockThreshold < 0 ? t('Cannot be negative') : null;
     e.materials =
       d.materials.length === 0
-        ? 'Add at least one material'
+        ? t('Add at least one material')
         : d.materials.some((m) => !m.name.trim() || !m.weightKg || m.weightKg <= 0)
-          ? 'Each material needs a name and a weight'
+          ? t('Each material needs a name and a weight')
           : d.materials.some((m) => !m.type)
-            ? 'Choose recycled, reused or virgin for each material'
+            ? t('Choose recycled, reused or virgin for each material')
             : null;
     return e;
-  }, [d]);
-  const valid = Object.values(errors).every((v) => !v || v.includes('negative margin'));
-  const show = (k: string) => (touched[k] ? errors[k] : null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- messages follow the language
+  }, [d, lang]);
+  // A negative margin is a warning, not a blocker.
+  const valid = Object.values(errors).every((v) => !v || v === NEGATIVE_MARGIN);
+  const message = (v: string | null | undefined) => (v === NEGATIVE_MARGIN ? t('Unit cost is above price — negative margin') : v);
+  const show = (k: string) => (touched[k] ? message(errors[k]) : null);
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => {
     setD((x) => ({ ...x, [k]: v }));
-    setTouched((t) => ({ ...t, [k]: true }));
+    setTouched((x) => ({ ...x, [k]: true }));
   };
   const setMat = (i: number, m: Partial<DraftMaterial>) => {
     setD((x) => ({ ...x, materials: x.materials.map((mm, j) => (j === i ? { ...mm, ...m } : mm)) }));
-    setTouched((t) => ({ ...t, materials: true }));
+    setTouched((x) => ({ ...x, materials: true }));
   };
 
   const supplier = suppliers.find((s) => s.id === d.supplierId);
@@ -123,26 +131,26 @@ export function ProductModal({ open, onClose, product }: { open: boolean; onClos
       open={open}
       onClose={onClose}
       size="xl"
-      title={product ? `Edit ${product.name}` : 'Add product'}
-      sub={product ? product.sku : 'Materials drive your circularity score automatically'}
+      title={product ? t('Edit {name}', { name: product.name }) : t('Add product')}
+      sub={product ? product.sku : t('Materials drive your circularity score automatically')}
       footer={
         <>
           {product && (
             <button
-              className="btn-ghost mr-auto text-red-600 dark:text-red-400"
+              className="btn-ghost me-auto text-red-600 dark:text-red-400"
               onClick={() => {
                 deleteProduct(product.id);
                 onClose();
               }}
             >
-              <Trash2 className="h-4 w-4" /> Archive
+              <Trash2 className="h-4 w-4" /> {t('Archive')}
             </button>
           )}
           <button className="btn-secondary" onClick={onClose}>
-            Cancel
+            {t('Cancel')}
           </button>
           <button className="btn-primary" onClick={save}>
-            {product ? 'Save changes' : 'Add product'}
+            {product ? t('Save changes') : t('Add product')}
           </button>
         </>
       }
@@ -150,50 +158,53 @@ export function ProductModal({ open, onClose, product }: { open: boolean; onClos
       <div className="grid gap-6 lg:grid-cols-[1fr_260px]">
         <div className="space-y-5">
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Product name" error={show('name')} className="sm:col-span-2">
-              <input className={`input ${show('name') ? 'input-error' : ''}`} value={d.name} onChange={(e) => set('name', e.target.value)} placeholder="e.g. Organic Cotton T-Shirt" />
+            <Field label={t('Product name')} error={show('name')} className="sm:col-span-2">
+              <input className={`input ${show('name') ? 'input-error' : ''}`} value={d.name} onChange={(e) => set('name', e.target.value)} placeholder={t('e.g. Organic Cotton T-Shirt')} />
             </Field>
-            <Field label="SKU">
+            <Field label={t('SKU')}>
               <input className="input" value={d.sku} onChange={(e) => set('sku', e.target.value)} placeholder="TKM-XX-000" />
             </Field>
-            <Field label="Category">
+            <Field label={t('Category')}>
               <select className="input" value={d.category} onChange={(e) => set('category', e.target.value)}>
-                <option value="">Select a category (optional)</option>
+                <option value="">{t('Select a category (optional)')}</option>
                 {CATEGORIES.map((c) => (
-                  <option key={c}>{c}</option>
+                  <option key={c} value={c}>
+                    {t(c)}
+                  </option>
                 ))}
+                {d.category && !CATEGORIES.includes(d.category) && <option value={d.category}>{t(d.category)}</option>}
               </select>
             </Field>
-            <Field label="Price ($)" error={show('price')}>
+            <Field label={t('Price ($)')} error={show('price')}>
               <input type="number" min={0} step="0.01" className={`input ${show('price') ? 'input-error' : ''}`} value={d.price ?? ''} onChange={(e) => set('price', num(e.target.value))} />
             </Field>
-            <Field label="Unit cost ($)" error={show('unitCost')} hint={margin !== null ? `${margin.toFixed(0)}% gross margin` : undefined}>
+            <Field label={t('Unit cost ($)')} error={show('unitCost')} hint={margin !== null ? t('{pct} gross margin', { pct: fmtPct(margin, 0) }) : undefined}>
               <input type="number" min={0} step="0.01" className={`input ${show('unitCost') ? 'input-error' : ''}`} value={d.unitCost ?? ''} onChange={(e) => set('unitCost', num(e.target.value))} />
             </Field>
           </div>
 
           <div>
             <div className="mb-2 flex items-center justify-between">
-              <span className="label mb-0">Bill of materials</span>
+              <span className="label mb-0">{t('Bill of materials')}</span>
               <button className="btn-ghost btn-sm" onClick={() => setD((x) => ({ ...x, materials: [...x.materials, blankMaterial()] }))}>
-                <Plus className="h-3.5 w-3.5" /> Add material
+                <Plus className="h-3.5 w-3.5" /> {t('Add material')}
               </button>
             </div>
             <div className="space-y-2">
               {d.materials.map((m, i) => (
                 <div key={i} className="grid grid-cols-[1fr_90px_120px_32px] items-center gap-2">
-                  <input className="input" placeholder="Material name" value={m.name} onChange={(e) => setMat(i, { name: e.target.value })} />
+                  <input className="input" placeholder={t('Material name')} value={m.name} onChange={(e) => setMat(i, { name: e.target.value })} />
                   <div className="relative">
-                    <input type="number" step="0.01" min={0} className="input pr-8" placeholder="0.00" value={m.weightKg ?? ''} onChange={(e) => setMat(i, { weightKg: num(e.target.value) })} />
-                    <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">kg</span>
+                    <input type="number" step="0.01" min={0} className="input pe-8" placeholder="0.00" value={m.weightKg ?? ''} onChange={(e) => setMat(i, { weightKg: num(e.target.value) })} />
+                    <span className="pointer-events-none absolute end-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">kg</span>
                   </div>
-                  <select className="input" value={m.type} onChange={(e) => setMat(i, { type: e.target.value as MaterialClass | '' })} aria-label="Material type">
-                    <option value="">Type…</option>
-                    <option>Recycled</option>
-                    <option>Reused</option>
-                    <option>Virgin</option>
+                  <select className="input" value={m.type} onChange={(e) => setMat(i, { type: e.target.value as MaterialClass | '' })} aria-label={t('Material type')}>
+                    <option value="">{t('Type…')}</option>
+                    <option value="Recycled">{t('Recycled')}</option>
+                    <option value="Reused">{t('Reused')}</option>
+                    <option value="Virgin">{t('Virgin')}</option>
                   </select>
-                  <button className="icon-btn h-8 w-8" onClick={() => setD((x) => ({ ...x, materials: x.materials.filter((_, j) => j !== i) }))} aria-label="Remove material">
+                  <button className="icon-btn h-8 w-8" onClick={() => setD((x) => ({ ...x, materials: x.materials.filter((_, j) => j !== i) }))} aria-label={t('Remove material')}>
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
@@ -204,28 +215,34 @@ export function ProductModal({ open, onClose, product }: { open: boolean; onClos
 
           <div className="grid gap-4 sm:grid-cols-2">
             <Field
-              label="Supplier"
-              hint={supplier ? (lead !== null ? `Lead time ${lead} days (from this supplier)` : 'This supplier has no lead time yet — add one to get a reorder point') : 'Link a supplier with a lead time to get a reorder point'}
+              label={t('Supplier')}
+              hint={
+                supplier
+                  ? lead !== null
+                    ? t('Lead time {count} days (from this supplier)', { count: lead })
+                    : t('This supplier has no lead time yet — add one to get a reorder point')
+                  : t('Link a supplier with a lead time to get a reorder point')
+              }
               className="sm:col-span-2"
             >
               <select className="input" value={d.supplierId ?? ''} onChange={(e) => set('supplierId', e.target.value || undefined)}>
-                <option value="">— None —</option>
+                <option value="">— {t('None')} —</option>
                 {suppliers.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
-                    {s.avgLeadTimeDays !== null ? ` · ${s.avgLeadTimeDays}d lead` : ''}
+                    {s.avgLeadTimeDays !== null ? ` · ${t('{n}d lead', { n: s.avgLeadTimeDays })}` : ''}
                   </option>
                 ))}
               </select>
             </Field>
-            <Field label="Stock on hand" error={show('stockOnHand')}>
-              <input type="number" min={0} className={`input ${show('stockOnHand') ? 'input-error' : ''}`} placeholder="Units in stock" value={d.stockOnHand ?? ''} onChange={(e) => set('stockOnHand', num(e.target.value))} />
+            <Field label={t('Stock on hand')} error={show('stockOnHand')}>
+              <input type="number" min={0} className={`input ${show('stockOnHand') ? 'input-error' : ''}`} placeholder={t('Units in stock')} value={d.stockOnHand ?? ''} onChange={(e) => set('stockOnHand', num(e.target.value))} />
             </Field>
-            <Field label="Low-stock threshold" error={show('lowStockThreshold')} hint="Optional — alert me at or below this many">
-              <input type="number" min={0} className="input" placeholder="Optional" value={d.lowStockThreshold ?? ''} onChange={(e) => set('lowStockThreshold', num(e.target.value))} />
+            <Field label={t('Low-stock threshold')} error={show('lowStockThreshold')} hint={t('Optional — alert me at or below this many')}>
+              <input type="number" min={0} className="input" placeholder={t('Optional')} value={d.lowStockThreshold ?? ''} onChange={(e) => set('lowStockThreshold', num(e.target.value))} />
             </Field>
-            <Field label="Safety stock" hint="Optional — extra buffer added to the reorder point">
-              <input type="number" min={0} className="input" placeholder="Optional" value={d.safetyStock ?? ''} onChange={(e) => set('safetyStock', num(e.target.value))} />
+            <Field label={t('Safety stock')} hint={t('Optional — extra buffer added to the reorder point')}>
+              <input type="number" min={0} className="input" placeholder={t('Optional')} value={d.safetyStock ?? ''} onChange={(e) => set('safetyStock', num(e.target.value))} />
             </Field>
           </div>
         </div>
@@ -238,20 +255,20 @@ export function ProductModal({ open, onClose, product }: { open: boolean; onClos
               <Ring value={score} size={56} stroke={6} />
             )}
             <div>
-              <p className="text-sm font-semibold">Circularity score</p>
-              <p className="muted text-xs">{score === null ? 'Fill in each material’s weight and type to calculate' : 'Share of weight from recycled/reused inputs'}</p>
+              <p className="text-sm font-semibold">{t('Circularity score')}</p>
+              <p className="muted text-xs">{score === null ? t('Fill in each material’s weight and type to calculate') : t('Share of weight from recycled/reused inputs')}</p>
             </div>
           </div>
           <div className="border-t border-gray-200 pt-4 dark:border-white/10">
-            <p className="text-sm font-semibold">Reorder point</p>
+            <p className="text-sm font-semibold">{t('Reorder point')}</p>
             {rop === null ? (
-              <p className="muted mt-1 text-xs leading-relaxed">Needs a linked supplier with a lead time.</p>
+              <p className="muted mt-1 text-xs leading-relaxed">{t('Needs a linked supplier with a lead time.')}</p>
             ) : (
               <>
-                <p className="num mt-1 text-2xl">{rop} units</p>
+                <p className="num mt-1 text-2xl">{t('{count} units', { count: rop })}</p>
                 <p className="muted mt-1 text-xs leading-relaxed">
-                  ({avg.toFixed(2)}/day sold × {lead}d lead) + {d.safetyStock ?? 0} safety
-                  {avg === 0 && ' — no sales logged yet'}
+                  {t('({avg}/day sold × {lead}d lead) + {safety} safety', { avg: fmtNum(avg, 2), lead: lead!, safety: d.safetyStock ?? 0 })}
+                  {avg === 0 && ` — ${t('no sales logged yet')}`}
                 </p>
               </>
             )}

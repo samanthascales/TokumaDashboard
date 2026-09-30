@@ -103,6 +103,8 @@ export interface AppNotification {
   date: string; // ISO datetime
   read: boolean;
   to?: string;
+  /** What the notification is about (e.g. `stock:<productId>`), for de-duplicating. */
+  ref?: string;
 }
 
 export interface BusinessProfile {

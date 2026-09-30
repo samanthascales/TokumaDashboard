@@ -1,5 +1,6 @@
 import { HashRouter, MemoryRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { IS_EMBEDDED } from './env';
+import { I18nProvider } from './i18n';
 import { AppStoreProvider } from './store/AppStore';
 import { CloudProvider } from './store/CloudProvider';
 import { AppLayout } from './components/layout/AppLayout';
@@ -24,6 +25,7 @@ const Router = IS_EMBEDDED ? MemoryRouter : HashRouter;
 
 export default function App() {
   return (
+    <I18nProvider>
     <AppStoreProvider>
       <CloudProvider>
         <Router>
@@ -67,5 +69,6 @@ export default function App() {
         </Router>
       </CloudProvider>
     </AppStoreProvider>
+    </I18nProvider>
   );
 }

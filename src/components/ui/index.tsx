@@ -4,6 +4,8 @@ import clsx from 'clsx';
 import { ArrowDownRight, ArrowUpRight, CheckCircle2, Info, X, XCircle } from 'lucide-react';
 import { useCountUp } from '../../lib/hooks';
 import { useStore } from '../../store/AppStore';
+import { useT } from '../../i18n';
+import { fmtNum } from '../../lib/format';
 
 export { clsx };
 
@@ -77,7 +79,7 @@ export function Delta({ value, suffix = '%', invert, className }: { value: numbe
       )}
     >
       {!flat && <Icon className="h-3.5 w-3.5" />}
-      {flat ? '0.0' : Math.abs(value).toFixed(1)}
+      {fmtNum(flat ? 0 : Math.abs(value))}
       {suffix}
     </span>
   );
@@ -206,7 +208,7 @@ export function Toggle({ checked, onChange, label }: { checked: boolean; onChang
       onClick={() => onChange(!checked)}
       className={clsx('relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition', checked ? 'bg-brand-600' : 'bg-gray-300 dark:bg-white/15')}
     >
-      <span className={clsx('inline-block h-4 w-4 transform rounded-full bg-white shadow transition', checked ? 'translate-x-[18px]' : 'translate-x-0.5')} />
+      <span className={clsx('inline-block h-4 w-4 transform rounded-full bg-white shadow transition', checked ? 'translate-x-[18px] rtl:-translate-x-[18px]' : 'translate-x-0.5 rtl:-translate-x-0.5')} />
     </button>
   );
 }
@@ -220,7 +222,8 @@ export function Tip({ content, children, className, side = 'top' }: { content: R
       <span
         role="tooltip"
         className={clsx(
-          'pointer-events-none absolute left-1/2 z-40 w-max max-w-[240px] -translate-x-1/2 rounded-lg bg-gray-900 px-2.5 py-1.5 text-xs font-normal leading-relaxed text-white opacity-0 shadow-lg transition duration-150 group-hover/tip:opacity-100 dark:bg-ink-700',
+          // Not rendered until hover, so an off-screen tooltip never widens the page.
+          'pointer-events-none absolute left-1/2 z-40 hidden w-max max-w-[240px] -translate-x-1/2 animate-fade-in rounded-lg bg-gray-900 px-2.5 py-1.5 text-xs font-normal leading-relaxed text-white shadow-lg group-hover/tip:block dark:bg-ink-700',
           side === 'top' ? 'bottom-full mb-2' : 'top-full mt-2',
         )}
       >
@@ -233,6 +236,7 @@ export function Tip({ content, children, className, side = 'top' }: { content: R
 /* ---------------- Modal ---------------- */
 
 export function Modal({ open, onClose, title, sub, children, footer, size = 'md' }: { open: boolean; onClose: () => void; title: ReactNode; sub?: ReactNode; children: ReactNode; footer?: ReactNode; size?: 'sm' | 'md' | 'lg' | 'xl' }) {
+  const t = useT();
   const id = useId();
   useEffect(() => {
     if (!open) return;
@@ -258,7 +262,7 @@ export function Modal({ open, onClose, title, sub, children, footer, size = 'md'
             </h2>
             {sub && <p className="muted mt-0.5 text-sm">{sub}</p>}
           </div>
-          <button className="icon-btn -mr-2 h-8 w-8" onClick={onClose} aria-label="Close">
+          <button className="icon-btn -me-2 h-8 w-8" onClick={onClose} aria-label={t('Close')}>
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -273,19 +277,20 @@ export function Modal({ open, onClose, title, sub, children, footer, size = 'md'
 /* ---------------- Toasts ---------------- */
 
 export function Toaster() {
+  const t = useT();
   const { toasts, dismissToast } = useStore();
   return createPortal(
-    <div className="pointer-events-none fixed bottom-4 right-4 z-[60] flex w-[calc(100%-2rem)] max-w-sm flex-col gap-2">
-      {toasts.map((t) => {
-        const Icon = t.kind === 'success' ? CheckCircle2 : t.kind === 'error' ? XCircle : Info;
+    <div className="pointer-events-none fixed bottom-4 end-4 z-[60] flex w-[calc(100%-2rem)] max-w-sm flex-col gap-2">
+      {toasts.map((x) => {
+        const Icon = x.kind === 'success' ? CheckCircle2 : x.kind === 'error' ? XCircle : Info;
         return (
-          <div key={t.id} className="pointer-events-auto flex animate-toast-in items-start gap-3 rounded-xl border border-gray-200 bg-white p-3.5 shadow-pop dark:border-white/10 dark:bg-ink-850">
-            <Icon className={clsx('mt-0.5 h-5 w-5 shrink-0', t.kind === 'success' ? 'text-brand-600 dark:text-brand-400' : t.kind === 'error' ? 'text-red-500' : 'text-gray-500')} />
+          <div key={x.id} className="pointer-events-auto flex animate-toast-in items-start gap-3 rounded-xl border border-gray-200 bg-white p-3.5 shadow-pop dark:border-white/10 dark:bg-ink-850">
+            <Icon className={clsx('mt-0.5 h-5 w-5 shrink-0', x.kind === 'success' ? 'text-brand-600 dark:text-brand-400' : x.kind === 'error' ? 'text-red-500' : 'text-gray-500')} />
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium">{t.title}</p>
-              {t.body && <p className="muted mt-0.5 text-xs">{t.body}</p>}
+              <p className="text-sm font-medium">{x.title}</p>
+              {x.body && <p className="muted mt-0.5 text-xs">{x.body}</p>}
             </div>
-            <button className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" onClick={() => dismissToast(t.id)} aria-label="Dismiss">
+            <button className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" onClick={() => dismissToast(x.id)} aria-label={t('Dismiss')}>
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -326,6 +331,7 @@ export function Sparkline({ data, className, height = 36 }: { data: number[]; cl
 /* ---------------- Stock bar ---------------- */
 
 export function StockBar({ stock, threshold, reorderPoint, compact }: { stock: number; threshold: number; reorderPoint: number | null; compact?: boolean }) {
+  const t = useT();
   const rop = reorderPoint ?? 0;
   const max = Math.max(stock, rop * 2.2, threshold * 3, 1);
   const pct = (v: number) => `${Math.min(100, (v / max) * 100)}%`;
@@ -335,13 +341,13 @@ export function StockBar({ stock, threshold, reorderPoint, compact }: { stock: n
     <div className={clsx('w-full', compact ? 'min-w-[120px]' : '')}>
       <div className="relative h-2 w-full overflow-visible rounded-full bg-gray-100 dark:bg-white/[0.06]">
         <div className={clsx('h-full rounded-full transition-all duration-700 ease-out', fill)} style={{ width: pct(stock) }} />
-        {threshold > 0 && <span className="absolute -top-1 h-4 w-0.5 -translate-x-1/2 rounded bg-red-400/80" style={{ left: pct(threshold) }} title={`Low-stock threshold: ${threshold}`} />}
-        {reorderPoint !== null && <span className="absolute -top-1 h-4 w-0.5 -translate-x-1/2 rounded bg-amber-500/80" style={{ left: pct(reorderPoint) }} title={`Reorder point: ${reorderPoint}`} />}
+        {threshold > 0 && <span className="absolute -top-1 h-4 w-0.5 -translate-x-1/2 rounded bg-red-400/80 rtl:translate-x-1/2" style={{ insetInlineStart: pct(threshold) }} title={t('Low-stock threshold: {n}', { n: threshold })} />}
+        {reorderPoint !== null && <span className="absolute -top-1 h-4 w-0.5 -translate-x-1/2 rounded bg-amber-500/80 rtl:translate-x-1/2" style={{ insetInlineStart: pct(reorderPoint) }} title={t('Reorder point: {n}', { n: reorderPoint })} />}
       </div>
       {!compact && (
         <div className="mt-1.5 flex justify-between text-[11px] text-gray-500 dark:text-gray-400">
-          <span className="tabular-nums">{stock} on hand</span>
-          <span className="tabular-nums">{reorderPoint === null ? 'No reorder point' : `ROP ${reorderPoint}`}</span>
+          <span className="tabular-nums">{t('{n} on hand', { n: stock })}</span>
+          <span className="tabular-nums">{reorderPoint === null ? t('No reorder point') : t('ROP {n}', { n: reorderPoint })}</span>
         </div>
       )}
     </div>
@@ -349,9 +355,10 @@ export function StockBar({ stock, threshold, reorderPoint, compact }: { stock: n
 }
 
 export function StatusBadge({ status }: { status: 'critical' | 'reorder' | 'healthy' }) {
-  if (status === 'critical') return <Badge tone="red" dot>Critical</Badge>;
-  if (status === 'reorder') return <Badge tone="amber" dot>Reorder</Badge>;
-  return <Badge tone="green" dot>Healthy</Badge>;
+  const t = useT();
+  if (status === 'critical') return <Badge tone="red" dot>{t('Critical')}</Badge>;
+  if (status === 'reorder') return <Badge tone="amber" dot>{t('Reorder')}</Badge>;
+  return <Badge tone="green" dot>{t('Healthy')}</Badge>;
 }
 
 /* ---------------- Gauge ---------------- */

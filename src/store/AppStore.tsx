@@ -14,6 +14,7 @@ import type {
   Transaction,
 } from '../types';
 import { emptyProfile } from '../data/defaults';
+import { t, useLang } from '../i18n';
 import { CLOUD_ENABLED } from '../lib/cloud';
 import {
   buildLedger,
@@ -37,7 +38,12 @@ import {
   type Ledger,
   type Recommendation,
 } from '../lib/metrics';
-import { fmtPct, startOfToday, toISO, uid } from '../lib/format';
+import { fmtMoney, fmtMoney2, fmtPct, startOfToday, toISO, uid } from '../lib/format';
+
+const lowStockText = (p: Product) => ({
+  title: t('Low stock: {name}', { name: p.name }),
+  body: t('{count} units left (threshold {threshold}).', { count: p.stockOnHand, threshold: p.lowStockThreshold }),
+});
 import type { CustomerStats, Insight } from '../types';
 
 export interface Toast {
@@ -274,6 +280,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   );
 
   /* ---------------- derived data ---------------- */
+  // Text built here (insights, checklist labels) follows the selected language.
+  const { lang } = useLang();
   const { transactions, customers } = state;
   const ledger = useMemo(() => buildLedger(transactions), [transactions]);
   const units30 = useMemo(() => totalsFor(ledger, lastNDays(30)).units, [ledger]);
@@ -292,19 +300,21 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const verification = useMemo(() => {
     const salesDays = historyDays(transactions.filter((t) => t.type === 'inflow' && t.productId));
     const steps = [
-      { label: 'Add a product with its materials', done: state.products.some((p) => p.materials.length > 0) },
-      { label: 'Add a supplier', done: state.suppliers.length > 0 },
-      { label: 'Log 30 days of sales', done: salesDays >= 30 },
+      { label: t('Add a product with its materials'), done: state.products.some((p) => p.materials.length > 0) },
+      { label: t('Add a supplier'), done: state.suppliers.length > 0 },
+      { label: t('Log 30 days of sales'), done: salesDays >= 30 },
     ];
     return { verified: steps.every((s) => s.done), steps };
-  }, [state.products, state.suppliers, transactions]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.products, state.suppliers, transactions, lang]);
   const peakLift = useMemo(() => seasonalPeakLift(ledger), [ledger]);
   const insights = useMemo(
     () =>
       generateInsights({ inventory, suppliers: state.suppliers, recs, funding, customers: stats, peakLift }).filter(
         (i) => !state.dismissedInsights.includes(i.id),
       ),
-    [inventory, state.suppliers, recs, funding, stats, peakLift, state.dismissedInsights],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [inventory, state.suppliers, recs, funding, stats, peakLift, state.dismissedInsights, lang],
   );
   const filteredProductIds = useMemo(() => {
     if (!materialFilter) return null;
@@ -327,8 +337,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     const up = now > before;
     toast({
       kind: up ? 'success' : 'info',
-      title: `Circularity ${fmtPct(before)} → ${fmtPct(now)}`,
-      body: aprBefore !== null && funding.apr !== null ? `Estimated APR ${aprBefore.toFixed(2)}% → ${funding.apr.toFixed(2)}%` : undefined,
+      title: t('Circularity {from} → {to}', { from: fmtPct(before), to: fmtPct(now) }),
+      body: aprBefore !== null && funding.apr !== null ? t('Estimated APR {from} → {to}', { from: fmtPct(aprBefore, 2), to: fmtPct(funding.apr, 2) }) : undefined,
     });
   }, [circ30.hasData, circ30.rate, funding.apr, toast]);
 
@@ -344,7 +354,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         if (!existing.has(id) && state.prefs.lowStock)
           patch((s) => ({
             notifications: [
-              { id, kind: 'stock', title: `Low stock: ${r.product.name}`, body: `${r.product.stockOnHand} units left (threshold ${r.product.lowStockThreshold}).`, date: new Date().toISOString(), read: false, to: '/app/products/inventory' },
+              { id, ref: `stock:${r.product.id}`, kind: 'stock', ...lowStockText(r.product), date: new Date().toISOString(), read: false, to: '/app/products/inventory' },
               ...s.notifications,
             ],
           }));
@@ -354,8 +364,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         if (prevCritical.current.has(id)) continue;
         const r = inventory.find((x) => x.product.id === id)!;
         // Skip if an unread alert for this product already exists (e.g. right after loading an account).
-        if (state.notifications.some((n) => n.kind === 'stock' && !n.read && n.title === `Low stock: ${r.product.name}`)) continue;
-        pushNotification({ kind: 'stock', title: `Low stock: ${r.product.name}`, body: `${r.product.stockOnHand} units left (threshold ${r.product.lowStockThreshold}).`, to: '/app/products/inventory' });
+        if (state.notifications.some((n) => n.kind === 'stock' && !n.read && (n.ref === `stock:${r.product.id}` || n.title === `Low stock: ${r.product.name}`))) continue;
+        pushNotification({ kind: 'stock', ref: `stock:${r.product.id}`, ...lowStockText(r.product), to: '/app/products/inventory' });
       }
     }
     prevCritical.current = critical;
@@ -366,21 +376,21 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const addProduct: AppStore['addProduct'] = useCallback(
     (p) => {
       patch((s) => ({ products: [...s.products, { ...p, id: uid('prd'), circularityScore: materialCircularity(p.materials) }] }));
-      toast({ kind: 'success', title: 'Product added', body: p.name });
+      toast({ kind: 'success', title: t('Product added'), body: p.name });
     },
     [patch, toast],
   );
   const updateProduct: AppStore['updateProduct'] = useCallback(
     (p) => {
       patch((s) => ({ products: s.products.map((x) => (x.id === p.id ? { ...p, circularityScore: materialCircularity(p.materials) } : x)) }));
-      toast({ kind: 'success', title: 'Product updated', body: p.name });
+      toast({ kind: 'success', title: t('Product updated'), body: p.name });
     },
     [patch, toast],
   );
   const deleteProduct: AppStore['deleteProduct'] = useCallback(
     (id) => {
       patch((s) => ({ products: s.products.filter((x) => x.id !== id) }));
-      toast({ kind: 'info', title: 'Product archived' });
+      toast({ kind: 'info', title: t('Product archived') });
     },
     [patch, toast],
   );
@@ -394,38 +404,39 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           products: s.products.map((x) => (x.id === productId ? { ...x, stockOnHand: x.stockOnHand + qty } : x)),
           transactions: [
             ...s.transactions,
-            { id: uid('txn'), type: 'outflow', category: 'Inventory purchase', amount: +(qty * p.unitCost).toFixed(2), productId, quantity: qty, date: toISO(startOfToday()), note: `Restock ${qty} × ${p.name}` },
+            { id: uid('txn'), type: 'outflow', category: 'Inventory purchase', amount: +(qty * p.unitCost).toFixed(2), productId, quantity: qty, date: toISO(startOfToday()), note: t('Restock {qty} × {name}', { qty, name: p.name }) },
           ],
         };
       });
-      toast({ kind: 'success', title: 'Stock received', body: `+${qty} units · ${name}` });
+      toast({ kind: 'success', title: t('Stock received'), body: `${t('+{count} units', { count: qty })} · ${name}` });
     },
     [patch, toast, state.products],
   );
   const addSupplier: AppStore['addSupplier'] = useCallback(
     (sup) => {
       patch((s) => ({ suppliers: [...s.suppliers, { ...sup, id: uid('sup') }] }));
-      toast({ kind: 'success', title: 'Supplier added', body: `${sup.name} · reliability ${reliabilityScore(sup)}/100` });
+      const score = reliabilityScore(sup);
+      toast({ kind: 'success', title: t('Supplier added'), body: score === null ? sup.name : `${sup.name} · ${t('reliability {score}/100', { score })}` });
     },
     [patch, toast],
   );
   const updateSupplier: AppStore['updateSupplier'] = useCallback(
     (sup) => {
       patch((s) => ({ suppliers: s.suppliers.map((x) => (x.id === sup.id ? sup : x)) }));
-      toast({ kind: 'success', title: 'Supplier updated', body: sup.name });
+      toast({ kind: 'success', title: t('Supplier updated'), body: sup.name });
     },
     [patch, toast],
   );
   const addTransaction: AppStore['addTransaction'] = useCallback(
-    (t) => {
+    (x) => {
       patch((s) => {
         const products =
-          t.type === 'inflow' && t.productId && t.quantity
-            ? s.products.map((p) => (p.id === t.productId ? { ...p, stockOnHand: Math.max(0, p.stockOnHand - t.quantity!) } : p))
+          x.type === 'inflow' && x.productId && x.quantity
+            ? s.products.map((p) => (p.id === x.productId ? { ...p, stockOnHand: Math.max(0, p.stockOnHand - x.quantity!) } : p))
             : s.products;
-        return { transactions: [...s.transactions, { ...t, id: uid('txn') }], products };
+        return { transactions: [...s.transactions, { ...x, id: uid('txn') }], products };
       });
-      toast({ kind: 'success', title: 'Transaction logged', body: `${t.type === 'inflow' ? '+' : '−'}$${t.amount.toFixed(2)} · ${t.category}` });
+      toast({ kind: 'success', title: t('Transaction logged'), body: `${x.type === 'inflow' ? '+' : '−'}${fmtMoney2(x.amount)} · ${t(x.category)}` });
     },
     [patch, toast],
   );
@@ -439,12 +450,12 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   );
   const importTransactions: AppStore['importTransactions'] = useCallback(
     (txs, newCustomers, noun = 'transaction') => {
-      const used = new Set(txs.map((t) => t.customerId).filter(Boolean));
+      const used = new Set(txs.map((x) => x.customerId).filter(Boolean));
       patch((s) => ({
-        transactions: [...s.transactions, ...txs.map((t) => ({ ...t, id: uid('txn') }))],
+        transactions: [...s.transactions, ...txs.map((x) => ({ ...x, id: uid('txn') }))],
         customers: [...s.customers, ...newCustomers.filter((c) => used.has(c.id))],
       }));
-      toast({ kind: 'success', title: `Imported ${txs.length.toLocaleString()} ${noun}${txs.length === 1 ? '' : 's'}` });
+      toast({ kind: 'success', title: noun === 'sale' ? t('Imported {count} sales', { count: txs.length }) : t('Imported {count} transactions', { count: txs.length }) });
     },
     [patch, toast],
   );
@@ -454,7 +465,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       patch((s) => ({
         fundingRequests: [{ id, ...r, submittedDate: toISO(startOfToday()), status: 'Pending', apr: r.type === 'Loan' ? funding.apr ?? undefined : undefined }, ...s.fundingRequests],
       }));
-      toast({ kind: 'success', title: 'Funding request saved', body: `${r.type} · $${r.amount.toLocaleString()} · status Pending` });
+      toast({ kind: 'success', title: t('Funding request saved'), body: `${t(r.type)} · ${fmtMoney(r.amount)} · ${t('status {status}', { status: t('Pending') })}` });
     },
     [patch, toast, funding.apr],
   );
@@ -463,7 +474,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       patch((s) => ({
         products: s.products.map((p) => {
           if (p.id !== productId) return p;
-          const materials = p.materials.map((m) => (m.name === materialName ? { ...m, name: m.name.startsWith('Recycled') ? m.name : `Recycled ${m.name.toLowerCase()}`, recycled: true } : m));
+          const materials = p.materials.map((m) => (m.name === materialName ? { ...m, name: m.name.startsWith('Recycled') || m.recycled ? m.name : t('Recycled {material}', { material: m.name.toLowerCase() }), recycled: true } : m));
           return { ...p, materials, circularityScore: materialCircularity(materials) };
         }),
       }));
@@ -477,7 +488,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const setProfile = useCallback(
     (profile: BusinessProfile) => {
       patch({ profile });
-      toast({ kind: 'success', title: 'Business profile saved' });
+      toast({ kind: 'success', title: t('Business profile saved') });
     },
     [patch, toast],
   );
@@ -494,7 +505,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const resetData = useCallback(() => {
     setState(defaultState());
     setMaterialFilter(null);
-    toast({ kind: 'info', title: 'All data cleared' });
+    toast({ kind: 'info', title: t('All data cleared') });
   }, [toast]);
 
   const value: AppStore = {
