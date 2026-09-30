@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import clsx from 'clsx';
-import { Bell, Building2, Check, Globe, Laptop, Moon, Palette, RotateCcw, Sun, UserCog } from 'lucide-react';
+import { Bell, Building2, Check, CircleUser, Globe, Laptop, Moon, Palette, RotateCcw, Sun, UserCog } from 'lucide-react';
+import { ProfileEditor } from '../components/layout/ProfileEditor';
 import { useStore } from '../store/AppStore';
 import { useCloud } from '../store/CloudProvider';
 import { AccountSettings } from './settings/AccountSettings';
@@ -10,18 +12,33 @@ import { emptyProfile } from '../data/defaults';
 import type { BusinessProfile, NotificationPrefs, ThemePref } from '../types';
 import { LANGUAGES, tk, useLang, useT } from '../i18n';
 
-type Section = 'account' | 'language' | 'appearance' | 'profile' | 'notifications';
+type Section = 'me' | 'account' | 'language' | 'appearance' | 'profile' | 'notifications';
+const SECTIONS: Section[] = ['me', 'account', 'language', 'appearance', 'profile', 'notifications'];
 
 export default function Settings() {
   const t = useT();
   const { lang, setLang } = useLang();
   const { themePref, setThemePref, profile, setProfile, prefs, setPrefs, resetData, toast } = useStore();
   const cloud = useCloud();
-  const [section, setSection] = useState<Section>(cloud.enabled ? 'account' : 'appearance');
+  const [params, setParams] = useSearchParams();
+  const [section, setSection] = useState<Section>('me');
+  // Links like /app/settings?section=account open that section.
+  useEffect(() => {
+    const s = params.get('section') as Section | null;
+    if (s && SECTIONS.includes(s)) {
+      setSection(s);
+      setParams({}, { replace: true });
+    }
+  }, [params, setParams]);
   const [draft, setDraft] = useState<BusinessProfile>(profile);
   const [touched, setTouched] = useState<Partial<Record<keyof BusinessProfile, boolean>>>({});
   const [confirmReset, setConfirmReset] = useState(false);
   const dirty = JSON.stringify(draft) !== JSON.stringify(profile);
+  // Pick up changes saved elsewhere (e.g. the profile photo) unless there are unsaved edits here.
+  useEffect(() => {
+    if (!dirty) setDraft(profile);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile]);
   const allValid = STEPS.every((s) => stepValid(s.key, draft));
 
   const set = <K extends keyof BusinessProfile>(k: K, v: BusinessProfile[K]) => {
@@ -30,6 +47,7 @@ export default function Settings() {
   };
 
   const nav: { key: Section; label: string; icon: typeof Sun }[] = [
+    { key: 'me', label: t('Your profile'), icon: CircleUser },
     ...(cloud.enabled ? [{ key: 'account' as const, label: t('Account & privacy'), icon: UserCog }] : []),
     { key: 'language', label: t('Language'), icon: Globe },
     { key: 'appearance', label: t('Appearance'), icon: Palette },
@@ -155,7 +173,8 @@ export default function Settings() {
                         toast({ kind: 'error', title: t('Fix the highlighted fields') });
                         return;
                       }
-                      setProfile(draft);
+                      // Photo and phone are edited under Your profile; keep the saved ones.
+                      setProfile({ ...draft, avatar: profile.avatar, phone: profile.phone });
                     }}
                   >
                     {t('Save profile')}
@@ -166,6 +185,15 @@ export default function Settings() {
                 <ProfilePreview p={draft} pct={completion(draft)} />
               </div>
             </div>
+          )}
+
+          {section === 'me' && (
+            <Card>
+              <CardHeader title={t('Your profile')} sub={t('How you appear in Tokuma and to investors')} />
+              <div className="p-5">
+                <ProfileEditor />
+              </div>
+            </Card>
           )}
 
           {section === 'account' && cloud.enabled && <AccountSettings />}

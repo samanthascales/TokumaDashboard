@@ -428,12 +428,15 @@ export function Field({ label, error, hint, children, className }: { label: stri
   );
 }
 
-export function Avatar({ name, className }: { name: string; className?: string }) {
+export function Avatar({ name, src, className }: { name: string; src?: string; className?: string }) {
+  // Default 32px unless the caller sets a size.
+  const size = /(^|\s)h-/.test(className ?? '') ? '' : 'h-8 w-8';
+  if (src) return <img src={src} alt="" className={clsx('inline-block shrink-0 rounded-full object-cover', size, className)} />;
   const initials = name
     .split(/\s+/)
     .slice(0, 2)
     .map((p) => p[0])
     .join('')
     .toUpperCase();
-  return <span className={clsx('inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-semibold text-brand-700 dark:bg-brand-500/15 dark:text-brand-300', className)}>{initials}</span>;
+  return <span className={clsx('inline-flex shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-semibold text-brand-700 dark:bg-brand-500/15 dark:text-brand-300', size, className)}>{initials}</span>;
 }

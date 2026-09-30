@@ -19,7 +19,7 @@ const CALL = /(?<![\w.$])(?:t|tk|tr|tNode)\(\s*('(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]
 const keys = new Set();
 for (const f of files) {
   // Skip comments so examples in doc comments aren't treated as UI text.
-  const src = readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const src = readFileSync(f, 'utf8').replace(/(^|\s)\/\*[\s\S]*?\*\//g, '$1').replace(/^\s*\/\/.*$/gm, '');
   for (const m of src.matchAll(CALL)) keys.add(eval(m[1]));
 }
 const sorted = [...keys].sort((a, b) => a.localeCompare(b));

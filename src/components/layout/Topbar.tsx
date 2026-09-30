@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
-import { AlertTriangle, Bell, BriefcaseBusiness, Check, ChevronDown, CloudCheck, CloudOff, Landmark, Loader2, LogOut, Menu, Moon, Search, Settings, Sparkles, Store, Sun, Truck } from 'lucide-react';
+import { AlertTriangle, Bell, UserPen, BriefcaseBusiness, Check, ChevronDown, CloudCheck, CloudOff, Landmark, Loader2, LogOut, Menu, Moon, Search, Settings, Sparkles, Store, Sun, Truck } from 'lucide-react';
 import { useStore } from '../../store/AppStore';
 import { useCloud } from '../../store/CloudProvider';
 import { useOnClickOutside } from '../../lib/hooks';
@@ -10,6 +10,7 @@ import { Avatar } from '../ui';
 import type { AppNotification } from '../../types';
 import { tk, useT } from '../../i18n';
 import { LanguageMenu } from './LanguageMenu';
+import { openProfile } from './nav';
 
 const notifIcon: Record<AppNotification['kind'], typeof Bell> = {
   stock: AlertTriangle,
@@ -100,7 +101,7 @@ function RoleSwitcher() {
   return (
     <div className="relative" ref={ref}>
       <button className="flex items-center gap-2 rounded-lg py-1 ps-1 pe-2 transition hover:bg-gray-100 dark:hover:bg-white/5" onClick={() => setOpen((o) => !o)}>
-        <Avatar name={profile.ownerName || t('You')} />
+        <Avatar name={profile.ownerName || t('You')} src={profile.avatar} />
         <span className="hidden text-start leading-tight md:block">
           <span className="block text-[13px] font-medium">{profile.ownerName || t('Your account')}</span>
           <span className="block text-[11px] text-gray-500 dark:text-gray-400">{role === 'investor' ? t('Investor') : t('Business')}</span>
@@ -109,6 +110,29 @@ function RoleSwitcher() {
       </button>
       {open && (
         <div className="absolute end-0 top-12 z-50 w-64 animate-pop-in overflow-hidden rounded-xl border border-gray-200 bg-white p-1.5 shadow-pop dark:border-white/10 dark:bg-ink-850">
+          <button
+            onClick={() => {
+              setOpen(false);
+              openProfile();
+            }}
+            className="flex w-full items-center gap-3 rounded-lg px-2.5 py-2.5 text-start transition hover:bg-gray-50 dark:hover:bg-white/5"
+          >
+            <Avatar name={profile.ownerName || t('You')} src={profile.avatar} className="h-10 w-10 text-sm" />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-semibold">{profile.ownerName || t('Your account')}</span>
+              <span className="muted block truncate text-xs">{profile.role || profile.email || cloud.user?.email || t('Add your name and photo')}</span>
+            </span>
+          </button>
+          <button
+            onClick={() => {
+              setOpen(false);
+              openProfile();
+            }}
+            className="flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-sm hover:bg-gray-50 dark:hover:bg-white/5"
+          >
+            <UserPen className="h-4 w-4 text-gray-500" /> {t('Edit profile')}
+          </button>
+          <div className="my-1.5 h-px bg-gray-100 dark:bg-white/5" />
           <p className="px-2.5 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-400">{t('Switch portal')}</p>
           {(
             [

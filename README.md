@@ -29,7 +29,7 @@ The app uses hash routing (`/#/app/...`) and a relative base path, so `dist/` ca
 | Funding | `/app/funding` | Verified banner, reactive eligibility and APR (flash plus a "since your last visit" note), what-if slider, request flow, history with status badges |
 | Customers | `/app/customers` | Repeat-purchase rate, products bought, New / Repeat / At-risk segments, order history modal |
 | Education Hub | `/app/education` | Restyled to match the design system |
-| Settings | `/app/settings` | Light / dark / system theme, business profile (reuses the wizard fields), notification preferences, delete all data |
+| Settings | `/app/settings` | Your profile (photo, name, job title, contact details — also opened from your name in the top bar), language, light / dark / system theme, business profile (reuses the wizard fields), notification preferences, delete all data |
 | Investor view | `/app/investor` | Opened from the role switcher. Shows impact, funding readiness and supply-chain risk |
 
 These work across every page: the language menu (globe icon), the ⌘K / Ctrl K command palette, the notification bell, toasts, skeleton loading states, empty states with a call to action, page transitions, count-up numbers, and "Generate report" (a printable PDF summary).

@@ -5,6 +5,8 @@ export const emptyProfile: BusinessProfile = {
   ownerName: '',
   email: '',
   role: '',
+  avatar: '',
+  phone: '',
   businessName: '',
   industry: '',
   country: '',

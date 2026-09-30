@@ -211,7 +211,7 @@ export function ProfilePreview({ p, pct }: { p: BusinessProfile; pct: number }) 
         )}
         {p.circularModel && <p className="muted mt-3 text-xs">{t('Model: {model}', { model: t(p.circularModel) })}</p>}
         <div className="mt-4 flex items-center gap-3 border-t border-gray-100 pt-4 dark:border-white/5">
-          <Avatar name={p.ownerName || '?'} />
+          <Avatar name={p.ownerName || '?'} src={p.avatar} />
           <div className="min-w-0">
             <p className="truncate text-sm font-medium">{p.ownerName || t('Your name')}</p>
             <p className="muted truncate text-xs">{p.role || t('Role')}</p>

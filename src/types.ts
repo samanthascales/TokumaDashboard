@@ -111,6 +111,9 @@ export interface BusinessProfile {
   ownerName: string;
   email: string;
   role: string;
+  /** Profile photo as a small JPEG data URL (resized in the browser), or '' for initials. */
+  avatar: string;
+  phone: string;
   businessName: string;
   industry: string;
   country: string;
