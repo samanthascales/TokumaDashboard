@@ -66,3 +66,4 @@ export const allPages = [
 ];
 
 export const openReport = () => window.dispatchEvent(new CustomEvent('tokuma:report'));
+export const openProfile = () => window.dispatchEvent(new CustomEvent('tokuma:profile'));

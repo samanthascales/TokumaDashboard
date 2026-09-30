@@ -204,7 +204,8 @@ export interface AppStore extends Persisted {
   restoreInsights: () => void;
   markAllRead: () => void;
   markRead: (id: string) => void;
-  setProfile: (p: BusinessProfile) => void;
+  /** Saves the profile; `message` replaces the default "Business profile saved" toast. */
+  setProfile: (p: BusinessProfile, message?: string) => void;
   setPrefs: (p: NotificationPrefs) => void;
   markFundingSeen: () => void;
   resetData: () => void;
@@ -486,9 +487,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const markAllRead = useCallback(() => patch((s) => ({ notifications: s.notifications.map((n) => ({ ...n, read: true })) })), [patch]);
   const markRead = useCallback((id: string) => patch((s) => ({ notifications: s.notifications.map((n) => (n.id === id ? { ...n, read: true } : n)) })), [patch]);
   const setProfile = useCallback(
-    (profile: BusinessProfile) => {
+    (profile: BusinessProfile, message?: string) => {
       patch({ profile });
-      toast({ kind: 'success', title: t('Business profile saved') });
+      toast({ kind: 'success', title: message ?? t('Business profile saved') });
     },
     [patch, toast],
   );

@@ -5,6 +5,7 @@ import { Topbar } from './Topbar';
 import { CommandPalette } from './CommandPalette';
 import { ReportModal } from './ReportModal';
 import { SupportBanner } from './Account';
+import { ProfileModal } from './ProfileEditor';
 
 export function AppLayout() {
   const [menu, setMenu] = useState(false);
@@ -38,6 +39,7 @@ export function AppLayout() {
       </div>
       <CommandPalette open={palette} onClose={() => setPalette(false)} />
       <ReportModal />
+      <ProfileModal />
     </div>
   );
 }
