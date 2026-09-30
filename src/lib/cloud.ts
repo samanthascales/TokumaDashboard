@@ -1,5 +1,6 @@
 import { createClient, type Session, type SupabaseClient, type User } from '@supabase/supabase-js';
 import { IS_EMBEDDED } from '../env';
+import { t } from '../i18n';
 
 /**
  * Cloud accounts + storage (Supabase). Enabled when the build has
@@ -157,13 +158,13 @@ export async function adminOpenWorkspace(target: string, reason: string): Promis
 /** Turns Supabase/network errors into a sentence a person can act on. */
 export function friendlyError(e: unknown): string {
   const msg = e instanceof Error ? e.message : typeof e === 'object' && e && 'message' in e ? String((e as { message: unknown }).message) : String(e);
-  if (/Invalid login credentials/i.test(msg)) return 'That email and password don’t match an account.';
-  if (/Email not confirmed/i.test(msg)) return 'Confirm your email first — check your inbox for the link we sent.';
-  if (/User already registered/i.test(msg)) return 'An account with that email already exists. Sign in instead.';
-  if (/Password should be at least/i.test(msg)) return 'Use a password of at least 8 characters.';
-  if (/rate limit|too many/i.test(msg)) return 'Too many attempts. Wait a few minutes and try again.';
-  if (/Failed to fetch|NetworkError|Load failed/i.test(msg)) return 'Can’t reach Tokuma’s servers. Check your internet connection and try again.';
-  if (/not allowed support access/i.test(msg)) return 'This business hasn’t allowed support access.';
-  if (/not authorized/i.test(msg)) return 'Your account doesn’t have admin access.';
+  if (/Invalid login credentials/i.test(msg)) return t('That email and password don’t match an account.');
+  if (/Email not confirmed/i.test(msg)) return t('Confirm your email first — check your inbox for the link we sent.');
+  if (/User already registered/i.test(msg)) return t('An account with that email already exists. Sign in instead.');
+  if (/Password should be at least/i.test(msg)) return t('Use a password of at least 8 characters.');
+  if (/rate limit|too many/i.test(msg)) return t('Too many attempts. Wait a few minutes and try again.');
+  if (/Failed to fetch|NetworkError|Load failed/i.test(msg)) return t('Can’t reach Tokuma’s servers. Check your internet connection and try again.');
+  if (/not allowed support access/i.test(msg)) return t('This business hasn’t allowed support access.');
+  if (/not authorized/i.test(msg)) return t('Your account doesn’t have admin access.');
   return msg;
 }

@@ -6,6 +6,7 @@ import { AlertTriangle, Check, ChevronDown, Lightbulb, Lock, Rocket, Sparkles, T
 import { useStore } from '../../store/AppStore';
 import { useChartColors } from '../../lib/hooks';
 import { fmtDate, fmtKg, fmtMoney, fmtPct } from '../../lib/format';
+import { tk, useT } from '../../i18n';
 import { historyDays, lastNDays, milestoneStages, reliabilityScore, totalsFor, avgKnown } from '../../lib/metrics';
 import { AnimatedNumber, Badge, Card, CardHeader, EmptyState, Segmented, Sparkline, StatusBadge, StockBar, Tip } from '../../components/ui';
 import { TooltipBox } from '../../components/charts/ChartTooltip';
@@ -15,6 +16,7 @@ import type { InsightKind, MaterialClass } from '../../types';
 
 /** value / delta are null when there's no real data to show or compare against — the card shows "—" and no change badge. */
 export function KpiCard({ label, value, format, delta, spark, icon, invert, hint }: { label: string; value: number | null; format: (n: number) => string; delta: number | null; spark: number[]; icon: React.ReactNode; invert?: boolean; hint?: string }) {
+  const t = useT();
   const good = delta === null ? true : invert ? delta < 0 : delta >= 0;
   return (
     <Card hover className="group relative overflow-hidden p-5">
@@ -25,19 +27,20 @@ export function KpiCard({ label, value, format, delta, spark, icon, invert, hint
         </span>
         {delta !== null && (
           <span
+            dir="ltr"
             className={clsx(
               'rounded-full px-1.5 py-0.5 text-[11px] font-semibold tabular-nums',
               Math.abs(delta) < 0.05 ? 'bg-gray-100 text-gray-500 dark:bg-white/5' : good ? 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300' : 'bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-300',
             )}
           >
             {delta >= 0 ? '+' : '−'}
-            {Math.abs(delta).toFixed(1)}%
+            {fmtPct(Math.abs(delta))}
           </span>
         )}
       </div>
       <AnimatedNumber value={value} format={format} className="mt-3 block text-[28px] font-bold leading-none tracking-tight" />
       <div className="mt-1 flex items-end justify-between gap-3">
-        <p className="muted text-[11px]">{hint ?? 'vs previous 30 days'}</p>
+        <p className="muted text-[11px]">{hint ?? t('vs previous 30 days')}</p>
       </div>
       <div className={clsx('mt-3', good ? 'text-brand-600 dark:text-brand-400' : 'text-red-500 dark:text-red-400')}>
         <Sparkline data={spark} />
@@ -49,6 +52,7 @@ export function KpiCard({ label, value, format, delta, spark, icon, invert, hint
 /* ---------------- Low stock banner ---------------- */
 
 export function LowStockBanner() {
+  const t = useT();
   const { inventory } = useStore();
   const navigate = useNavigate();
   const [hidden, setHidden] = useState(false);
@@ -70,19 +74,21 @@ export function LowStockBanner() {
       </div>
       <div className="min-w-0 flex-1">
         <p className={clsx('text-sm font-semibold', isRed ? 'text-red-800 dark:text-red-200' : 'text-amber-800 dark:text-amber-200')}>
-          {critical.length > 0 && `${critical.length} product${critical.length > 1 ? 's' : ''} below low-stock threshold`}
+          {critical.length > 0 && t('{count} products below low-stock threshold', { count: critical.length })}
           {critical.length > 0 && reorder.length > 0 && ' · '}
-          {reorder.length > 0 && `${reorder.length} at reorder point`}
+          {reorder.length > 0 && t('{count} at reorder point', { count: reorder.length })}
         </p>
         <p className={clsx('truncate text-xs', isRed ? 'text-red-700/80 dark:text-red-300/80' : 'text-amber-700/80 dark:text-amber-300/80')}>
-          {items.map((r) => `${r.product.name} (${r.product.stockOnHand} left, ~${Math.floor(r.daysOfCover)}d cover)`).join(' · ')}
+          {items
+            .map((r) => `${r.product.name} (${Number.isFinite(r.daysOfCover) ? t('{n} left, ~{d}d cover', { n: r.product.stockOnHand, d: Math.floor(r.daysOfCover) }) : t('{n} left', { n: r.product.stockOnHand })})`)
+            .join(' · ')}
         </p>
       </div>
       <div className="flex items-center gap-2">
         <button className={clsx('btn btn-sm text-white', isRed ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700')} onClick={() => navigate('/app/products/inventory')}>
-          View inventory
+          {t('View inventory')}
         </button>
-        <button className="icon-btn h-8 w-8" onClick={() => setHidden(true)} aria-label="Dismiss">
+        <button className="icon-btn h-8 w-8" onClick={() => setHidden(true)} aria-label={t('Dismiss')}>
           <X className="h-4 w-4" />
         </button>
       </div>
@@ -93,14 +99,25 @@ export function LowStockBanner() {
 /* ---------------- Material mix donut ---------------- */
 
 export function MaterialMix() {
+  const t = useT();
   const { circ30, materialFilter, setMaterialFilter, theme } = useStore();
   const c = useChartColors(theme);
   const color: Record<MaterialClass, string> = { Recycled: c.primary, Reused: c.secondary, Virgin: c.tertiary };
   const data = (['Recycled', 'Reused', 'Virgin'] as MaterialClass[]).map((k) => ({ name: k, kg: circ30.byClass[k], pct: circ30.totalKg ? (circ30.byClass[k] / circ30.totalKg) * 100 : 0 }));
   return (
     <Card className="flex h-full flex-col">
-      <CardHeader title="Material mix" sub="By weight sold · last 30 days" right={materialFilter && <button className="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400" onClick={() => setMaterialFilter(null)}>Clear filter</button>} />
-      <div className="relative mx-auto mt-2 h-[200px] w-full max-w-[240px]">
+      <CardHeader
+        title={t('Material mix')}
+        sub={t('By weight sold · last 30 days')}
+        right={
+          materialFilter && (
+            <button className="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400" onClick={() => setMaterialFilter(null)}>
+              {t('Clear filter')}
+            </button>
+          )
+        }
+      />
+      <div className="relative mx-auto mt-2 h-[200px] w-full max-w-[240px]" dir="ltr">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -125,15 +142,15 @@ export function MaterialMix() {
               content={({ active, payload }) => {
                 if (!active || !payload?.length) return null;
                 const d = payload[0]!.payload as (typeof data)[number];
-                return <TooltipBox title={d.name} rows={[{ color: color[d.name], label: 'Weight', value: fmtKg(d.kg) }, { color: color[d.name], label: 'Share', value: fmtPct(d.pct) }]} footer="Click to filter the dashboard" />;
+                return <TooltipBox title={t(d.name)} rows={[{ color: color[d.name], label: t('Weight'), value: fmtKg(d.kg) }, { color: color[d.name], label: t('Share'), value: fmtPct(d.pct) }]} footer={t('Click to filter the dashboard')} />;
               }}
             />
           </PieChart>
         </ResponsiveContainer>
         {circ30.totalKg === 0 && <div className="absolute left-1/2 top-1/2 h-[184px] w-[184px] -translate-x-1/2 -translate-y-1/2 rounded-full border-[14px] border-gray-100 dark:border-white/[0.06]" />}
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-          <AnimatedNumber value={circ30.hasData ? circ30.rate : null} format={(n) => `${n.toFixed(1)}%`} className="text-2xl font-bold" />
-          <span className="muted text-[11px]">circular</span>
+          <AnimatedNumber value={circ30.hasData ? circ30.rate : null} format={(n) => fmtPct(n)} className="text-2xl font-bold" />
+          <span className="muted text-[11px]">{t('circular')}</span>
         </div>
       </div>
       <ul className="mt-auto space-y-1 px-3 pb-3 pt-2">
@@ -147,9 +164,9 @@ export function MaterialMix() {
               )}
             >
               <span className="h-2.5 w-2.5 rounded-sm" style={{ background: color[d.name] }} />
-              <span className="flex-1 text-left">{d.name}</span>
+              <span className="flex-1 text-start">{t(d.name)}</span>
               <span className="muted tabular-nums">{fmtKg(d.kg)}</span>
-              <span className="w-12 text-right font-semibold tabular-nums">{d.pct.toFixed(0)}%</span>
+              <span className="w-12 text-end font-semibold tabular-nums">{fmtPct(d.pct, 0)}</span>
             </button>
           </li>
         ))}
@@ -161,6 +178,7 @@ export function MaterialMix() {
 /* ---------------- Milestone stepper ---------------- */
 
 export function MilestoneCard() {
+  const t = useT();
   const { circ30, suppliers, products, transactions } = useStore();
   const avgRel = avgKnown(suppliers.map((x) => reliabilityScore(x))) ?? 0;
   const rate = circ30.hasData ? circ30.rate : 0;
@@ -176,15 +194,15 @@ export function MilestoneCard() {
     <Card className="p-5">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h3 className="card-title">Next milestone</h3>
-          <p className="card-sub mt-0.5">{next ? `${next.criteria.filter((c) => !c.met).length} criteria left to reach ${next.name}` : 'Top tier reached — keep it up'}</p>
+          <h3 className="card-title">{t('Next milestone')}</h3>
+          <p className="card-sub mt-0.5">{next ? t('{count} criteria left to reach {name}', { count: next.criteria.filter((c) => !c.met).length, name: next.name }) : t('Top tier reached — keep it up')}</p>
         </div>
         <Badge tone="green">{stages[currentIdx]!.name}</Badge>
       </div>
       <div className="relative mt-6 grid grid-cols-3">
-        <div className="absolute left-[16.66%] right-[16.66%] top-4 h-1 rounded-full bg-gray-100 dark:bg-white/[0.06]" />
+        <div className="absolute end-[16.66%] start-[16.66%] top-4 h-1 rounded-full bg-gray-100 dark:bg-white/[0.06]" />
         <div
-          className="absolute left-[16.66%] top-4 h-1 rounded-full bg-brand-600 transition-all duration-1000 ease-out dark:bg-brand-400"
+          className="absolute start-[16.66%] top-4 h-1 rounded-full bg-brand-600 transition-all duration-1000 ease-out dark:bg-brand-400"
           style={{ width: `${(66.66 * (currentIdx + (next ? progress / 100 : 0))) / 2}%` }}
         />
         {stages.map((s, i) => {
@@ -198,7 +216,7 @@ export function MilestoneCard() {
               className="justify-center"
               content={
                 <span className="block">
-                  <span className="mb-1 block font-semibold">Unlock criteria</span>
+                  <span className="mb-1 block font-semibold">{t('Unlock criteria')}</span>
                   {s.criteria.map((c) => (
                     <span key={c.label} className="flex items-center gap-1.5">
                       {c.met ? <Check className="h-3 w-3 text-brand-300" /> : <Lock className="h-3 w-3 text-gray-400" />}
@@ -218,7 +236,7 @@ export function MilestoneCard() {
                   {done ? <Check className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
                 </span>
                 <span className={clsx('mt-2 text-xs font-semibold', done || isNext ? '' : 'text-gray-400')}>{s.name}</span>
-                <span className="muted text-[11px]">{s.min ? `≥ ${s.min}% circular` : 'Getting started'}</span>
+                <span className="muted text-[11px]">{s.min ? t('≥ {pct} circular', { pct: fmtPct(s.min, 0) }) : t('Getting started')}</span>
               </div>
             </Tip>
           );
@@ -227,9 +245,9 @@ export function MilestoneCard() {
       {next && (
         <div className="mt-5 rounded-lg bg-gray-50 p-3 text-xs dark:bg-white/[0.03]">
           <div className="flex items-center justify-between">
-            <span className="muted">Circularity toward {next.name}</span>
+            <span className="muted">{t('Circularity toward {name}', { name: next.name })}</span>
             <span className="font-semibold tabular-nums">
-              {circ30.hasData ? fmtPct(circ30.rate) : '—'} / {next.min}%
+              {circ30.hasData ? fmtPct(circ30.rate) : '—'} / {fmtPct(next.min, 0)}
             </span>
           </div>
           <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-200 dark:bg-white/10">
@@ -244,12 +262,13 @@ export function MilestoneCard() {
 /* ---------------- Circular Insights feed ---------------- */
 
 const kindMeta: Record<InsightKind, { icon: typeof Zap; label: string; cls: string }> = {
-  optimization: { icon: Zap, label: 'Optimization', cls: 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300' },
-  alert: { icon: AlertTriangle, label: 'Alert', cls: 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300' },
-  opportunity: { icon: Lightbulb, label: 'Opportunity', cls: 'bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300' },
+  optimization: { icon: Zap, label: tk('Optimization'), cls: 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300' },
+  alert: { icon: AlertTriangle, label: tk('Alert'), cls: 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300' },
+  opportunity: { icon: Lightbulb, label: tk('Opportunity'), cls: 'bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300' },
 };
 
 export function InsightsFeed() {
+  const t = useT();
   const { insights, dismissInsight, applyMaterialSwitch, restoreInsights, dismissedInsights } = useStore();
   const navigate = useNavigate();
   const [filter, setFilter] = useState<'all' | InsightKind>('all');
@@ -259,20 +278,20 @@ export function InsightsFeed() {
       <CardHeader
         title={
           <span className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-brand-600 dark:text-brand-400" /> Circular insights
+            <Sparkles className="h-4 w-4 text-brand-600 dark:text-brand-400" /> {t('Circular insights')}
           </span>
         }
-        sub={`${insights.length} active · generated from your data`}
+        sub={t('{count} active · generated from your data', { count: insights.length })}
       />
       <div className="px-5 pt-3">
         <Segmented
           value={filter}
           onChange={setFilter}
           options={[
-            { value: 'all', label: 'All' },
-            { value: 'alert', label: 'Alerts' },
-            { value: 'optimization', label: 'Optimize' },
-            { value: 'opportunity', label: 'Opportunities' },
+            { value: 'all', label: t('All') },
+            { value: 'alert', label: t('Alerts') },
+            { value: 'optimization', label: t('Optimize') },
+            { value: 'opportunity', label: t('Opportunities') },
           ]}
         />
       </div>
@@ -280,9 +299,9 @@ export function InsightsFeed() {
         {shown.length === 0 && (
           <EmptyState
             icon={<Check className="h-6 w-6" />}
-            title="No insights right now"
-            body="Insights appear as you add products, suppliers and sales, and update as your data changes."
-            action={dismissedInsights.length > 0 && <button className="btn-secondary btn-sm" onClick={restoreInsights}>Restore dismissed ({dismissedInsights.length})</button>}
+            title={t('No insights right now')}
+            body={t('Insights appear as you add products, suppliers and sales, and update as your data changes.')}
+            action={dismissedInsights.length > 0 && <button className="btn-secondary btn-sm" onClick={restoreInsights}>{t('Restore dismissed ({count})', { count: dismissedInsights.length })}</button>}
           />
         )}
         {shown.map((i) => {
@@ -297,14 +316,14 @@ export function InsightsFeed() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-sm font-semibold leading-snug">{i.title}</p>
-                    <button className="-mr-1 -mt-0.5 rounded p-0.5 text-gray-300 opacity-0 transition hover:text-gray-600 group-hover:opacity-100 dark:hover:text-gray-200" onClick={() => dismissInsight(i.id)} aria-label="Dismiss insight">
+                    <button className="-me-1 -mt-0.5 rounded p-0.5 text-gray-300 opacity-0 transition hover:text-gray-600 group-hover:opacity-100 dark:hover:text-gray-200" onClick={() => dismissInsight(i.id)} aria-label={t('Dismiss insight')}>
                       <X className="h-3.5 w-3.5" />
                     </button>
                   </div>
                   <p className="muted mt-1 text-xs leading-relaxed">{i.body}</p>
                   <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
                     <Badge tone={i.kind === 'alert' ? 'amber' : i.kind === 'opportunity' ? 'blue' : 'green'}>{i.impact}</Badge>
-                    <Badge tone="gray">{i.confidence} confidence</Badge>
+                    <Badge tone="gray">{t('{level} confidence', { level: t(i.confidence) })}</Badge>
                   </div>
                   <div className="mt-3 flex gap-2">
                     <button
@@ -320,7 +339,7 @@ export function InsightsFeed() {
                       {i.actionLabel}
                     </button>
                     <button className="btn-ghost btn-sm" onClick={() => dismissInsight(i.id)}>
-                      Dismiss
+                      {t('Dismiss')}
                     </button>
                   </div>
                 </div>
@@ -336,6 +355,7 @@ export function InsightsFeed() {
 /* ---------------- Products & activity (tabbed, collapsible) ---------------- */
 
 export function ActivityCard() {
+  const t = useT();
   const { ledger, products, inventory, transactions, filteredProductIds } = useStore();
   const [tab, setTab] = useState<'top' | 'inventory' | 'recent'>('top');
   const [collapsed, setCollapsed] = useState(false);
@@ -355,13 +375,13 @@ export function ActivityCard() {
           value={tab}
           onChange={setTab}
           options={[
-            { value: 'top', label: 'Top products' },
-            { value: 'inventory', label: 'Inventory health' },
-            { value: 'recent', label: 'Recent activity' },
+            { value: 'top', label: t('Top products') },
+            { value: 'inventory', label: t('Inventory health') },
+            { value: 'recent', label: t('Recent activity') },
           ]}
         />
-        <button className="icon-btn h-8 w-8" onClick={() => setCollapsed((c) => !c)} aria-label={collapsed ? 'Expand' : 'Collapse'}>
-          <ChevronDown className={clsx('h-4 w-4 transition-transform', collapsed && '-rotate-90')} />
+        <button className="icon-btn h-8 w-8" onClick={() => setCollapsed((c) => !c)} aria-label={collapsed ? t('Expand') : t('Collapse')}>
+          <ChevronDown className={clsx('h-4 w-4 transition-transform', collapsed && '-rotate-90 rtl:rotate-90')} />
         </button>
       </div>
       <div className={clsx('grid transition-all duration-200', collapsed ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]')}>
@@ -371,16 +391,18 @@ export function ActivityCard() {
               <table className="w-full">
                 <thead>
                   <tr>
-                    <th className="th">Product</th>
-                    <th className="th">Revenue (30d)</th>
-                    <th className="th text-right">Units</th>
-                    <th className="th text-right" title="Share of this product’s weight from recycled or reused materials">Material circularity</th>
+                    <th className="th">{t('Product')}</th>
+                    <th className="th">{t('Revenue (30d)')}</th>
+                    <th className="th text-end">{t('Units')}</th>
+                    <th className="th text-end" title={t('Share of this product’s weight from recycled or reused materials')}>
+                      {t('Material circularity')}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {top.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="muted px-4 py-8 text-center text-sm">Your best-selling products will appear here.</td>
+                      <td colSpan={4} className="muted px-4 py-8 text-center text-sm">{t('Your best-selling products will appear here.')}</td>
                     </tr>
                   )}
                   {top.map(({ p, units, revenue }) => (
@@ -394,8 +416,8 @@ export function ActivityCard() {
                           <span className="tabular-nums">{fmtMoney(revenue)}</span>
                         </div>
                       </td>
-                      <td className="td text-right tabular-nums">{units}</td>
-                      <td className="td text-right font-semibold tabular-nums">{p.circularityScore}%</td>
+                      <td className="td text-end tabular-nums">{units}</td>
+                      <td className="td text-end font-semibold tabular-nums">{fmtPct(p.circularityScore, 0)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -405,16 +427,16 @@ export function ActivityCard() {
               <table className="w-full">
                 <thead>
                   <tr>
-                    <th className="th">Product</th>
-                    <th className="th w-1/3">Stock level</th>
-                    <th className="th text-right">Cover</th>
-                    <th className="th text-right">Status</th>
+                    <th className="th">{t('Product')}</th>
+                    <th className="th w-1/3">{t('Stock level')}</th>
+                    <th className="th text-end">{t('Cover')}</th>
+                    <th className="th text-end">{t('Status')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {inventory.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="muted px-4 py-8 text-center text-sm">Add products with stock levels to track inventory health.</td>
+                      <td colSpan={4} className="muted px-4 py-8 text-center text-sm">{t('Add products with stock levels to track inventory health.')}</td>
                     </tr>
                   )}
                   {inventory.map((r) => (
@@ -423,8 +445,8 @@ export function ActivityCard() {
                       <td className="td">
                         <StockBar stock={r.product.stockOnHand} threshold={r.product.lowStockThreshold} reorderPoint={r.reorderPoint} compact />
                       </td>
-                      <td className="td text-right tabular-nums">{Number.isFinite(r.daysOfCover) ? `${Math.floor(r.daysOfCover)}d` : '—'}</td>
-                      <td className="td text-right">
+                      <td className="td text-end tabular-nums">{Number.isFinite(r.daysOfCover) ? t('{n}d', { n: Math.floor(r.daysOfCover) }) : '—'}</td>
+                      <td className="td text-end">
                         <StatusBadge status={r.status} />
                       </td>
                     </tr>
@@ -437,22 +459,24 @@ export function ActivityCard() {
                 <tbody>
                   {recent.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="muted px-4 py-8 text-center text-sm">Sales and expenses you log will appear here.</td>
+                      <td colSpan={4} className="muted px-4 py-8 text-center text-sm">{t('Sales and expenses you log will appear here.')}</td>
                     </tr>
                   )}
-                  {recent.map((t) => (
-                    <tr key={t.id} className="tr">
-                      <td className="td text-gray-500">{fmtDate(t.date)}</td>
+                  {recent.map((x) => (
+                    <tr key={x.id} className="tr">
+                      <td className="td text-gray-500">{fmtDate(x.date)}</td>
                       <td className="td">
-                        <span className="font-medium">{t.productId ? products.find((p) => p.id === t.productId)?.name : t.category}</span>
-                        {t.quantity && <span className="muted"> × {t.quantity}</span>}
+                        <span className="font-medium">{x.productId ? products.find((p) => p.id === x.productId)?.name : t(x.category)}</span>
+                        {x.quantity && <span className="muted"> × {x.quantity}</span>}
                       </td>
                       <td className="td">
-                        <Badge tone={t.type === 'inflow' ? 'green' : 'gray'}>{t.category}</Badge>
+                        <Badge tone={x.type === 'inflow' ? 'green' : 'gray'}>{t(x.category)}</Badge>
                       </td>
-                      <td className={clsx('td text-right font-medium tabular-nums', t.type === 'inflow' && 'text-brand-700 dark:text-brand-400')}>
-                        {t.type === 'inflow' ? '+' : '−'}
-                        {fmtMoney(t.amount)}
+                      <td className={clsx('td text-end font-medium tabular-nums', x.type === 'inflow' && 'text-brand-700 dark:text-brand-400')}>
+                        <span dir="ltr">
+                          {x.type === 'inflow' ? '+' : '−'}
+                          {fmtMoney(x.amount)}
+                        </span>
                       </td>
                     </tr>
                   ))}
@@ -469,13 +493,14 @@ export function ActivityCard() {
 /* ---------------- Getting started (new accounts) ---------------- */
 
 export function GettingStarted({ onImportSales }: { onImportSales: () => void }) {
+  const t = useT();
   const { profile, products, suppliers, transactions } = useStore();
   const navigate = useNavigate();
   const steps = [
-    { label: 'Complete your business profile', body: 'Name, industry and what you make.', done: !!profile.businessName.trim(), to: '/onboarding', cta: 'Set up profile' },
-    { label: 'Add your first product', body: 'List its materials so Tokuma can score circularity.', done: products.length > 0, to: '/app/products?new=product', cta: 'Add product' },
-    { label: 'Add a supplier', body: 'Lead times drive your automatic reorder points.', done: suppliers.length > 0, to: '/app/supply-chain?new=supplier', cta: 'Add supplier' },
-    { label: 'Log your first sale', body: 'Sales power revenue, circularity and customer insights. Log one, or import a sales export.', done: transactions.some((t) => t.type === 'inflow'), to: '/app/transactions?new=txn', cta: 'Log sale' },
+    { label: t('Complete your business profile'), body: t('Name, industry and what you make.'), done: !!profile.businessName.trim(), to: '/onboarding', cta: t('Set up profile') },
+    { label: t('Add your first product'), body: t('List its materials so Tokuma can score circularity.'), done: products.length > 0, to: '/app/products?new=product', cta: t('Add product') },
+    { label: t('Add a supplier'), body: t('Lead times drive your automatic reorder points.'), done: suppliers.length > 0, to: '/app/supply-chain?new=supplier', cta: t('Add supplier') },
+    { label: t('Log your first sale'), body: t('Sales power revenue, circularity and customer insights. Log one, or import a sales export.'), done: transactions.some((x) => x.type === 'inflow'), to: '/app/transactions?new=txn', cta: t('Log sale'), sale: true },
   ];
   const done = steps.filter((s) => s.done).length;
   if (done === steps.length) return null;
@@ -484,11 +509,11 @@ export function GettingStarted({ onImportSales }: { onImportSales: () => void })
     <Card className="mb-6 overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-4">
         <div>
-          <h3 className="card-title">Get started with Tokuma</h3>
-          <p className="card-sub mt-0.5">Your dashboard fills in as you add your own data.</p>
+          <h3 className="card-title">{t('Get started with Tokuma')}</h3>
+          <p className="card-sub mt-0.5">{t('Your dashboard fills in as you add your own data.')}</p>
         </div>
         <span className="text-xs font-semibold tabular-nums text-brand-700 dark:text-brand-400">
-          {done} of {steps.length} done
+          {t('{done} of {total} done', { done, total: steps.length })}
         </span>
       </div>
       <div className="mx-5 mt-3 h-1.5 overflow-hidden rounded-full bg-gray-100 dark:bg-white/5">
@@ -497,7 +522,7 @@ export function GettingStarted({ onImportSales }: { onImportSales: () => void })
       <ol className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-4">
         {steps.map((s, i) => (
           <li
-            key={s.label}
+            key={s.to}
             className={clsx(
               'flex flex-col rounded-xl border p-4 transition',
               s.done ? 'border-gray-100 bg-gray-50/60 dark:border-white/5 dark:bg-white/[0.02]' : i === next ? 'border-brand-200 bg-brand-50/50 dark:border-brand-500/30 dark:bg-brand-500/[0.06]' : 'border-gray-200 dark:border-white/10',
@@ -513,9 +538,9 @@ export function GettingStarted({ onImportSales }: { onImportSales: () => void })
                 <button className={i === next ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'} onClick={() => navigate(s.to)}>
                   {s.cta}
                 </button>
-                {s.cta === 'Log sale' && (
+                {'sale' in s && (
                   <button className="btn-secondary btn-sm" onClick={onImportSales}>
-                    <Upload className="h-3.5 w-3.5" /> Import sales
+                    <Upload className="h-3.5 w-3.5" /> {t('Import sales')}
                   </button>
                 )}
               </div>

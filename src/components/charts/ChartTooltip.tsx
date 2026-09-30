@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useLang } from '../../i18n';
 
 interface Row {
   color: string;
@@ -8,8 +9,10 @@ interface Row {
 }
 
 export function TooltipBox({ title, rows, footer }: { title: ReactNode; rows: Row[]; footer?: ReactNode }) {
+  // Charts render left-to-right; the tooltip text follows the page language.
+  const { dir } = useLang();
   return (
-    <div className="min-w-[180px] rounded-lg border border-gray-200 bg-white/95 px-3 py-2.5 text-xs shadow-lift backdrop-blur dark:border-white/10 dark:bg-ink-850/95">
+    <div dir={dir} className="min-w-[180px] rounded-lg border border-gray-200 bg-white/95 px-3 py-2.5 text-xs shadow-lift backdrop-blur dark:border-white/10 dark:bg-ink-850/95">
       <p className="mb-1.5 font-semibold text-gray-900 dark:text-gray-100">{title}</p>
       <div className="space-y-1">
         {rows.map((r) => (

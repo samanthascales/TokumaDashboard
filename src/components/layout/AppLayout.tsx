@@ -27,9 +27,9 @@ export function AppLayout() {
   }, [loc.pathname]);
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen overflow-x-clip">
       <Sidebar open={menu} onClose={() => setMenu(false)} />
-      <div className="lg:pl-64">
+      <div className="lg:ps-64">
         <SupportBanner />
         <Topbar onMenu={() => setMenu(true)} onSearch={() => setPalette(true)} />
         <main key={loc.pathname} className="mx-auto max-w-[1440px] animate-page-in px-4 py-6 sm:px-6 lg:px-8">

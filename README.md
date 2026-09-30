@@ -32,7 +32,7 @@ The app uses hash routing (`/#/app/...`) and a relative base path, so `dist/` ca
 | Settings | `/app/settings` | Light / dark / system theme, business profile (reuses the wizard fields), notification preferences, delete all data |
 | Investor view | `/app/investor` | Opened from the role switcher. Shows impact, funding readiness and supply-chain risk |
 
-These work across every page: the ⌘K / Ctrl K command palette, the notification bell, toasts, skeleton loading states, empty states with a call to action, page transitions, count-up numbers, and "Generate report" (a printable PDF summary).
+These work across every page: the language menu (globe icon), the ⌘K / Ctrl K command palette, the notification bell, toasts, skeleton loading states, empty states with a call to action, page transitions, count-up numbers, and "Generate report" (a printable PDF summary).
 
 ## Importing transactions
 
@@ -45,6 +45,19 @@ These work across every page: the ⌘K / Ctrl K command palette, the notificatio
 **Dashboard → Import sales** opens the same importer for sales exports (Shopify, Square, Etsy, a POS or a spreadsheet): every row is a sale, negative amounts are refunds, and a row can use either a line total or unit price × quantity. On line-item exports that also have an order-level *Total* (Shopify), the per-item price × quantity is used so multi-item orders aren't double-counted. Only rows matching data already in the app are flagged as duplicates; identical sales within one file are all kept.
 
 Without a type column, negative amounts are money out. A sale without a quantity adds revenue but no units. Imports don't change stock on hand. Files in SharePoint, OneDrive or Google Sheets need to be downloaded first. Parsing uses `papaparse` and `read-excel-file`, loaded only when an import starts.
+
+## Languages
+
+Tokuma is available in English, Spanish (Latin America), Portuguese (Brazil), French, Arabic and Dutch (for Suriname). The first visit uses the browser's language when it's one of these, otherwise English. People can switch with the globe button in the top bar (also on the landing and sign-in pages) or under **Settings → Language**; the choice is saved per device.
+
+- **How it works:** UI text is written in English and wrapped in `t('…')` (`src/i18n`). Each language is a file in `src/i18n/locales/` that maps the English text to its translation, and is downloaded only when that language is chosen. Missing strings fall back to English. `{name}` placeholders are filled in; counts use each language's plural rules (Arabic has six forms).
+- **Numbers and dates** are formatted for the chosen language (e.g. `US$ 1.234,50` in Portuguese). Amounts stay in US dollars. Arabic uses Western digits.
+- **Arabic** switches the whole layout to right-to-left: the sidebar moves to the right and margins, alignment and arrows are mirrored. Charts keep time running left to right.
+- **Stored values stay in English** (categories, material types, funding status…), so data looks the same whichever language entered it. They're translated only when shown. Text you type yourself (product names, notes) isn't translated.
+- **Adding a language** (e.g. Quechua or Guaraní): copy `src/i18n/locales/es.ts` to a new file, translate the values (keep the `{placeholders}`), and add a row to `LANGUAGES` in `src/i18n/index.tsx`.
+- **Checking translations:** `npm run i18n:check` lists any UI string missing from a language file and any translation whose placeholders don't match the English.
+
+The Spanish, Portuguese, French, Arabic and Dutch translations were machine-drafted and should be reviewed by native speakers.
 
 ## Key formulas (`src/lib/metrics.ts`)
 
@@ -63,6 +76,7 @@ src/
   types.ts                 data model (Product, Supplier, Transaction, Customer, …)
   data/defaults.ts         the empty profile a new account starts with
   lib/metrics.ts           all business calculations
+  i18n/                    language switching, t() and one strings file per language
   store/AppStore.tsx       app state, derived data, actions, toasts, persistence
   components/ui            design-system primitives (Card, Modal, Gauge, StockBar, Skeleton, …)
   components/layout        sidebar, top bar, command palette, report modal

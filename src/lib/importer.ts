@@ -1,5 +1,6 @@
 import type { Customer, Product, Transaction } from '../types';
 import { toISO, uid } from './format';
+import { t, tk } from '../i18n';
 
 /* ------------------------------------------------------------------ */
 /* Reading files                                                       */
@@ -26,8 +27,8 @@ export async function readSpreadsheet(file: File): Promise<SheetTable[]> {
     const sheets = await readXlsxFile(file);
     return sheets.map((s) => ({ name: s.sheet, rows: s.data as unknown as Cell[][] })).filter((s) => s.rows.some((r) => r.some((c) => c !== null && c !== '')));
   }
-  if (name.endsWith('.xls')) throw new Error('Old .xls files aren’t supported. In Excel, use File → Save As → Excel Workbook (.xlsx) or CSV, then import that.');
-  throw new Error('Choose a .csv or .xlsx file.');
+  if (name.endsWith('.xls')) throw new Error(t('Old .xls files aren’t supported. In Excel, use File → Save As → Excel Workbook (.xlsx) or CSV, then import that.'));
+  throw new Error(t('Choose a .csv or .xlsx file.'));
 }
 
 /* ------------------------------------------------------------------ */
@@ -37,29 +38,30 @@ export async function readSpreadsheet(file: File): Promise<SheetTable[]> {
 export type FieldKey = 'date' | 'amount' | 'unitPrice' | 'type' | 'category' | 'product' | 'quantity' | 'customer' | 'note';
 
 export const FIELDS: { key: FieldKey; label: string; required?: boolean; help: string }[] = [
-  { key: 'date', label: 'Date', required: true, help: 'When the money moved' },
-  { key: 'amount', label: 'Amount (line total)', help: 'Negative numbers or a Type column mark money out' },
-  { key: 'unitPrice', label: 'Unit price', help: 'Used with Quantity when a row has no line total' },
-  { key: 'type', label: 'Type (in / out)', help: 'e.g. “in”, “out”, “income”, “expense”, “credit”, “debit”' },
-  { key: 'category', label: 'Category', help: 'e.g. Product sale, Materials, Rent' },
-  { key: 'product', label: 'Product', help: 'Matched to your products by name or SKU' },
-  { key: 'quantity', label: 'Quantity', help: 'Units sold' },
-  { key: 'customer', label: 'Customer', help: 'Matched by name or email' },
-  { key: 'note', label: 'Description / note', help: 'Any free text' },
+  { key: 'date', label: tk('Date'), required: true, help: tk('When the money moved') },
+  { key: 'amount', label: tk('Amount (line total)'), help: tk('Negative numbers or a Type column mark money out') },
+  { key: 'unitPrice', label: tk('Unit price'), help: tk('Used with Quantity when a row has no line total') },
+  { key: 'type', label: tk('Type (in / out)'), help: tk('e.g. “in”, “out”, “income”, “expense”, “credit”, “debit”') },
+  { key: 'category', label: tk('Category'), help: tk('e.g. Product sale, Materials, Rent') },
+  { key: 'product', label: tk('Product'), help: tk('Matched to your products by name or SKU') },
+  { key: 'quantity', label: tk('Quantity'), help: tk('Units sold') },
+  { key: 'customer', label: tk('Customer'), help: tk('Matched by name or email') },
+  { key: 'note', label: tk('Description / note'), help: tk('Any free text') },
 ];
 
 // Listed most specific first: when several headers could match, the earlier synonym wins.
-// Covers common bank exports and sales exports (Shopify, Square, Etsy, Stripe, WooCommerce).
+// Covers common bank exports and sales exports (Shopify, Square, Etsy, Stripe, WooCommerce),
+// plus Spanish, Portuguese, French, Dutch and Arabic headers.
 const SYNONYMS: Record<FieldKey, string[]> = {
-  date: ['date', 'transaction date', 'sale date', 'order date', 'created at', 'paid at', 'date created', 'posting date', 'posted', 'day', 'created', 'timestamp'],
-  amount: ['amount', 'line total', 'lineitem total', 'item total', 'total', 'net sales', 'gross sales', 'sale amount', 'order total', 'order value', 'subtotal', 'value', 'sum', 'gross', 'net', 'amount ($)', 'amount (usd)'],
-  unitPrice: ['unit price', 'lineitem price', 'item price', 'price each', 'price per unit', 'price'],
-  type: ['type', 'transaction type', 'direction', 'in/out', 'flow', 'debit/credit', 'dr/cr'],
-  category: ['category', 'account', 'class', 'group', 'expense type', 'income type'],
-  product: ['product', 'product name', 'lineitem name', 'item name', 'item', 'title', 'sku', 'lineitem sku', 'product/service'],
-  quantity: ['quantity', 'lineitem quantity', 'qty', 'units', 'unit count', 'count'],
-  customer: ['customer', 'customer name', 'client', 'buyer', 'billing name', 'ship name', 'customer email', 'email', 'payee', 'name'],
-  note: ['note', 'notes', 'description', 'memo', 'details', 'reference', 'narration'],
+  date: ['date', 'transaction date', 'sale date', 'order date', 'created at', 'paid at', 'date created', 'posting date', 'posted', 'day', 'created', 'timestamp', 'fecha', 'data', 'datum', 'التاريخ', 'تاريخ'],
+  amount: ['amount', 'line total', 'lineitem total', 'item total', 'total', 'net sales', 'gross sales', 'sale amount', 'order total', 'order value', 'subtotal', 'value', 'sum', 'gross', 'net', 'amount ($)', 'amount (usd)', 'monto', 'importe', 'valor', 'montant', 'bedrag', 'المبلغ', 'مبلغ'],
+  unitPrice: ['unit price', 'lineitem price', 'item price', 'price each', 'price per unit', 'price', 'precio unitario', 'preço unitário', 'prix unitaire', 'precio', 'preço', 'prix', 'prijs', 'السعر'],
+  type: ['type', 'transaction type', 'direction', 'in/out', 'flow', 'debit/credit', 'dr/cr', 'tipo', 'sens', 'soort', 'النوع'],
+  category: ['category', 'account', 'class', 'group', 'expense type', 'income type', 'categoría', 'categoria', 'catégorie', 'categorie', 'الفئة'],
+  product: ['product', 'product name', 'lineitem name', 'item name', 'item', 'title', 'sku', 'lineitem sku', 'product/service', 'producto', 'produto', 'produit', 'artículo', 'artigo', 'article', 'المنتج'],
+  quantity: ['quantity', 'lineitem quantity', 'qty', 'units', 'unit count', 'count', 'cantidad', 'quantidade', 'quantité', 'aantal', 'الكمية'],
+  customer: ['customer', 'customer name', 'client', 'buyer', 'billing name', 'ship name', 'customer email', 'email', 'payee', 'name', 'cliente', 'client', 'klant', 'العميل', 'nombre', 'nome', 'nom'],
+  note: ['note', 'notes', 'description', 'memo', 'details', 'reference', 'narration', 'descripción', 'descrição', 'nota', 'omschrijving', 'الوصف', 'ملاحظات'],
 };
 
 export type Mapping = Record<FieldKey, number | null>;
@@ -178,7 +180,9 @@ export function parseAmount(v: Cell): number | null {
     neg = true;
     s = s.slice(1, -1);
   }
-  s = s.replace(/[$€£¥\s,]/g, '').replace(/(USD|CAD|EUR|GBP)/gi, '');
+  s = s.replace(/[$€£¥\s]/g, '').replace(/(USD|CAD|EUR|GBP|BRL|ARS|CLP|COP|PEN|MXN|R\$|S\/)/gi, '');
+  // "1.234,50" or "12,5" (comma decimals, common outside the US) vs "1,234.50".
+  s = /^-?[\d.]*,\d{1,2}-?$/.test(s) ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, '');
   if (s.startsWith('-')) {
     neg = !neg;
     s = s.slice(1);
@@ -191,8 +195,8 @@ export function parseAmount(v: Cell): number | null {
   return neg ? -n : n;
 }
 
-const IN_WORDS = ['in', 'inflow', 'income', 'credit', 'cr', 'revenue', 'sale', 'sales', 'deposit', 'received', 'money in', '+'];
-const OUT_WORDS = ['out', 'outflow', 'expense', 'expenses', 'debit', 'dr', 'cost', 'purchase', 'payment', 'withdrawal', 'paid', 'money out', '-'];
+const IN_WORDS = ['in', 'inflow', 'income', 'credit', 'cr', 'revenue', 'sale', 'sales', 'deposit', 'received', 'money in', '+', 'entrada', 'ingreso', 'ingresos', 'venta', 'receita', 'venda', 'entrée', 'recette', 'vente', 'inkomsten', 'دخل'];
+const OUT_WORDS = ['out', 'outflow', 'expense', 'expenses', 'debit', 'dr', 'cost', 'purchase', 'payment', 'withdrawal', 'paid', 'money out', '-', 'salida', 'gasto', 'gastos', 'egreso', 'saída', 'despesa', 'sortie', 'dépense', 'uitgaven', 'مصروف'];
 
 export function parseType(v: Cell): 'inflow' | 'outflow' | null {
   const s = norm(v);
@@ -239,7 +243,7 @@ export function buildTransactions(
     if (c.email) custByKey.set(norm(c.email), c);
   }
   const newCustomers: Customer[] = [];
-  const key = (t: Omit<Transaction, 'id'>) => [t.date, t.type, t.amount.toFixed(2), norm(t.category), t.productId ?? '', t.quantity ?? ''].join('|');
+  const key = (x: Omit<Transaction, 'id'>) => [x.date, x.type, x.amount.toFixed(2), norm(x.category), x.productId ?? '', x.quantity ?? ''].join('|');
   const seen = new Set(ctx.existing.map(key));
   const get = (row: Cell[], f: FieldKey) => (mapping[f] === null ? null : (row[mapping[f]!] ?? null));
 
@@ -249,14 +253,14 @@ export function buildTransactions(
     if (row.every((c) => c === null || String(c).trim() === '')) return;
     const messages: string[] = [];
     const date = parseDate(get(row, 'date'), order);
-    if (!date) messages.push(`Date “${cellText(get(row, 'date'))}” isn’t a date`);
-    else if (date > ctx.today) messages.push('Date is in the future');
+    if (!date) messages.push(t('Date “{value}” isn’t a date', { value: cellText(get(row, 'date')) }));
+    else if (date > ctx.today) messages.push(t('Date is in the future'));
 
     const qtyCell = get(row, 'quantity');
     let quantity: number | undefined;
     if (mapping.quantity !== null && cellText(qtyCell) !== '') {
       const q = parseAmount(qtyCell);
-      if (q === null || q <= 0 || !Number.isInteger(q)) messages.push(`Quantity “${cellText(qtyCell)}” isn’t a whole number`);
+      if (q === null || q <= 0 || !Number.isInteger(q)) messages.push(t('Quantity “{value}” isn’t a whole number', { value: cellText(qtyCell) }));
       else quantity = q;
     }
 
@@ -266,22 +270,22 @@ export function buildTransactions(
     let rawAmount: number | null = null;
     if (amountText !== '') {
       rawAmount = parseAmount(get(row, 'amount'));
-      if (rawAmount === null) messages.push(`Amount “${amountText}” isn’t a number`);
+      if (rawAmount === null) messages.push(t('Amount “{value}” isn’t a number', { value: amountText }));
     } else if (priceText !== '') {
       const unit = parseAmount(get(row, 'unitPrice'));
-      if (unit === null) messages.push(`Unit price “${priceText}” isn’t a number`);
-      else if (!quantity) messages.push('Has a unit price but no quantity, so the total isn’t known');
+      if (unit === null) messages.push(t('Unit price “{value}” isn’t a number', { value: priceText }));
+      else if (!quantity) messages.push(t('Has a unit price but no quantity, so the total isn’t known'));
       else rawAmount = Math.round(unit * quantity * 100) / 100;
     } else {
-      messages.push(mapping.unitPrice !== null ? 'No amount or unit price' : 'No amount');
+      messages.push(mapping.unitPrice !== null ? t('No amount or unit price') : t('No amount'));
     }
-    if (rawAmount === 0) messages.push('Amount is 0');
+    if (rawAmount === 0) messages.push(t('Amount is 0'));
 
     let type: 'inflow' | 'outflow' | null = null;
     if (mapping.type !== null) {
       type = parseType(get(row, 'type'));
       if (!type && rawAmount !== null) type = rawAmount < 0 ? 'outflow' : null;
-      if (!type) messages.push(`Type “${cellText(get(row, 'type'))}” isn’t “in” or “out”`);
+      if (!type) messages.push(t('Type “{value}” isn’t “in” or “out”', { value: cellText(get(row, 'type')) }));
     } else if (rawAmount !== null) {
       type = rawAmount < 0 ? 'outflow' : 'inflow';
     }
@@ -294,7 +298,7 @@ export function buildTransactions(
     const warnings: string[] = [];
     const productText = cellText(get(row, 'product'));
     const product = productText ? byName.get(norm(productText)) : undefined;
-    if (productText && !product) warnings.push(`No product called “${productText}” — imported without a product link`);
+    if (productText && !product) warnings.push(t('No product called “{name}” — imported without a product link', { name: productText }));
 
     const customerText = cellText(get(row, 'customer'));
     let customer = customerText ? custByKey.get(norm(customerText)) : undefined;
@@ -304,13 +308,13 @@ export function buildTransactions(
         customer = { id: uid('cus'), name: isEmail ? customerText.split('@')[0]! : customerText, email: isEmail ? customerText : '', city: '', joinedDate: date! };
         newCustomers.push(customer);
         custByKey.set(norm(customerText), customer);
-        warnings.push(`New customer “${customerText}” will be added`);
-      } else warnings.push(`No customer called “${customerText}” — imported without a customer`);
+        warnings.push(t('New customer “{name}” will be added', { name: customerText }));
+      } else warnings.push(t('No customer called “{name}” — imported without a customer', { name: customerText }));
     }
 
     const categoryText = cellText(get(row, 'category'));
     const category =
-      categoryText || (type === 'inflow' ? (product || ctx.sales ? 'Product sale' : 'Other income') : ctx.sales ? 'Refund' : 'Other expense');
+      categoryText || (type === 'inflow' ? (product || ctx.sales ? 'Product sale' : 'Other income') : ctx.sales ? tk('Refund') : 'Other expense');
     const note = cellText(get(row, 'note'));
     const tx: Omit<Transaction, 'id'> = {
       type: type!,
@@ -322,12 +326,12 @@ export function buildTransactions(
       ...(customer ? { customerId: customer.id } : {}),
       ...(note ? { note } : {}),
     };
-    if (product && type === 'inflow' && !quantity) warnings.push('No quantity — this sale won’t count toward circularity or sales rate');
+    if (product && type === 'inflow' && !quantity) warnings.push(t('No quantity — this sale won’t count toward circularity or sales rate'));
 
     // Only rows matching data already in the app count as duplicates — two identical
     // sales in one file (same item, same day) are both real.
     if (seen.has(key(tx))) {
-      rows.push({ line, status: 'duplicate', messages: ['Matches a transaction you already have'], tx, productName: product?.name, customerName: customer?.name });
+      rows.push({ line, status: 'duplicate', messages: [t('Matches a transaction you already have')], tx, productName: product?.name, customerName: customer?.name });
       return;
     }
     rows.push({ line, status: warnings.length ? 'warning' : 'ok', messages: warnings, tx, productName: product?.name, customerName: customer?.name });

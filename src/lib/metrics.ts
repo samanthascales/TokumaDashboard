@@ -8,7 +8,8 @@ import type {
   Supplier,
   Transaction,
 } from '../types';
-import { addDays, clamp, daysBetween, fmtMoney, fmtMonth, fmtShortDate, parseISO, startOfToday, toISO } from './format';
+import { addDays, clamp, daysBetween, fmtKg, fmtMoney, fmtMonth, fmtPct, fmtShortDate, parseISO, startOfToday, toISO } from './format';
+import { t } from '../i18n';
 
 /* ------------------------------------------------------------------ */
 /* Materials & circularity                                             */
@@ -442,29 +443,29 @@ export interface MilestoneStage {
 export function milestoneStages(ctx: { rate: number; suppliers: number; products: number; avgReliability: number; historyDays: number }): MilestoneStage[] {
   return [
     {
-      name: 'Circular Starter',
+      name: t('Circular Starter'),
       min: 0,
       criteria: [
-        { label: 'Business profile completed', met: true },
-        { label: 'At least 1 product with materials logged', met: ctx.products >= 1 },
+        { label: t('Business profile completed'), met: true },
+        { label: t('At least 1 product with materials logged'), met: ctx.products >= 1 },
       ],
     },
     {
-      name: 'Circular Grower',
+      name: t('Circular Grower'),
       min: 40,
       criteria: [
-        { label: 'Circularity rate ≥ 40%', met: ctx.rate >= 40 },
-        { label: '3+ suppliers tracked', met: ctx.suppliers >= 3 },
-        { label: '90+ days of transactions', met: ctx.historyDays >= 90 },
+        { label: t('Circularity rate ≥ {pct}', { pct: fmtPct(40, 0) }), met: ctx.rate >= 40 },
+        { label: t('3+ suppliers tracked'), met: ctx.suppliers >= 3 },
+        { label: t('90+ days of transactions'), met: ctx.historyDays >= 90 },
       ],
     },
     {
-      name: 'Circular Leader',
+      name: t('Circular Leader'),
       min: 65,
       criteria: [
-        { label: 'Circularity rate ≥ 65%', met: ctx.rate >= 65 },
-        { label: 'Avg supplier reliability ≥ 80', met: ctx.avgReliability >= 80 },
-        { label: '5+ products tracked', met: ctx.products >= 5 },
+        { label: t('Circularity rate ≥ {pct}', { pct: fmtPct(65, 0) }), met: ctx.rate >= 65 },
+        { label: t('Avg supplier reliability ≥ 80'), met: ctx.avgReliability >= 80 },
+        { label: t('5+ products tracked'), met: ctx.products >= 5 },
       ],
     },
   ];
@@ -522,18 +523,20 @@ export function generateInsights(ctx: {
 }): Insight[] {
   const out: Insight[] = [];
   for (const r of ctx.inventory.filter((i) => i.status !== 'healthy')) {
-    const cover = Number.isFinite(r.daysOfCover) ? ` ≈ ${Math.floor(r.daysOfCover)} days of cover at your current sales rate` : '';
-    const lead = r.leadTime !== null ? ` ${r.supplier?.name} needs ${r.leadTime} days to deliver.` : ' Add a supplier lead time to get a reorder point.';
-    const order = r.suggestedOrder ? ` Suggested order: ${r.suggestedOrder} units.` : '';
+    const onHand = Number.isFinite(r.daysOfCover)
+      ? t('{count} units on hand ≈ {days} days of cover at your current sales rate.', { count: r.product.stockOnHand, days: Math.floor(r.daysOfCover) })
+      : t('{count} units on hand.', { count: r.product.stockOnHand });
+    const lead = r.leadTime !== null ? t('{name} needs {count} days to deliver.', { name: r.supplier?.name ?? '', count: r.leadTime }) : t('Add a supplier lead time to get a reorder point.');
+    const order = r.suggestedOrder ? t('Suggested order: {count} units.', { count: r.suggestedOrder }) : '';
     const lost = r.leadTime !== null ? Math.round(r.avgDaily * r.leadTime * r.product.price) : 0;
     out.push({
       id: `ins_stock_${r.product.id}`,
       kind: 'alert',
-      title: `${r.product.name} ${r.status === 'critical' ? 'is at or below its low-stock threshold' : 'has hit its reorder point'}`,
-      body: `${r.product.stockOnHand} units on hand${cover}.${lead}${order}`,
-      impact: lost > 0 ? `Protects ~${fmtMoney(lost)} in sales` : 'Restock soon',
+      title: r.status === 'critical' ? t('{name} is at or below its low-stock threshold', { name: r.product.name }) : t('{name} has hit its reorder point', { name: r.product.name }),
+      body: [onHand, lead, order].filter(Boolean).join(' '),
+      impact: lost > 0 ? t('Protects ~{amount} in sales', { amount: fmtMoney(lost) }) : t('Restock soon'),
       confidence: 'High',
-      actionLabel: 'Open inventory',
+      actionLabel: t('Open inventory'),
       action: { type: 'navigate', to: '/app/products/inventory' },
     });
   }
@@ -541,11 +544,14 @@ export function generateInsights(ctx: {
     out.push({
       id: `ins_mat_${rec.productId}_${rec.materialName}`,
       kind: 'optimization',
-      title: `Switch ${rec.materialName.toLowerCase()} to a recycled source`,
-      body: `${rec.materialName} in ${rec.productName} is your ${i === 0 ? 'largest' : 'next-largest'} virgin input by sold weight (${rec.kg.toFixed(0)} kg last 90 days).`,
-      impact: `+${rec.gain.toFixed(1)}% circularity`,
+      title: t('Switch {material} to a recycled source', { material: rec.materialName.toLowerCase() }),
+      body:
+        i === 0
+          ? t('{material} in {product} is your largest virgin input by sold weight ({kg} last 90 days).', { material: rec.materialName, product: rec.productName, kg: fmtKg(rec.kg) })
+          : t('{material} in {product} is your next-largest virgin input by sold weight ({kg} last 90 days).', { material: rec.materialName, product: rec.productName, kg: fmtKg(rec.kg) }),
+      impact: t('+{pct} circularity', { pct: fmtPct(rec.gain) }),
       confidence: i === 0 ? 'High' : 'Medium',
-      actionLabel: 'Apply change',
+      actionLabel: t('Apply change'),
       action: { type: 'apply-material', productId: rec.productId, materialName: rec.materialName },
     });
   });
@@ -557,22 +563,26 @@ export function generateInsights(ctx: {
     out.push({
       id: `ins_sup_${weak.s.id}`,
       kind: 'alert',
-      title: `${weak.s.name} reliability is ${weak.score}/100`,
-      body: `${weak.s.onTimeDeliveryRate}% on-time with a ${weak.s.avgLeadTimeDays}-day lead time via ${weak.s.transportMethod.toLowerCase()}. Linked products carry higher reorder points as a result.`,
-      impact: 'Reduce stock-out risk',
+      title: t('{name} reliability is {score}/100', { name: weak.s.name, score: weak.score }),
+      body: t('{pct} on-time with a {days}-day lead time via {transport}. Linked products carry higher reorder points as a result.', {
+        pct: fmtPct(weak.s.onTimeDeliveryRate!, 0),
+        days: weak.s.avgLeadTimeDays!,
+        transport: t(weak.s.transportMethod).toLowerCase(),
+      }),
+      impact: t('Reduce stock-out risk'),
       confidence: 'Medium',
-      actionLabel: 'Review supplier',
+      actionLabel: t('Review supplier'),
       action: { type: 'navigate', to: '/app/supply-chain/reliability' },
     });
   }
   if (ctx.funding.ready && ctx.funding.maxEligibility) out.push({
     id: 'ins_funding',
     kind: 'opportunity',
-    title: `You qualify for up to ${fmtMoney(ctx.funding.maxEligibility!)}`,
-    body: `Your circularity and supplier data unlock an estimated ${ctx.funding.apr!.toFixed(2)}% APR.`,
-    impact: `Score ${ctx.funding.score}/100`,
+    title: t('You qualify for up to {amount}', { amount: fmtMoney(ctx.funding.maxEligibility!) }),
+    body: t('Your circularity and supplier data unlock an estimated {apr} APR.', { apr: fmtPct(ctx.funding.apr!, 2) }),
+    impact: t('Score {score}/100', { score: ctx.funding.score! }),
     confidence: 'High',
-    actionLabel: 'View funding',
+    actionLabel: t('View funding'),
     action: { type: 'navigate', to: '/app/funding' },
   });
   const atRisk = ctx.customers.filter((c) => c.segment === 'At-risk');
@@ -580,11 +590,11 @@ export function generateInsights(ctx: {
     out.push({
       id: 'ins_customers',
       kind: 'opportunity',
-      title: `Win back ${atRisk.length} at-risk customers`,
-      body: `They've spent ${fmtMoney(atRisk.reduce((s, c) => s + c.totalSpent, 0))} with you but haven't ordered in 90+ days. A take-back credit is a natural re-engagement hook.`,
-      impact: 'Retention',
+      title: t('Win back {count} at-risk customers', { count: atRisk.length }),
+      body: t("They've spent {amount} with you but haven't ordered in 90+ days. A take-back credit is a natural re-engagement hook.", { amount: fmtMoney(atRisk.reduce((s, c) => s + c.totalSpent, 0)) }),
+      impact: t('Retention'),
       confidence: 'Medium',
-      actionLabel: 'See customers',
+      actionLabel: t('See customers'),
       action: { type: 'navigate', to: '/app/customers' },
     });
   }
@@ -592,11 +602,11 @@ export function generateInsights(ctx: {
     out.push({
       id: 'ins_season',
       kind: 'optimization',
-      title: 'Holiday peak ahead — raise safety stock',
-      body: `Last Nov–Dec revenue ran ${ctx.peakLift.toFixed(0)}% above your yearly average. Long-lead suppliers need orders placed 4–5 weeks ahead.`,
-      impact: `+${ctx.peakLift.toFixed(0)}% seasonal demand`,
+      title: t('Holiday peak ahead — raise safety stock'),
+      body: t('Last Nov–Dec revenue ran {pct} above your yearly average. Long-lead suppliers need orders placed 4–5 weeks ahead.', { pct: fmtPct(ctx.peakLift, 0) }),
+      impact: t('+{pct} seasonal demand', { pct: fmtPct(ctx.peakLift, 0) }),
       confidence: 'Medium',
-      actionLabel: 'Plan inventory',
+      actionLabel: t('Plan inventory'),
       action: { type: 'navigate', to: '/app/products/inventory' },
     });
   }

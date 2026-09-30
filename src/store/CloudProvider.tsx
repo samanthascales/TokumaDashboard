@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import * as cloud from '../lib/cloud';
 import { clearLocalState, readLocalState, useStore } from './AppStore';
+import { t } from '../i18n';
 
 export type SyncStatus = 'idle' | 'loading' | 'saving' | 'saved' | 'error';
 
@@ -95,7 +96,7 @@ export function CloudProvider({ children }: { children: ReactNode }) {
         if (!hasRecords(row.data) && local && hasRecords(local as Record<string, unknown>)) {
           // First sign-in on a browser that has data from before accounts: move it into the account.
           replaceAll(local);
-          toast({ kind: 'success', title: 'Moved this browser’s data into your account' });
+          toast({ kind: 'success', title: t('Moved this browser’s data into your account') });
           clearLocalState();
         } else {
           skipNextSave.current = true;
@@ -157,7 +158,7 @@ export function CloudProvider({ children }: { children: ReactNode }) {
           skipNextSave.current = true;
           replaceAll(res.conflict.data);
           setStatus('saved');
-          toast({ kind: 'info', title: 'Loaded newer changes', body: 'This account was updated in another tab or device. Your last change there was kept.' });
+          toast({ kind: 'info', title: t('Loaded newer changes'), body: t('This account was updated in another tab or device. Your last change there was kept.') });
         }
       } catch (e) {
         setSaveError(cloud.friendlyError(e));

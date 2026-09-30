@@ -5,6 +5,7 @@ import clsx from 'clsx';
 import { CornerDownLeft, FileText, Moon, Package, Plus, Search, Truck, Upload, User, type LucideIcon } from 'lucide-react';
 import { useStore } from '../../store/AppStore';
 import { allPages, openReport } from './nav';
+import { useLang, useT } from '../../i18n';
 
 interface Cmd {
   id: string;
@@ -16,6 +17,8 @@ interface Cmd {
 }
 
 export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const t = useT();
+  const { lang } = useLang();
   const { products, suppliers, customers, theme, setThemePref } = useStore();
   const navigate = useNavigate();
   const [q, setQ] = useState('');
@@ -34,18 +37,19 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const commands: Cmd[] = useMemo(() => {
     const go = (to: string) => () => navigate(to);
     return [
-      ...allPages.map((p) => ({ id: `page:${p.to}`, group: 'Pages' as const, label: p.label, hint: p.to.replace('/app', '') || '/', icon: p.icon, run: go(p.to) })),
-      { id: 'act:report', group: 'Actions', label: 'Generate report', icon: FileText, run: openReport },
-      { id: 'act:supplier', group: 'Actions', label: 'Add new supplier', icon: Plus, run: go('/app/supply-chain?new=supplier') },
-      { id: 'act:product', group: 'Actions', label: 'Add new product', icon: Plus, run: go('/app/products?new=product') },
-      { id: 'act:txn', group: 'Actions', label: 'Log a transaction', icon: Plus, run: go('/app/transactions?new=txn') },
-      { id: 'act:import', group: 'Actions', label: 'Import transactions from CSV / Excel', icon: Upload, run: go('/app/transactions?new=import') },
-      { id: 'act:theme', group: 'Actions', label: `Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`, icon: Moon, run: () => setThemePref(theme === 'dark' ? 'light' : 'dark') },
+      ...allPages.map((p) => ({ id: `page:${p.to}`, group: 'Pages' as const, label: t(p.label), hint: p.to.replace('/app', '') || '/', icon: p.icon, run: go(p.to) })),
+      { id: 'act:report', group: 'Actions', label: t('Generate report'), icon: FileText, run: openReport },
+      { id: 'act:supplier', group: 'Actions', label: t('Add new supplier'), icon: Plus, run: go('/app/supply-chain?new=supplier') },
+      { id: 'act:product', group: 'Actions', label: t('Add new product'), icon: Plus, run: go('/app/products?new=product') },
+      { id: 'act:txn', group: 'Actions', label: t('Log a transaction'), icon: Plus, run: go('/app/transactions?new=txn') },
+      { id: 'act:import', group: 'Actions', label: t('Import transactions from CSV / Excel'), icon: Upload, run: go('/app/transactions?new=import') },
+      { id: 'act:theme', group: 'Actions', label: theme === 'dark' ? t('Switch to light mode') : t('Switch to dark mode'), icon: Moon, run: () => setThemePref(theme === 'dark' ? 'light' : 'dark') },
       ...products.map((p) => ({ id: `prd:${p.id}`, group: 'Products' as const, label: p.name, hint: p.sku, icon: Package, run: go(`/app/products?open=${p.id}`) })),
       ...suppliers.map((s) => ({ id: `sup:${s.id}`, group: 'Suppliers' as const, label: s.name, hint: `${s.city}, ${s.country}`, icon: Truck, run: go(`/app/supply-chain/reliability?open=${s.id}`) })),
       ...customers.map((c) => ({ id: `cus:${c.id}`, group: 'Customers' as const, label: c.name, hint: c.email, icon: User, run: go(`/app/customers?open=${c.id}`) })),
     ];
-  }, [products, suppliers, customers, navigate, theme, setThemePref]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- labels follow the language
+  }, [products, suppliers, customers, navigate, theme, setThemePref, lang]);
 
   const results = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -101,16 +105,16 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                 run(results[active]);
               } else if (e.key === 'Escape') onClose();
             }}
-            placeholder="Jump to a page, product, supplier or customer…"
+            placeholder={t('Jump to a page, product, supplier or customer…')}
             className="h-14 flex-1 bg-transparent text-sm outline-none placeholder:text-gray-400"
           />
           <kbd className="rounded border border-gray-200 px-1.5 py-0.5 text-[10px] text-gray-400 dark:border-white/10">ESC</kbd>
         </div>
         <div ref={listRef} className="scrollbar-thin max-h-[55vh] overflow-y-auto p-2">
-          {results.length === 0 && <p className="muted px-3 py-10 text-center text-sm">No matches for “{q}”.</p>}
+          {results.length === 0 && <p className="muted px-3 py-10 text-center text-sm">{t('No matches for “{q}”.', { q })}</p>}
           {Object.entries(groups).map(([g, items]) => (
             <div key={g} className="mb-1">
-              <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400">{g}</p>
+              <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400">{t(g)}</p>
               {items.map((c) => {
                 i++;
                 const idx = i;
@@ -121,7 +125,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                     data-idx={idx}
                     onMouseMove={() => setActive(idx)}
                     onClick={() => run(c)}
-                    className={clsx('flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm', idx === active ? 'bg-brand-50 text-brand-800 dark:bg-brand-500/10 dark:text-brand-200' : 'text-gray-700 dark:text-gray-300')}
+                    className={clsx('flex w-full items-center gap-3 rounded-lg px-3 py-2 text-start text-sm', idx === active ? 'bg-brand-50 text-brand-800 dark:bg-brand-500/10 dark:text-brand-200' : 'text-gray-700 dark:text-gray-300')}
                   >
                     <Icon className="h-4 w-4 shrink-0 opacity-70" />
                     <span className="flex-1 truncate">{c.label}</span>
@@ -134,9 +138,9 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
           ))}
         </div>
         <div className="flex items-center gap-4 border-t border-gray-100 px-4 py-2 text-[11px] text-gray-400 dark:border-white/5">
-          <span>↑↓ navigate</span>
-          <span>↵ open</span>
-          <span className="ml-auto">{results.length} results</span>
+          <span>↑↓ {t('navigate')}</span>
+          <span>↵ {t('open')}</span>
+          <span className="ms-auto">{t('{count} results', { count: results.length })}</span>
         </div>
       </div>
     </div>,

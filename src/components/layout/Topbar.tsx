@@ -8,6 +8,8 @@ import { useOnClickOutside } from '../../lib/hooks';
 import { fmtRelative } from '../../lib/format';
 import { Avatar } from '../ui';
 import type { AppNotification } from '../../types';
+import { tk, useT } from '../../i18n';
+import { LanguageMenu } from './LanguageMenu';
 
 const notifIcon: Record<AppNotification['kind'], typeof Bell> = {
   stock: AlertTriangle,
@@ -18,6 +20,7 @@ const notifIcon: Record<AppNotification['kind'], typeof Bell> = {
 };
 
 function Notifications() {
+  const t = useT();
   const { notifications, markAllRead, markRead, prefs } = useStore();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -30,28 +33,28 @@ function Notifications() {
   const unread = visible.filter((n) => !n.read).length;
   return (
     <div className="relative" ref={ref}>
-      <button className="icon-btn relative" onClick={() => setOpen((o) => !o)} aria-label={`Notifications (${unread} unread)`}>
+      <button className="icon-btn relative" onClick={() => setOpen((o) => !o)} aria-label={t('Notifications ({count} unread)', { count: unread })}>
         <Bell className="h-[18px] w-[18px]" />
         {unread > 0 && (
-          <span className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-600 px-1 text-[10px] font-semibold text-white ring-2 ring-white dark:ring-ink-950">{unread}</span>
+          <span className="absolute end-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-600 px-1 text-[10px] font-semibold text-white ring-2 ring-white dark:ring-ink-950">{unread}</span>
         )}
       </button>
       {open && (
-        <div className="absolute right-0 top-11 z-50 w-[22rem] max-w-[calc(100vw-2rem)] animate-pop-in overflow-hidden rounded-xl border border-gray-200 bg-white shadow-pop dark:border-white/10 dark:bg-ink-850">
+        <div className="absolute end-0 top-11 z-50 w-[22rem] max-w-[calc(100vw-2rem)] animate-pop-in overflow-hidden rounded-xl border border-gray-200 bg-white shadow-pop dark:border-white/10 dark:bg-ink-850">
           <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-white/5">
-            <p className="text-sm font-semibold">Notifications</p>
+            <p className="text-sm font-semibold">{t('Notifications')}</p>
             <button className="text-xs font-medium text-brand-600 hover:underline disabled:opacity-40 dark:text-brand-400" onClick={markAllRead} disabled={!unread}>
-              Mark all read
+              {t('Mark all read')}
             </button>
           </div>
           <ul className="scrollbar-thin max-h-96 overflow-y-auto">
-            {visible.length === 0 && <li className="muted px-4 py-10 text-center text-sm">You're all caught up.</li>}
+            {visible.length === 0 && <li className="muted px-4 py-10 text-center text-sm">{t("You're all caught up.")}</li>}
             {visible.map((n) => {
               const Icon = notifIcon[n.kind];
               return (
                 <li key={n.id}>
                   <button
-                    className="flex w-full gap-3 px-4 py-3 text-left transition hover:bg-gray-50 dark:hover:bg-white/[0.03]"
+                    className="flex w-full gap-3 px-4 py-3 text-start transition hover:bg-gray-50 dark:hover:bg-white/[0.03]"
                     onClick={() => {
                       markRead(n.id);
                       setOpen(false);
@@ -81,6 +84,7 @@ function Notifications() {
 }
 
 function RoleSwitcher() {
+  const t = useT();
   const { role, setRole, profile } = useStore();
   const cloud = useCloud();
   const [open, setOpen] = useState(false);
@@ -95,37 +99,37 @@ function RoleSwitcher() {
   };
   return (
     <div className="relative" ref={ref}>
-      <button className="flex items-center gap-2 rounded-lg py-1 pl-1 pr-2 transition hover:bg-gray-100 dark:hover:bg-white/5" onClick={() => setOpen((o) => !o)}>
-        <Avatar name={profile.ownerName || 'You'} />
-        <span className="hidden text-left leading-tight md:block">
-          <span className="block text-[13px] font-medium">{profile.ownerName || 'Your account'}</span>
-          <span className="block text-[11px] text-gray-500 dark:text-gray-400">{role === 'investor' ? 'Investor' : 'Business'}</span>
+      <button className="flex items-center gap-2 rounded-lg py-1 ps-1 pe-2 transition hover:bg-gray-100 dark:hover:bg-white/5" onClick={() => setOpen((o) => !o)}>
+        <Avatar name={profile.ownerName || t('You')} />
+        <span className="hidden text-start leading-tight md:block">
+          <span className="block text-[13px] font-medium">{profile.ownerName || t('Your account')}</span>
+          <span className="block text-[11px] text-gray-500 dark:text-gray-400">{role === 'investor' ? t('Investor') : t('Business')}</span>
         </span>
         <ChevronDown className="hidden h-4 w-4 text-gray-400 md:block" />
       </button>
       {open && (
-        <div className="absolute right-0 top-12 z-50 w-64 animate-pop-in overflow-hidden rounded-xl border border-gray-200 bg-white p-1.5 shadow-pop dark:border-white/10 dark:bg-ink-850">
-          <p className="px-2.5 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Switch portal</p>
+        <div className="absolute end-0 top-12 z-50 w-64 animate-pop-in overflow-hidden rounded-xl border border-gray-200 bg-white p-1.5 shadow-pop dark:border-white/10 dark:bg-ink-850">
+          <p className="px-2.5 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-400">{t('Switch portal')}</p>
           {(
             [
-              ['business', Store, 'Business', 'Run operations & track circularity'],
-              ['investor', BriefcaseBusiness, 'Investor', 'Review impact & funding readiness'],
+              ['business', Store, tk('Business'), tk('Run operations & track circularity')],
+              ['investor', BriefcaseBusiness, tk('Investor'), tk('Review impact & funding readiness')],
             ] as const
           ).map(([r, Icon, label, sub]) => (
-            <button key={r} onClick={() => choose(r)} className={clsx('flex w-full items-start gap-3 rounded-lg px-2.5 py-2 text-left transition hover:bg-gray-50 dark:hover:bg-white/5', role === r && 'bg-gray-50 dark:bg-white/5')}>
+            <button key={r} onClick={() => choose(r)} className={clsx('flex w-full items-start gap-3 rounded-lg px-2.5 py-2 text-start transition hover:bg-gray-50 dark:hover:bg-white/5', role === r && 'bg-gray-50 dark:bg-white/5')}>
               <Icon className="mt-0.5 h-4 w-4 text-gray-500" />
               <span className="flex-1">
-                <span className="block text-sm font-medium">{label}</span>
-                <span className="muted block text-xs">{sub}</span>
+                <span className="block text-sm font-medium">{t(label)}</span>
+                <span className="muted block text-xs">{t(sub)}</span>
               </span>
               {role === r && <Check className="mt-0.5 h-4 w-4 text-brand-600 dark:text-brand-400" />}
             </button>
           ))}
           <div className="my-1.5 h-px bg-gray-100 dark:bg-white/5" />
           <button onClick={() => { setOpen(false); navigate('/app/settings'); }} className="flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-sm hover:bg-gray-50 dark:hover:bg-white/5">
-            <Settings className="h-4 w-4 text-gray-500" /> Settings
+            <Settings className="h-4 w-4 text-gray-500" /> {t('Settings')}
           </button>
-          {cloud.user?.email && <p className="truncate px-2.5 pb-1 text-xs text-gray-400">Signed in as {cloud.user.email}</p>}
+          {cloud.user?.email && <p className="truncate px-2.5 pb-1 text-xs text-gray-400">{t('Signed in as {email}', { email: cloud.user.email })}</p>}
           <button
             onClick={async () => {
               setOpen(false);
@@ -134,7 +138,7 @@ function RoleSwitcher() {
             }}
             className="flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-sm hover:bg-gray-50 dark:hover:bg-white/5"
           >
-            <LogOut className="h-4 w-4 text-gray-500" /> Sign out
+            <LogOut className="h-4 w-4 text-gray-500" /> {t('Sign out')}
           </button>
         </div>
       )}
@@ -144,43 +148,46 @@ function RoleSwitcher() {
 
 /** Save state for accounts stored in the database. Hidden in local mode. */
 function SyncStatus() {
+  const t = useT();
   const cloud = useCloud();
   if (!cloud.enabled || !cloud.dataReady || cloud.supportView) return null;
   if (cloud.status === 'error')
     return (
-      <button className="mr-1 inline-flex items-center gap-1.5 rounded-lg bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-300" title={cloud.saveError ?? undefined} onClick={cloud.retrySave}>
-        <CloudOff className="h-3.5 w-3.5" /> Not saved — retry
+      <button className="me-1 inline-flex items-center gap-1.5 rounded-lg bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-300" title={cloud.saveError ?? undefined} onClick={cloud.retrySave}>
+        <CloudOff className="h-3.5 w-3.5" /> {t('Not saved — retry')}
       </button>
     );
   return (
-    <span className="mr-1 hidden items-center gap-1.5 text-xs text-gray-400 sm:inline-flex" aria-live="polite">
+    <span className="me-1 hidden items-center gap-1.5 text-xs text-gray-400 sm:inline-flex" aria-live="polite">
       {cloud.status === 'saving' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CloudCheck className="h-3.5 w-3.5" />}
-      {cloud.status === 'saving' ? 'Saving…' : 'Saved'}
+      {cloud.status === 'saving' ? t('Saving…') : t('Saved')}
     </span>
   );
 }
 
 export function Topbar({ onMenu, onSearch }: { onMenu: () => void; onSearch: () => void }) {
+  const t = useT();
   const { theme, setThemePref } = useStore();
   const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-gray-200/80 bg-white/80 px-4 backdrop-blur-md dark:border-white/5 dark:bg-ink-950/80 sm:px-6">
-      <button className="icon-btn lg:hidden" onClick={onMenu} aria-label="Open menu">
+      <button className="icon-btn lg:hidden" onClick={onMenu} aria-label={t('Open menu')}>
         <Menu className="h-5 w-5" />
       </button>
       <button
         onClick={onSearch}
-        className="flex h-9 w-full max-w-md items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-400 transition hover:border-gray-300 hover:bg-white dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-white/20"
+        className="flex h-9 min-w-0 max-w-md flex-1 items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-400 transition hover:border-gray-300 hover:bg-white dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-white/20"
       >
         <Search className="h-4 w-4" />
-        <span className="flex-1 truncate text-left">Search products, suppliers, pages…</span>
+        <span className="flex-1 truncate text-start">{t('Search products, suppliers, pages…')}</span>
         <kbd className="hidden rounded border border-gray-200 bg-white px-1.5 py-0.5 font-sans text-[11px] font-medium text-gray-500 dark:border-white/10 dark:bg-white/5 dark:text-gray-400 sm:inline">{isMac ? '⌘' : 'Ctrl'} K</kbd>
       </button>
-      <div className="ml-auto flex items-center gap-1">
+      <div className="ms-auto flex shrink-0 items-center gap-1">
         <SyncStatus />
-        <button className="icon-btn" onClick={() => setThemePref(theme === 'dark' ? 'light' : 'dark')} aria-label="Toggle theme">
+        <button className="icon-btn hidden sm:inline-flex" onClick={() => setThemePref(theme === 'dark' ? 'light' : 'dark')} aria-label={t('Toggle theme')}>
           {theme === 'dark' ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
         </button>
+        <LanguageMenu compact />
         <Notifications />
         <div className="mx-1 h-6 w-px bg-gray-200 dark:bg-white/10" />
         <RoleSwitcher />
