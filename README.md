@@ -107,6 +107,15 @@ psql -d scratch -f supabase/tests/local_auth_stub.sql -f supabase/migrations/001
 
 **Delete all data** (Settings → Appearance) clears the current business's data in whichever mode is active.
 
+## Testing
+
+```bash
+npm run test:e2e      # 67 browser checks across 7 suites
+npm run i18n:check    # every language has every text
+```
+
+See [`tests/README.md`](tests/README.md) for what each suite covers and how to run the accounts suite.
+
 ## Deployment
 
 Every push to `main` runs `.github/workflows/deploy.yml`, which builds the app and publishes `dist/` to the `gh-pages` branch. GitHub Pages serves that branch at https://samanthascales.github.io/TokumaDashboard/. If the site doesn't appear, open **Settings → Pages** and set the source to **Deploy from a branch → `gh-pages` / root**.

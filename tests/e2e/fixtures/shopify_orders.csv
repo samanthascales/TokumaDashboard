@@ -1,0 +1,4 @@
+Name,Email,Financial Status,Paid at,Subtotal,Total,Lineitem quantity,Lineitem name,Lineitem price,Lineitem sku,Billing Name,Created at
+#1001,jane@smith.co,paid,2026-09-10 10:02:11 -0400,135.00,142.00,2,Sailcloth Tote,45.00,TKM-TOTE,Jane Smith,2026-09-10 10:01:55 -0400
+#1001,jane@smith.co,,,,,1,Canvas Pouch,45.00,TKM-POUCH,,2026-09-10 10:01:55 -0400
+#1002,sam@lee.co,paid,2026-09-11 09:15:00 -0400,45.00,49.00,1,Sailcloth Tote,45.00,TKM-TOTE,Sam Lee,2026-09-11 09:14:40 -0400
