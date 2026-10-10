@@ -1,0 +1,104 @@
+import { chromium } from 'playwright';
+import { mkdirSync } from 'node:fs';
+// Screenshots go to tests/e2e/output (or TEST_OUT). The app must be running at BASE_URL (see tests/README.md).
+const SP = process.env.TEST_OUT ?? new URL('./output', import.meta.url).pathname;
+const FIX = new URL('./fixtures', import.meta.url).pathname;
+const ROOT = new URL('../../', import.meta.url).pathname;
+for (const d of ['', '/shots3', '/shots4']) mkdirSync(SP + d, { recursive: true });
+const B = process.env.BASE_URL ?? 'http://localhost:4173/#/';
+const browser = await chromium.launch();
+const ctx = await browser.newContext({ viewport: { width: 1440, height: 1100 } });
+const page = await ctx.newPage();
+const errors = [];
+page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
+page.on('console', (m) => { if (m.type() === 'error' && !m.text().includes('CERT')) errors.push(m.text()); });
+const step = async (name, fn) => { try { await fn(); console.log('OK  ', name); } catch (e) { console.log('FAIL', name, '—', e.message.split('\n')[0]); } };
+const text = async () => page.locator('main').innerText();
+const sidebarRate = async () => (await page.locator('aside').innerText()).match(/Circularity rate\s+(\S+)/)?.[1];
+
+await step('supplier with only name + country shows no score', async () => {
+  await page.goto(B + 'app/supply-chain?new=supplier'); await page.waitForTimeout(900);
+  const d = page.getByRole('dialog');
+  const gauge = await d.locator('aside').innerText();
+  if (/\b\d{1,3}\b\s*SCORE/.test(gauge)) throw new Error('preview shows a score before input: ' + gauge.replace(/\n/g, ' '));
+  if (!gauge.includes('Enter lead time and on-time delivery')) throw new Error('missing prompt');
+  await page.screenshot({ path: SP + '/supplier-form-blank.png' });
+  await d.getByPlaceholder('e.g. EcoFab Textiles').fill('Harbour Sailcloth');
+  await d.locator('label:has-text("Country") input').fill('Canada');
+  await page.getByRole('button', { name: 'Add supplier' }).last().click();
+  await page.getByText('Supplier added').waitFor();
+  await page.waitForTimeout(600);
+  const t = await text();
+  for (const bad of ['/100', ' kg', 'risk']) if (t.includes(bad) && !t.includes('Needs data')) throw new Error('found ' + bad);
+  if (!t.includes('Needs data')) throw new Error('expected Needs data badge');
+  await page.screenshot({ path: SP + '/supply-overview.png' });
+});
+await step('reliability appears only after lead time + on-time entered', async () => {
+  await page.goto(B + 'app/supply-chain/reliability'); await page.waitForTimeout(900);
+  if (!(await text()).includes('—')) throw new Error('expected dash');
+  await page.locator('tr', { hasText: 'Harbour Sailcloth' }).click();
+  await page.getByRole('button', { name: /Edit supplier/ }).click();
+  const d = page.getByRole('dialog');
+  await d.getByPlaceholder('e.g. 12').fill('10');
+  await d.getByPlaceholder('e.g. 95').fill('95');
+  const g = await d.locator('aside').innerText();
+  if (!/\d+\s*SCORE/.test(g)) throw new Error('score should show now: ' + g);
+  await page.getByRole('button', { name: 'Save changes' }).click();
+  await page.getByText('Supplier updated').waitFor();
+});
+await step('product: material type must be chosen', async () => {
+  await page.goto(B + 'app/products?new=product'); await page.waitForTimeout(900);
+  const d = page.getByRole('dialog');
+  if (!(await d.locator('aside').innerText()).includes('—')) throw new Error('score ring should be blank');
+  await d.getByPlaceholder('e.g. Organic Cotton T-Shirt').fill('Sailcloth Tote');
+  await d.locator('label:has-text("Price") input').fill('45');
+  await d.locator('label:has-text("Unit cost") input').fill('12');
+  await d.getByPlaceholder('Material name').fill('Reclaimed sailcloth');
+  await d.getByPlaceholder('0.00').fill('0.4');
+  await d.getByPlaceholder('Units in stock').fill('40');
+  await page.getByRole('button', { name: 'Add product' }).last().click();
+  await d.getByText('Choose recycled, reused or virgin for each material').waitFor();
+  await d.getByLabel('Material type').selectOption('Reused');
+  await page.screenshot({ path: SP + '/product-form.png' });
+  await page.getByRole('button', { name: 'Add product' }).last().click();
+  await page.getByText('Product added').waitFor();
+});
+await step('one product, no sales: circularity is "—" everywhere', async () => {
+  await page.goto(B + 'app'); await page.waitForTimeout(1400);
+  const r = await sidebarRate();
+  if (r !== '—') throw new Error('sidebar shows ' + r);
+  const card = await page.locator('.card', { hasText: 'Circularity rate' }).first().innerText();
+  const main = card.split('\n').find((l) => l.includes('%') || l.includes('—')) || '';
+  if (!card.includes('—')) throw new Error('rate card should show a dash: ' + card.split('\n').join(' | '));
+  await page.screenshot({ path: SP + '/dashboard-1product.png' });
+  await page.goto(B + 'app/circularity'); await page.waitForTimeout(1200);
+  const c = await text();
+  if (/Circularity rate\s+\d/.test(c)) throw new Error('circularity tile shows a number');
+  await page.goto(B + 'app/funding'); await page.waitForTimeout(1200);
+  const f = await text();
+  if (/Estimated APR\s+\d/.test(f) || /Max eligibility\s+\$/.test(f)) throw new Error('funding shows numbers: ' + f.slice(0, 300));
+  await page.screenshot({ path: SP + '/funding-nosales.png' });
+});
+await step('after logging a sale, circularity comes from it', async () => {
+  await page.goto(B + 'app/transactions?new=txn'); await page.waitForTimeout(900);
+  await page.getByRole('button', { name: 'Save transaction' }).click();
+  await page.getByText('Transaction logged').waitFor();
+  await page.goto(B + 'app'); await page.waitForTimeout(1500);
+  const r = await sidebarRate();
+  if (r !== '100.0%') throw new Error('expected 100.0% (all reused) got ' + r);
+});
+await step('old saved defaults are cleared on load', async () => {
+  const p2 = await ctx.newPage();
+  await p2.goto(B);
+  await p2.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('tokuma-state-v2'));
+    s.suppliers.push({ id: 'old', name: 'Old Default Co', country: 'X', city: '', transportMethod: 'Road', sustainabilityRating: 75, carbonEmissionsKg: 1000, certifications: [], materialsSupplied: [], avgLeadTimeDays: 14, onTimeDeliveryRate: 90 });
+    localStorage.setItem('tokuma-state-v2', JSON.stringify(s));
+  });
+  await p2.goto(B + 'app/supply-chain/reliability'); await p2.reload(); await p2.waitForTimeout(1200);
+  const row = await p2.locator('tr', { hasText: 'Old Default Co' }).innerText();
+  if (/14 d|90%/.test(row)) throw new Error('old defaults still shown: ' + row);
+  await p2.close();
+});
+console.log(errors.length ? 'ERRORS:\n' + errors.join('\n') : 'NO RUNTIME ERRORS');
+await browser.close();
