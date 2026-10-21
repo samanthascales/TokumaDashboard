@@ -39,10 +39,10 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     return [
       ...allPages.map((p) => ({ id: `page:${p.to}`, group: 'Pages' as const, label: t(p.label), hint: p.to.replace('/app', '') || '/', icon: p.icon, run: go(p.to) })),
       { id: 'act:report', group: 'Actions', label: t('Generate report'), icon: FileText, run: openReport },
-      { id: 'act:supplier', group: 'Actions', label: t('Add new supplier'), icon: Plus, run: go('/app/supply-chain?new=supplier') },
+      { id: 'act:supplier', group: 'Actions', label: t('Add new supplier'), icon: Plus, run: go('/app/products/suppliers?new=supplier') },
       { id: 'act:product', group: 'Actions', label: t('Add new product'), icon: Plus, run: go('/app/products?new=product') },
-      { id: 'act:txn', group: 'Actions', label: t('Log a transaction'), icon: Plus, run: go('/app/transactions?new=txn') },
-      { id: 'act:import', group: 'Actions', label: t('Import transactions from CSV / Excel'), icon: Upload, run: go('/app/transactions?new=import') },
+      { id: 'act:txn', group: 'Actions', label: t('Log a transaction'), icon: Plus, run: go('/app/money?new=txn') },
+      { id: 'act:import', group: 'Actions', label: t('Import transactions from CSV / Excel'), icon: Upload, run: go('/app/money?new=import') },
       { id: 'act:theme', group: 'Actions', label: theme === 'dark' ? t('Switch to light mode') : t('Switch to dark mode'), icon: Moon, run: () => setThemePref(theme === 'dark' ? 'light' : 'dark') },
       ...products.map((p) => ({ id: `prd:${p.id}`, group: 'Products' as const, label: p.name, hint: p.sku, icon: Package, run: go(`/app/products?open=${p.id}`) })),
       ...suppliers.map((s) => ({ id: `sup:${s.id}`, group: 'Suppliers' as const, label: s.name, hint: `${s.city}, ${s.country}`, icon: Truck, run: go(`/app/supply-chain/reliability?open=${s.id}`) })),

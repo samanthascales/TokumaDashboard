@@ -7,21 +7,24 @@ import { useSimulatedLoad } from '../lib/hooks';
 import { fmtInt, fmtKg, fmtMoney, fmtMoney2, fmtNum, fmtPct } from '../lib/format';
 import { useT } from '../i18n';
 import { classifyMaterial, type InventoryRow } from '../lib/metrics';
-import { Badge, Card, CardSkeleton, EmptyState, Field, Modal, PageHeader, Ring, Segmented, StatusBadge, StockBar, TableSkeleton, Tip } from '../components/ui';
+import { Badge, Card, CardSkeleton, EmptyState, Field, Modal, PageHeader, Ring, Segmented, StatusBadge, StockBar, TableSkeleton, Term, Tip } from '../components/ui';
 import { ProductModal } from './products/ProductModal';
 import type { Product } from '../types';
 
-function ProductTabs() {
+export function ProductTabs() {
   const t = useT();
   const cls = ({ isActive }: { isActive: boolean }) =>
     clsx('-mb-px inline-flex items-center gap-2 border-b-2 px-3 py-2 text-sm font-medium transition', isActive ? 'border-brand-600 text-gray-900 dark:border-brand-400 dark:text-white' : 'border-transparent text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200');
   return (
     <div className="mt-5 flex gap-1 border-b border-gray-200 dark:border-white/10">
       <NavLink to="/app/products" end className={cls}>
-        {t('Catalog')}
+        {t('Products')}
       </NavLink>
       <NavLink to="/app/products/inventory" className={cls}>
-        {t('Inventory')}
+        {t('Stock')}
+      </NavLink>
+      <NavLink to="/app/products/suppliers" className={cls}>
+        {t('Suppliers')}
       </NavLink>
     </div>
   );
@@ -42,22 +45,27 @@ function ProductCard({ r, onOpen }: { r: InventoryRow; onOpen: () => void }) {
             {p.sku} · {t(p.category)}
           </p>
         </div>
-        <Tip content={t('Circularity score — share of weight from recycled or reused material')}>
+        <div className="flex flex-col items-center gap-0.5">
           <Ring value={p.circularityScore} />
-        </Tip>
+          <span className="muted text-[10px]">{t('Circularity score')}</span>
+        </div>
       </div>
-      <div className="mt-4 grid grid-cols-3 gap-2 text-sm">
+      <div className="mt-4 grid grid-cols-3 gap-2 text-sm" onClick={(e) => e.stopPropagation()}>
         <div>
           <p className="muted text-[11px]">{t('Price')}</p>
           <p className="num">{fmtMoney2(p.price)}</p>
         </div>
         <div>
-          <p className="muted text-[11px]">{t('Unit cost')}</p>
+          <p className="muted text-[11px]">
+            <Term label={t('Cost')}>{t('What one item costs you to make or buy, including its materials.')}</Term>
+          </p>
           <p className="num">{fmtMoney2(p.unitCost)}</p>
         </div>
         <div>
-          <p className="muted text-[11px]">{t('Margin')}</p>
-          <p className="num">{fmtPct(margin, 0)}</p>
+          <p className="muted text-[11px]">
+            <Term label={t('Profit per item')}>{t('What you keep from each sale: the price minus the cost.')} {t('Here: {pct} of the price.', { pct: fmtPct(margin, 0) })}</Term>
+          </p>
+          <p className={clsx('num', p.price - p.unitCost < 0 && 'text-red-600 dark:text-red-400')}>{fmtMoney2(p.price - p.unitCost)}</p>
         </div>
       </div>
       <div className="mt-4 flex flex-wrap gap-1.5">
@@ -160,8 +168,8 @@ function Catalog({ onOpen }: { onOpen: (p: Product) => void }) {
                 {th('name', t('Product'))}
                 <th className="th">{t('Materials')}</th>
                 {th('price', t('Price'), true)}
-                {th('margin', t('Margin'), true)}
-                {th('circularityScore', t('Circularity'), true)}
+                {th('margin', t('Profit per item'), true)}
+                {th('circularityScore', t('Circularity score'), true)}
                 {th('stockOnHand', t('Stock'))}
                 <th className="th text-end">{t('Status')}</th>
               </tr>
@@ -185,7 +193,7 @@ function Catalog({ onOpen }: { onOpen: (p: Product) => void }) {
                       </div>
                     </td>
                     <td className="td text-end tabular-nums">{fmtMoney2(p.price)}</td>
-                    <td className="td text-end tabular-nums">{fmtPct(((p.price - p.unitCost) / p.price) * 100, 0)}</td>
+                    <td className="td text-end tabular-nums">{fmtMoney2(p.price - p.unitCost)}</td>
                     <td className="td text-end font-semibold tabular-nums">{fmtPct(p.circularityScore, 0)}</td>
                     <td className="td w-56">
                       <StockBar stock={p.stockOnHand} threshold={p.lowStockThreshold} reorderPoint={r.reorderPoint} compact />
@@ -220,7 +228,7 @@ function Inventory({ onOpen }: { onOpen: (p: Product) => void }) {
 
   const tiles = [
     { label: t('Units on hand'), value: fmtInt(units), sub: t('{count} SKUs', { count: inventory.length }) },
-    { label: t('Inventory value'), value: fmtMoney(value), sub: t('at unit cost') },
+    { label: t('Inventory value'), value: fmtMoney(value), sub: t('at unit cost'), explain: t('What all the stock you have would cost to replace. It appears on your balance sheet as something you own.') },
     { label: t('Below threshold'), value: critical, sub: t('critical — order now'), tone: critical ? 'text-red-600 dark:text-red-400' : '' },
     { label: t('At reorder point'), value: reorder, sub: t('order within lead time'), tone: reorder ? 'text-amber-600 dark:text-amber-400' : '' },
   ];
@@ -230,7 +238,7 @@ function Inventory({ onOpen }: { onOpen: (p: Product) => void }) {
       <div className="mb-5 grid grid-cols-2 gap-4 lg:grid-cols-4">
         {tiles.map((x) => (
           <Card key={x.label} className="p-4">
-            <p className="muted text-xs">{x.label}</p>
+            <p className="muted text-xs">{'explain' in x && x.explain ? <Term label={x.label}>{x.explain}</Term> : x.label}</p>
             <p className={clsx('num mt-1 text-2xl', x.tone)}>{x.value}</p>
             <p className="muted text-[11px]">{x.sub}</p>
           </Card>
@@ -255,11 +263,11 @@ function Inventory({ onOpen }: { onOpen: (p: Product) => void }) {
                 <tr>
                   <th className="th">{t('Product')}</th>
                   <th className="th min-w-[200px]">{t('Stock vs threshold')}</th>
-                  <th className="th text-end">{t('Avg / day')}</th>
-                  <th className="th text-end">{t('Lead time')}</th>
-                  <th className="th text-end">{t('Safety')}</th>
-                  <th className="th text-end">{t('Reorder pt')}</th>
-                  <th className="th text-end">{t('Cover')}</th>
+                  <th className="th text-end"><Term label={t('Avg / day')}>{t('How many of this product you sell on an average day (last 30 days).')}</Term></th>
+                  <th className="th text-end"><Term label={t('Lead time')}>{t('How many days your supplier takes to deliver after you order.')}</Term></th>
+                  <th className="th text-end"><Term label={t('Safety')}>{t('Extra items you keep in case sales jump or a delivery is late.')}</Term></th>
+                  <th className="th text-end"><Term label={t('Reorder pt')}>{t('When your stock falls to this number, order more so you do not run out before the delivery arrives.')}</Term></th>
+                  <th className="th text-end"><Term label={t('Cover')}>{t('How many days your current stock will last at your normal sales speed.')}</Term></th>
                   <th className="th">{t('Status')}</th>
                   <th className="th" />
                 </tr>
@@ -391,8 +399,8 @@ export default function Products({ view }: { view: 'catalog' | 'inventory' }) {
   return (
     <>
       <PageHeader
-        title={view === 'catalog' ? t('Products') : t('Inventory')}
-        sub={view === 'catalog' ? t('{count} products · circularity is scored from each bill of materials', { count: products.length }) : t('Reorder points update automatically from sales velocity and supplier lead times')}
+        title={view === 'catalog' ? t('Products') : t('Stock')}
+        sub={view === 'catalog' ? t('Every product shows two things: what you earn from it, and how circular it is.') : t('How many of each product you have, and when to order more.')}
         actions={
           <>
             {attention > 0 && view === 'catalog' && (

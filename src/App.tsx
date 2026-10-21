@@ -1,4 +1,4 @@
-import { HashRouter, MemoryRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { HashRouter, MemoryRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { IS_EMBEDDED } from './env';
 import { I18nProvider } from './i18n';
 import { AppStoreProvider } from './store/AppStore';
@@ -9,7 +9,8 @@ import { Toaster } from './components/ui';
 import Landing from './pages/Landing';
 import SignIn from './pages/SignIn';
 import Onboarding from './pages/Onboarding';
-import Dashboard from './pages/Dashboard';
+import Home from './pages/Home';
+import Reports from './pages/Reports';
 import Products from './pages/Products';
 import Transactions from './pages/Transactions';
 import Circularity from './pages/Circularity';
@@ -22,6 +23,12 @@ import Investor from './pages/Investor';
 import Admin from './pages/Admin';
 
 const Router = IS_EMBEDDED ? MemoryRouter : HashRouter;
+
+/** Old links keep working: they forward to the page's new address, query included. */
+function Moved({ to }: { to: string }) {
+  const { search } = useLocation();
+  return <Navigate to={to + search} replace />;
+}
 
 export default function App() {
   return (
@@ -48,18 +55,23 @@ export default function App() {
                 </RequireAccount>
               }
             >
-              <Route index element={<Dashboard />} />
+              <Route index element={<Home />} />
+              <Route path="money" element={<Transactions />} />
               <Route path="products" element={<Products view="catalog" />} />
               <Route path="products/inventory" element={<Products view="inventory" />} />
-              <Route path="transactions" element={<Transactions />} />
+              <Route path="products/suppliers" element={<SupplyChain view="overview" />} />
               <Route path="circularity" element={<Circularity />} />
-              <Route path="supply-chain" element={<SupplyChain view="overview" />} />
-              <Route path="supply-chain/reliability" element={<SupplyChain view="reliability" />} />
-              <Route path="funding" element={<Funding />} />
-              <Route path="customers" element={<Customers />} />
-              <Route path="education" element={<Education />} />
+              <Route path="reports" element={<Reports />} />
+              <Route path="learn" element={<Education />} />
+              <Route path="learn/funding" element={<Funding />} />
               <Route path="settings" element={<Settings />} />
+              <Route path="supply-chain/reliability" element={<SupplyChain view="reliability" />} />
+              <Route path="customers" element={<Customers />} />
               <Route path="investor" element={<Investor />} />
+              <Route path="transactions" element={<Moved to="/app/money" />} />
+              <Route path="supply-chain" element={<Moved to="/app/products/suppliers" />} />
+              <Route path="education" element={<Moved to="/app/learn" />} />
+              <Route path="funding" element={<Moved to="/app/learn/funding" />} />
               <Route path="admin" element={<Admin />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />

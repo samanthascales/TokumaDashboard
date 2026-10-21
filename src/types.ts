@@ -139,3 +139,25 @@ export interface NotificationPrefs {
 export type Role = 'business' | 'investor';
 export type ThemePref = 'light' | 'dark' | 'system';
 export type MaterialClass = 'Recycled' | 'Reused' | 'Virgin';
+
+/** Something the business owns besides cash and stock (equipment, a van…), for the balance sheet. */
+export interface Asset {
+  id: string;
+  name: string;
+  kind: 'Equipment' | 'Vehicle' | 'Property' | 'Other';
+  value: number;
+}
+
+/** Something the business owes (a loan, an unpaid bill…), for the balance sheet. */
+export interface Liability {
+  id: string;
+  name: string;
+  kind: 'Loan' | 'Unpaid bill' | 'Credit card' | 'Other';
+  amount: number;
+}
+
+/** Targets the owner sets; null until they choose one. */
+export interface Goals {
+  monthlyProfit: number | null;
+  circularityScore: number | null;
+}

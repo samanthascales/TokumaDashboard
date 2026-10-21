@@ -58,6 +58,6 @@ export function useOnClickOutside(ref: RefObject<HTMLElement | null>, fn: () => 
 
 export function useChartColors(theme: 'light' | 'dark') {
   return theme === 'dark'
-    ? { primary: '#2FB488', secondary: '#9FE1CB', neutral: '#6B7280', grid: 'rgba(255,255,255,0.06)', axis: '#8B948F', surface: '#141917', tertiary: '#4B5563' }
-    : { primary: '#0F6E56', secondary: '#5DCAA5', neutral: '#9CA3AF', grid: '#EEF0EF', axis: '#8A918D', surface: '#FFFFFF', tertiary: '#D1D5DB' };
+    ? { primary: '#2FB488', secondary: '#9FE1CB', neutral: '#6B7280', grid: 'rgba(255,255,255,0.06)', axis: '#8B948F', surface: '#141917', tertiary: '#4B5563', money: '#38BDF8', negative: '#F87171' }
+    : { primary: '#0F6E56', secondary: '#5DCAA5', neutral: '#9CA3AF', grid: '#EEF0EF', axis: '#8A918D', surface: '#FFFFFF', tertiary: '#D1D5DB', money: '#0284C7', negative: '#DC2626' };
 }

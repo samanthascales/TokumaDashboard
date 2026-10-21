@@ -35,7 +35,7 @@ const seed = {
   role: 'business',
 };
 
-const pages = ['', 'app', 'app/products', 'app/products/inventory', 'app/transactions', 'app/circularity', 'app/supply-chain', 'app/supply-chain/reliability', 'app/funding', 'app/customers', 'app/education', 'app/settings', 'app/investor', 'signin', 'onboarding'];
+const pages = ['', 'app', 'app/money', 'app/products', 'app/products/inventory', 'app/products/suppliers', 'app/circularity', 'app/reports', 'app/reports?tab=balance', 'app/reports?tab=cash', 'app/reports?tab=breakeven', 'app/supply-chain/reliability', 'app/learn', 'app/learn/funding', 'app/customers', 'app/settings', 'app/investor', 'signin', 'onboarding'];
 
 async function ctxFor(lang, locale = 'en-US') {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale });
@@ -82,7 +82,7 @@ async function englishLeftovers(page, dict) {
 {
   const ctx = await ctxFor('fr');
   const page = await ctx.newPage();
-  await page.goto(B + 'app/funding'); await page.waitForTimeout(1500);
+  await page.goto(B + 'app/learn/funding'); await page.waitForTimeout(1500);
   await step('French: money and decimals use French formatting on seeded data', async () => {
     const txt = await page.locator('main').innerText();
     if (!/\d,\d{2}[\u202f\u00a0]%/.test(txt)) throw new Error('no "x,xx %" found');
@@ -109,7 +109,7 @@ for (const [lang] of Object.entries(langs)) {
   await page.locator('main button.btn-primary').first().click(); await page.waitForTimeout(400);
   for (const t of await englishLeftovers(page, dict)) leftovers.set(t, (leftovers.get(t) ?? '') + ' product-modal');
   await page.keyboard.press('Escape');
-  await page.goto(B + 'app/transactions?new=import'); await page.waitForTimeout(1200);
+  await page.goto(B + 'app/money?new=import'); await page.waitForTimeout(1200);
   for (const t of await englishLeftovers(page, dict)) leftovers.set(t, (leftovers.get(t) ?? '') + ' import-modal');
   await page.goto(B + 'app'); await page.waitForTimeout(1200);
   await page.keyboard.press('Control+k'); await page.waitForTimeout(300);
@@ -184,7 +184,7 @@ for (const [lang] of Object.entries(langs)) {
     await page.locator('aside').getByText('Tableau de bord').waitFor({ timeout: 3000 });
   });
   await step('numbers follow the language (French percent spacing)', async () => {
-    await page.goto(B + 'app/funding'); await page.waitForTimeout(1200);
+    await page.goto(B + 'app/learn/funding'); await page.waitForTimeout(1200);
     const txt = await page.locator('main').innerText();
     if (!/\d[\u202f\u00a0]%/.test(txt)) throw new Error('no French-style percent found');
   });

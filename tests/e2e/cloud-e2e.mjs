@@ -35,7 +35,7 @@ const saved = (page) => page.getByText('Saved', { exact: true }).waitFor({ timeo
 
 const alice = await newPage();
 await step('signed-out visitors are sent to sign in', async () => {
-  await alice.goto(B + 'app/transactions');
+  await alice.goto(B + 'app/money');
   await alice.waitForURL(/#\/signin/);
 });
 await step('sign-up creates an account and a workspace, then onboarding', async () => {
@@ -121,7 +121,7 @@ await step('opening needs a reason; support view is read-only and logged', async
   await owner.locator('#admin-reason').fill('Checking supplier import issue');
   await owner.getByRole('button', { name: 'Open support view' }).click();
   await owner.getByText('Support view:').waitFor();
-  await owner.goto(B + 'app/supply-chain');
+  await owner.goto(B + 'app/products/suppliers');
   await owner.locator('main').getByText('Harbour Sailcloth').first().waitFor({ timeout: 8000 });
   await owner.screenshot({ path: SP + '/shots3/support-view.png' });
   // try an edit — must not be saved to Alice
@@ -138,7 +138,7 @@ await step('opening needs a reason; support view is read-only and logged', async
   if (s.log.length !== 1 || s.log[0].reason !== 'Checking supplier import issue') throw new Error('not logged');
   await owner.getByRole('button', { name: /Exit support view/ }).click();
   await owner.waitForURL(/#\/app\/admin/);
-  await owner.goto(B + 'app/supply-chain'); await owner.waitForTimeout(900);
+  await owner.goto(B + 'app/products/suppliers'); await owner.waitForTimeout(900);
   if ((await owner.locator('main').innerText()).includes('Harbour Sailcloth')) throw new Error('still showing alice data after exit');
 });
 await step('the business sees the view in its access history', async () => {
@@ -147,7 +147,7 @@ await step('the business sees the view in its access history', async () => {
 });
 await step('two tabs: a stale tab loads the newer data instead of overwriting it', async () => {
   const tab2 = await alice.context().newPage();
-  await tab2.goto(B + 'app/supply-chain'); await tab2.waitForTimeout(1500);
+  await tab2.goto(B + 'app/products/suppliers'); await tab2.waitForTimeout(1500);
   // tab 1 adds a supplier and saves
   await alice.goto(B + 'app/supply-chain?new=supplier'); await alice.waitForTimeout(900);
   await alice.getByPlaceholder('e.g. EcoFab Textiles').fill('From Tab One');

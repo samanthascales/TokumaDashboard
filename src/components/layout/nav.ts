@@ -2,6 +2,7 @@ import {
   ArrowLeftRight,
   Boxes,
   BriefcaseBusiness,
+  FileBarChart,
   GraduationCap,
   Landmark,
   LayoutDashboard,
@@ -11,7 +12,6 @@ import {
   ShieldAlert,
   ShieldCheck,
   Truck,
-  Users,
   type LucideIcon,
 } from 'lucide-react';
 import { tk } from '../../i18n';
@@ -27,33 +27,34 @@ export interface NavItem {
 
 export const businessNav: NavItem[] = [
   { to: '/app', label: tk('Dashboard'), icon: LayoutDashboard, end: true },
+  { to: '/app/money', label: tk('Money in & out'), icon: ArrowLeftRight },
   {
     to: '/app/products',
     label: tk('Products'),
     icon: Package,
     end: true,
-    children: [{ to: '/app/products/inventory', label: tk('Inventory'), icon: Boxes, badge: 'new' }],
+    children: [
+      { to: '/app/products/inventory', label: tk('Stock'), icon: Boxes },
+      { to: '/app/products/suppliers', label: tk('Suppliers'), icon: Truck },
+    ],
   },
-  { to: '/app/transactions', label: tk('Transactions'), icon: ArrowLeftRight },
-  { to: '/app/circularity', label: tk('Circularity Metrics'), icon: Recycle },
+  { to: '/app/circularity', label: tk('Circularity'), icon: Recycle },
+  { to: '/app/reports', label: tk('Reports'), icon: FileBarChart, badge: 'new' },
   {
-    to: '/app/supply-chain',
-    label: tk('Supply Chain'),
-    icon: Truck,
+    to: '/app/learn',
+    label: tk('Learn'),
+    icon: GraduationCap,
     end: true,
-    children: [{ to: '/app/supply-chain/reliability', label: tk('Supplier Reliability'), icon: ShieldCheck, badge: 'new' }],
+    children: [{ to: '/app/learn/funding', label: tk('Funding'), icon: Landmark }],
   },
-  { to: '/app/funding', label: tk('Funding'), icon: Landmark },
-  { to: '/app/customers', label: tk('Customers'), icon: Users },
-  { to: '/app/education', label: tk('Education Hub'), icon: GraduationCap },
-  { to: '/app/settings', label: tk('Settings'), icon: Settings, badge: 'new' },
+  { to: '/app/settings', label: tk('Settings'), icon: Settings },
 ];
 
 export const investorNav: NavItem[] = [
   { to: '/app/investor', label: tk('Investor Overview'), icon: BriefcaseBusiness },
   { to: '/app/circularity', label: tk('Circularity Metrics'), icon: Recycle },
-  { to: '/app/supply-chain', label: tk('Supply Chain'), icon: Truck, end: true, children: [{ to: '/app/supply-chain/reliability', label: tk('Supplier Reliability'), icon: ShieldCheck }] },
-  { to: '/app/funding', label: tk('Funding'), icon: Landmark },
+  { to: '/app/products/suppliers', label: tk('Suppliers'), icon: Truck, children: [{ to: '/app/supply-chain/reliability', label: tk('Supplier Reliability'), icon: ShieldCheck }] },
+  { to: '/app/learn/funding', label: tk('Funding'), icon: Landmark },
   { to: '/app/settings', label: tk('Settings'), icon: Settings },
 ];
 

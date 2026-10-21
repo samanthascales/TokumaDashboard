@@ -1,6 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type {
   AppNotification,
+  Asset,
+  Goals,
+  Liability,
   BusinessProfile,
   Customer,
   FundingRequest,
@@ -39,6 +42,8 @@ import {
   type Recommendation,
 } from '../lib/metrics';
 import { fmtMoney, fmtMoney2, fmtPct, startOfToday, toISO, uid } from '../lib/format';
+import { balanceSheet, profitAndLoss, type BalanceSheet, type ProfitAndLoss } from '../lib/accounting';
+import { circularityScore, type CircularityScore } from '../lib/score';
 
 const lowStockText = (p: Product) => ({
   title: t('Low stock: {name}', { name: p.name }),
@@ -65,6 +70,12 @@ export interface Persisted {
   dismissedInsights: string[];
   notifications: AppNotification[];
   fundingSeen: { apr: number | null; maxEligibility: number | null; rate: number } | null;
+  /** Balance sheet entries the owner adds by hand. */
+  assets: Asset[];
+  liabilities: Liability[];
+  /** Cash the business had before it started recording in Tokuma; null until entered. */
+  openingCash: number | null;
+  goals: Goals;
 }
 
 // v2: accounts start empty (v1 stored the old sample data, so it is ignored).
@@ -83,6 +94,10 @@ export function defaultState(): Persisted {
     dismissedInsights: [],
     notifications: [],
     fundingSeen: null,
+    assets: [],
+    liabilities: [],
+    openingCash: null,
+    goals: { monthlyProfit: null, circularityScore: null },
   };
 }
 
@@ -114,6 +129,7 @@ export function normalizeState(raw: Partial<Persisted> | null | undefined): Pers
     // Nested objects are merged too, so data saved by an older version never lacks a field.
     profile: { ...base.profile, ...(r.profile ?? {}) },
     prefs: { ...base.prefs, ...(r.prefs ?? {}) },
+    goals: { ...base.goals, ...(r.goals ?? {}) },
   });
 }
 
@@ -170,6 +186,13 @@ export interface AppStore extends Persisted {
   verification: { verified: boolean; steps: { label: string; done: boolean }[] };
   circ30: CircularityStats;
   circPrev30: CircularityStats;
+  /** Profit & loss for the last 30 days and the 30 days before. */
+  pnl30: ProfitAndLoss;
+  pnlPrev30: ProfitAndLoss;
+  /** The business circularity score for the last 30 days and the 30 days before. */
+  score: CircularityScore;
+  scorePrev: CircularityScore;
+  balance: BalanceSheet;
   units90: Record<string, number>;
   inventory: InventoryRow[];
   funding: FundingTerms;
@@ -197,6 +220,12 @@ export interface AppStore extends Persisted {
   addTransaction: (t: Omit<Transaction, 'id'>) => void;
   addCustomer: (c: Omit<Customer, 'id' | 'joinedDate'>) => string;
   /** Adds many transactions (and any new customers they reference) in one step. Stock levels are not changed. */
+  addAsset: (a: Omit<Asset, 'id'>) => void;
+  removeAsset: (id: string) => void;
+  addLiability: (l: Omit<Liability, 'id'>) => void;
+  removeLiability: (id: string) => void;
+  setOpeningCash: (n: number | null) => void;
+  setGoals: (g: Goals) => void;
   importTransactions: (txs: Omit<Transaction, 'id'>[], newCustomers: Customer[], noun?: 'transaction' | 'sale') => void;
   requestFunding: (r: { type: FundingType; amount: number; purpose: string }) => void;
   applyMaterialSwitch: (productId: string, materialName: string) => void;
@@ -290,6 +319,21 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const units90 = useMemo(() => totalsFor(ledger, lastNDays(90)).units, [ledger]);
   const circ30 = useMemo(() => circularityFrom(state.products, units30), [state.products, units30]);
   const circPrev30 = useMemo(() => circularityFrom(state.products, unitsPrev30), [state.products, unitsPrev30]);
+  const pnl30 = useMemo(() => profitAndLoss(transactions, lastNDays(30)), [transactions]);
+  const pnlPrev30 = useMemo(() => profitAndLoss(transactions, lastNDays(30, 30)), [transactions]);
+  const avgSupplierRating = useMemo(() => avgKnown(state.suppliers.map((x) => x.sustainabilityRating)), [state.suppliers]);
+  const score = useMemo(
+    () => circularityScore({ materials: circ30.hasData ? circ30.rate : null, income: pnl30.circularIncomeShare, suppliers: avgSupplierRating }),
+    [circ30, pnl30.circularIncomeShare, avgSupplierRating],
+  );
+  const scorePrev = useMemo(
+    () => circularityScore({ materials: circPrev30.hasData ? circPrev30.rate : null, income: pnlPrev30.circularIncomeShare, suppliers: avgSupplierRating }),
+    [circPrev30, pnlPrev30.circularIncomeShare, avgSupplierRating],
+  );
+  const balance = useMemo(
+    () => balanceSheet(transactions, state.products, state.assets, state.liabilities, state.openingCash),
+    [transactions, state.products, state.assets, state.liabilities, state.openingCash],
+  );
   const inventory = useMemo(() => inventoryRows(state.products, state.suppliers, ledger), [state.products, state.suppliers, ledger]);
   const stats = useMemo(() => customerStats(customers, transactions), [customers, transactions]);
   const funding = useMemo(() => {
@@ -460,6 +504,36 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     },
     [patch, toast],
   );
+  const addAsset: AppStore['addAsset'] = useCallback(
+    (a) => {
+      patch((s) => ({ assets: [...s.assets, { ...a, id: uid('ast') }] }));
+      toast({ kind: 'success', title: t('Added to what you own'), body: a.name });
+    },
+    [patch, toast],
+  );
+  const removeAsset = useCallback((id: string) => patch((s) => ({ assets: s.assets.filter((x) => x.id !== id) })), [patch]);
+  const addLiability: AppStore['addLiability'] = useCallback(
+    (l) => {
+      patch((s) => ({ liabilities: [...s.liabilities, { ...l, id: uid('lia') }] }));
+      toast({ kind: 'success', title: t('Added to what you owe'), body: l.name });
+    },
+    [patch, toast],
+  );
+  const removeLiability = useCallback((id: string) => patch((s) => ({ liabilities: s.liabilities.filter((x) => x.id !== id) })), [patch]);
+  const setOpeningCash = useCallback(
+    (openingCash: number | null) => {
+      patch({ openingCash });
+      toast({ kind: 'success', title: t('Starting cash saved') });
+    },
+    [patch, toast],
+  );
+  const setGoals = useCallback(
+    (goals: Goals) => {
+      patch({ goals });
+      toast({ kind: 'success', title: t('Goals saved') });
+    },
+    [patch, toast],
+  );
   const requestFunding: AppStore['requestFunding'] = useCallback(
     (r) => {
       const id = uid('fr');
@@ -515,6 +589,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     verification,
     circ30,
     circPrev30,
+    pnl30,
+    pnlPrev30,
+    score,
+    scorePrev,
+    balance,
     units90,
     inventory,
     funding,
@@ -541,6 +620,12 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     addTransaction,
     addCustomer,
     importTransactions,
+    addAsset,
+    removeAsset,
+    addLiability,
+    removeLiability,
+    setOpeningCash,
+    setGoals,
     requestFunding,
     applyMaterialSwitch,
     dismissInsight,

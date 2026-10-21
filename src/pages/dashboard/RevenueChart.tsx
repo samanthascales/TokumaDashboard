@@ -116,7 +116,7 @@ export function RevenueChart({ onImportSales }: { onImportSales: () => void }) {
               <button className="btn-secondary btn-sm" onClick={onImportSales}>
                 <Upload className="h-3.5 w-3.5" /> {t('Import sales')}
               </button>
-              <button className="btn-primary btn-sm" onClick={() => navigate('/app/transactions?new=txn')}>
+              <button className="btn-primary btn-sm" onClick={() => navigate('/app/money?new=txn')}>
                 {t('Log a sale')}
               </button>
             </div>

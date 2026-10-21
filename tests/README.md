@@ -12,11 +12,12 @@ npm run test:e2e -- --no-build   # reuse the last build
 
 | Suite | What it checks |
 | --- | --- |
-| `fresh` | A brand-new visitor: landing page, sign-up-free onboarding, empty states |
+| `fresh` | A brand-new visitor: landing page, onboarding, empty pages, first supplier, product and sale |
 | `inputs` | Adding products, materials, suppliers and sales; form validation |
 | `import` | Importing product lists from Shopify, Etsy and Square exports |
 | `sales-import` | Importing sales history from CSV and Excel; charts update |
-| `nav` | Every page opens from the sidebar with no errors, on desktop and phone |
+| `nav` | The menu's six main pages, collapsible groups, and old links forwarding to new pages |
+| `reports` | The circularity score formula, profit on the dashboard, goals, explanation buttons (hover, Escape, tap on a phone), profit & loss, balance sheet, cash flow, break-even, lessons |
 | `i18n` | All six languages: every text is translated, Arabic is right-to-left, no page overflows |
 | `profile` | Editing your profile and photo from the top-right menu and from Settings |
 

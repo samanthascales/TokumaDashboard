@@ -22,7 +22,7 @@ await page.evaluate(() => localStorage.setItem('tokuma-state-v2', JSON.stringify
 })));
 
 await step('CSV: columns guessed, rows classified correctly', async () => {
-  await page.goto(B + 'app/transactions'); await page.reload(); await page.waitForTimeout(1000);
+  await page.goto(B + 'app/money'); await page.reload(); await page.waitForTimeout(1000);
   await page.getByRole('button', { name: /Import CSV/ }).click();
   await page.setInputFiles('#import-file', FIX + '/bank.csv');
   await dlg().getByText('match your columns').waitFor();
@@ -71,9 +71,12 @@ await step('imported data flows into the app', async () => {
   if (!/7 transactions/.test(n)) throw new Error('expected 7 transactions');
   await page.goto(B + 'app/customers'); await page.waitForTimeout(1000);
   if (!(await page.locator('main').innerText()).includes('New Buyer')) throw new Error('New Buyer missing');
-  const rate = (await page.locator('aside').innerText()).match(/Circularity rate\s+(\S+)/)?.[1];
-  console.log('     sidebar circularity:', rate);
-  if (rate !== '100.0%') throw new Error('rate ' + rate);
+  // The fixtures are dated September 2026, so check the yearly profit & loss rather than the last 30 days.
+  await page.goto(B + 'app/reports'); await page.waitForTimeout(800);
+  await page.getByRole('tab', { name: 'This year' }).click();
+  const pnl = await page.getByTestId('pnl').innerText();
+  console.log('     this year:', pnl.replace(/\n/g, ' | ').slice(0, 160));
+  if (!pnl.includes('Product sale') || !pnl.includes('Materials')) throw new Error('imported rows missing from profit & loss');
 });
 console.log(errors.length ? 'ERRORS:\n' + errors.join('\n') : 'NO RUNTIME ERRORS');
 await browser.close();

@@ -1,18 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import clsx from 'clsx';
-import { ArrowDownLeft, ArrowUpRight, ChevronLeft, ChevronRight, Download, Link2, Plus, Receipt, Search, Upload } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, ChevronLeft, ChevronRight, Download, Plus, Receipt, Recycle, Search, Upload } from 'lucide-react';
 import { ImportModal } from './transactions/ImportModal';
 import { useStore } from '../store/AppStore';
 import { IS_EMBEDDED } from '../env';
 import { useSimulatedLoad } from '../lib/hooks';
-import { fmtDate, fmtInt, fmtMoney, fmtMoney2, fmtPct, startOfToday, toISO } from '../lib/format';
+import { fmtDate, fmtInt, fmtMoney, fmtMoney2, startOfToday, toISO } from '../lib/format';
 import { t as tr, tk, useT } from '../i18n';
-import { lastNDays, totalsFor } from '../lib/metrics';
-import { Badge, Card, EmptyState, Field, Modal, PageHeader, Segmented, TableSkeleton } from '../components/ui';
+import { FINANCING_CATEGORIES } from '../lib/metrics';
+import { CIRCULAR_INCOME_CATEGORIES } from '../lib/score';
+import { RevenueChart } from './dashboard/RevenueChart';
+import { Badge, Card, EmptyState, Field, Modal, PageHeader, Segmented, TableSkeleton, Term } from '../components/ui';
 import type { Transaction } from '../types';
 
-const INFLOW_CATS = [tk('Product sale'), tk('Grant'), tk('Loan'), tk('Repair service'), tk('Other income')];
+const INFLOW_CATS = [tk('Product sale'), tk('Repair service'), tk('Resale / second-hand'), tk('Rental'), tk('Take-back / refurbish'), tk('Other income'), tk('Grant'), tk('Loan')];
 const OUTFLOW_CATS = [tk('Materials'), tk('Logistics'), tk('Payroll'), tk('Rent & utilities'), tk('Marketing'), tk('Packaging'), tk('Inventory purchase'), tk('Other expense')];
 const PAGE = 15;
 
@@ -62,15 +64,15 @@ function AddTransactionModal({ open, onClose }: { open: boolean; onClose: () => 
     <Modal
       open={open}
       onClose={onClose}
-      title={t('Log transaction')}
-      sub={t('Sales linked to a product update circularity and stock automatically')}
+      title={t('Record money in or out')}
+      sub={t('A sale of a product also lowers your stock and updates your circularity score.')}
       footer={
         <>
           <button className="btn-secondary" onClick={onClose}>
             {t('Cancel')}
           </button>
           <button className="btn-primary" onClick={submit}>
-            {t('Save transaction')}
+            {t('Save')}
           </button>
         </>
       }
@@ -85,7 +87,10 @@ function AddTransactionModal({ open, onClose }: { open: boolean; onClose: () => 
           ]}
         />
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label={t('Category')}>
+          <Field
+            label={t('Category')}
+            hint={type === 'inflow' && CIRCULAR_INCOME_CATEGORIES.has(category) ? t('This counts as circular income and raises your circularity score.') : type === 'inflow' && FINANCING_CATEGORIES.has(category) ? t('Loans and grants add to your cash, but they are not profit.') : undefined}
+          >
             <select className="input" value={category} onChange={(e) => setCategory(e.target.value)}>
               {(type === 'inflow' ? INFLOW_CATS : OUTFLOW_CATS).map((c) => (
                 <option key={c} value={c}>
@@ -140,7 +145,7 @@ function AddTransactionModal({ open, onClose }: { open: boolean; onClose: () => 
 
 export default function Transactions() {
   const t = useT();
-  const { transactions, products, customers, ledger } = useStore();
+  const { transactions, products, customers, pnl30 } = useStore();
   const [params, setParams] = useSearchParams();
   const [adding, setAdding] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -172,11 +177,6 @@ export default function Transactions() {
   }, [transactions, type, cat, q, productName, customerName]);
   useEffect(() => setPage(0), [type, cat, q]);
 
-  const t30 = totalsFor(ledger, lastNDays(30));
-  const in30 = transactions.filter((x) => x.type === 'inflow' && x.date >= toISO(lastNDays(30).from)).reduce((s, x) => s + x.amount, 0);
-  const out30 = transactions.filter((x) => x.type === 'outflow' && x.date >= toISO(lastNDays(30).from)).reduce((s, x) => s + x.amount, 0);
-  const linked = transactions.filter((x) => x.type === 'inflow' && x.category === 'Product sale');
-  const linkedPct = linked.length ? (linked.filter((x) => x.productId).length / linked.length) * 100 : 0;
 
   const exportCsv = () => {
     const header = 'id,date,type,category,amount,product,quantity,customer\n';
@@ -195,8 +195,8 @@ export default function Transactions() {
   return (
     <>
       <PageHeader
-        title={t('Transactions')}
-        sub={t('Every sale is linked to a product and customer, powering circularity and customer insights')}
+        title={t('Money in & out')}
+        sub={t('Record every sale and every cost. Tokuma uses them for your profit, your reports and your circularity score.')}
         actions={
           <>
             {!IS_EMBEDDED && (
@@ -208,25 +208,28 @@ export default function Transactions() {
               <Upload className="h-4 w-4" /> {t('Import CSV / Excel')}
             </button>
             <button className="btn-primary" onClick={() => setAdding(true)}>
-              <Plus className="h-4 w-4" /> {t('Log transaction')}
+              <Plus className="h-4 w-4" /> {t('Record money in or out')}
             </button>
           </>
         }
       />
       <div className="mb-5 grid grid-cols-2 gap-4 lg:grid-cols-4">
         {[
-          { label: t('Money in (30d)'), value: fmtMoney(in30), icon: ArrowDownLeft },
-          { label: t('Money out (30d)'), value: fmtMoney(out30), icon: ArrowUpRight },
-          { label: t('Net profit (30d, accrual)'), value: fmtMoney(t30.profit), icon: Receipt },
-          { label: t('Sales linked to products'), value: fmtPct(linkedPct, 0), icon: Link2 },
+          { label: t('Money in (30 days)'), value: fmtMoney(pnl30.incomeTotal), icon: ArrowDownLeft, explain: t('Everything customers paid you in the last 30 days. Loans and grants are not included.') },
+          { label: t('Money out (30 days)'), value: fmtMoney(pnl30.expenseTotal), icon: ArrowUpRight, explain: t('Everything you paid to run the business in the last 30 days.') },
+          { label: t('Profit (30 days)'), value: fmtMoney(pnl30.profit), icon: Receipt, explain: t('Money in minus money out. Above zero means you made money.') },
+          { label: t('Circular income (30 days)'), value: fmtMoney(pnl30.circularIncome), icon: Recycle, explain: t('Money from repairs, resale, rental and take-back. It counts toward your circularity score.') },
         ].map((k) => (
           <Card key={k.label} className="p-4">
             <p className="muted flex items-center gap-1.5 text-xs">
-              <k.icon className="h-3.5 w-3.5" /> {k.label}
+              <k.icon className="h-3.5 w-3.5 shrink-0" /> <Term label={k.label}>{k.explain}</Term>
             </p>
             <p className="num mt-1 text-2xl">{k.value}</p>
           </Card>
         ))}
+      </div>
+      <div className="mb-5">
+        <RevenueChart onImportSales={() => setImporting(true)} />
       </div>
       {!ready ? (
         <TableSkeleton rows={10} cols={6} />
@@ -250,7 +253,7 @@ export default function Transactions() {
           {rows.length === 0 ? (
             <EmptyState
               icon={<Receipt className="h-6 w-6" />}
-              title={transactions.length ? t('No transactions match') : t('No transactions yet')}
+              title={transactions.length ? t('No transactions match') : t('Nothing recorded yet')}
               body={transactions.length ? t('Adjust the filters or log a new transaction.') : t('Log sales and expenses one at a time, or import them from a CSV or Excel file.')}
               action={
                 <div className="flex gap-2">
@@ -258,7 +261,7 @@ export default function Transactions() {
                     <Upload className="h-3.5 w-3.5" /> {t('Import file')}
                   </button>
                   <button className="btn-primary btn-sm" onClick={() => setAdding(true)}>
-                    {t('Log transaction')}
+                    {t('Record money in or out')}
                   </button>
                 </div>
               }

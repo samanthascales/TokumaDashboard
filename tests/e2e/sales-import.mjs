@@ -27,9 +27,9 @@ await page.evaluate(() => localStorage.setItem('tokuma-state-v2', JSON.stringify
 })));
 await page.goto(B + 'app'); await page.reload(); await page.waitForTimeout(1500);
 
-await step('dashboard shows Import sales in header, first-sale step and empty chart', async () => {
+await step('home shows Import sales in the header and the first-sale step', async () => {
   const n = await page.getByRole('button', { name: /Import sales/ }).count();
-  if (n !== 3) throw new Error('found ' + n + ' Import sales buttons');
+  if (n !== 2) throw new Error('found ' + n + ' Import sales buttons');
   await page.screenshot({ path: SP + '/shots3/dash-import-buttons.png' });
 });
 await step('Shopify export: uses line price × qty, not the order Total', async () => {
@@ -72,12 +72,14 @@ await step('Etsy export: 2-digit year dates, new buyer added, negative total rec
   await page.getByRole('button', { name: 'Import 2 sales' }).click();
   await page.getByText('Imported 2 sales').first().waitFor();
 });
-await step('dashboard now shows imported revenue', async () => {
-  await page.waitForTimeout(1200);
+await step('imported revenue shows on the money page and the home checklist', async () => {
+  await page.waitForTimeout(600);
+  await page.goto(B + 'app/money'); await page.waitForTimeout(1500);
   // The 12-month chart total, so the check doesn't depend on today's date (the files are dated September 2026).
   const card = await page.locator('.card', { hasText: 'Revenue vs profit' }).first().innerText();
   console.log('     revenue chart:', card.split('\n').slice(0, 6).join(' | '));
   if (!card.includes('$400')) throw new Error('expected $400 total revenue');
+  await page.goto(B + 'app'); await page.waitForTimeout(1200);
   if (await page.getByText('Get started with Tokuma').count()) {
     const gs = await page.locator('.card', { hasText: 'Get started with Tokuma' }).innerText();
     if (!gs.includes('Log your first sale') || gs.match(/Log your first sale[\s\S]*Import sales/)) throw new Error('sale step not done');
