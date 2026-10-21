@@ -28,7 +28,8 @@ The app uses hash routing (`/#/app/...`) and a relative base path, so `dist/` ca
 | Suppliers | `/app/products/suppliers` | Supplier sustainability ratings (part of the score), reliability, carbon |
 | **Circularity** | `/app/circularity` | The score and its five pillars, the research basis, the waste & returned-products log, ideas to raise it, materials breakdown and trend |
 | **Reports** | `/app/reports` | Basic accounting, each with a "what is this?" box: **Profit & loss**, **Balance sheet** (assets, liabilities, owner’s equity), **Cash flow** (including cash runway) and a **Break-even** calculator. Printable |
-| Learn | `/app/learn` | Short lessons on the circularity score, the circular economy, profit & loss, the balance sheet, cash flow and break-even, each linked to the matching page. Funding is under Learn |
+| **Share a report** | `/app/share` | A read-only snapshot link (or PDF) for a lender, investor or mentor: financial summary, balance sheet, funding readiness and circularity. Or a **circularity impact report** for customers, with no financial figures. The report travels inside the link (`#/r/…`): nothing is stored on a server, the reader needs no account, and every field is checked when the link is opened |
+| Learn | `/app/learn` | Short lessons on the circularity score, the circular economy, profit & loss, the balance sheet, cash flow and break-even, each linked to the matching page. Funding is under Learn. The Funding page shows a **funding readiness** meter (0–100): a checklist of what lenders look for (records and performance), with next steps. It is not a credit score or a loan offer |
 | Settings | `/app/settings` | Your profile and photo, language, theme, business profile, notifications, delete data |
 
 The menu groups pages so an owner sees six main pages. Labels use standard business terms (revenue, expenses, net profit, assets, liabilities, owner’s equity, fixed costs), and each has a plain-language explanation. The customers page, the supplier reliability detail and the investor view still exist but are no longer in the menu. Old links (`/app/transactions`, `/app/supply-chain`, `/app/education`, `/app/funding`) forward to the new pages.
@@ -122,6 +123,8 @@ src/
   lib/metrics.ts           business calculations (circularity, stock, suppliers, funding)
   lib/score.ts             the circularity score (Circular Innovation Score, 5 pillars)
   lib/accounting.ts        profit & loss, balance sheet, cash flow, break-even
+  lib/readiness.ts         funding readiness checklist
+  lib/share.ts             shared report snapshot: encode, decode and validate
   i18n/                    language switching, t() and one strings file per language
   store/AppStore.tsx       app state, derived data, actions, toasts, persistence
   components/ui            design-system primitives (Card, Modal, Gauge, StockBar, Skeleton, …)
@@ -156,7 +159,7 @@ psql -d scratch -f supabase/tests/local_auth_stub.sql -f supabase/migrations/001
 ## Testing
 
 ```bash
-npm run test:e2e      # 80 browser checks across 8 suites
+npm run test:e2e      # 101 browser checks across 10 suites
 npm run i18n:check    # every language has every text
 ```
 

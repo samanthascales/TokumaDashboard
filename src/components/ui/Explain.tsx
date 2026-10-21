@@ -71,7 +71,7 @@ export function Explain({ children, label, className }: { children: ReactNode; l
         ref={btn}
         type="button"
         className={clsx(
-          'inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full align-middle text-gray-400 transition hover:text-brand-700 focus-visible:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 dark:text-gray-500 dark:hover:text-brand-300',
+          'no-print inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full align-middle text-gray-400 transition hover:text-brand-700 focus-visible:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 dark:text-gray-500 dark:hover:text-brand-300',
           open && 'text-brand-700 dark:text-brand-300',
           className,
         )}

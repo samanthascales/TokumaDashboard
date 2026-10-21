@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import clsx from 'clsx';
-import { AlertTriangle, Info, Plus, Recycle, Trash2 } from 'lucide-react';
+import { AlertTriangle, Info, Plus, Recycle, Share2, Trash2 } from 'lucide-react';
 import { useStore } from '../store/AppStore';
 import { useChartColors } from '../lib/hooks';
 import { fmtCompactMoney, fmtDate, fmtInt, fmtMoney, fmtMonth, fmtNum, fmtPct, startOfToday, toISO } from '../lib/format';
@@ -586,9 +586,14 @@ export default function Reports() {
         title={t('Reports')}
         sub={t('The standard financial statements every business uses, explained simply. Updated from your transactions. As of {date}.', { date: fmtDate(toISO(today)) })}
         actions={
-          <button className="btn-secondary no-print" onClick={() => window.print()}>
-            {t('Print or save as PDF')}
-          </button>
+          <>
+            <button className="btn-secondary no-print" onClick={() => window.print()}>
+              {t('Print or save as PDF')}
+            </button>
+            <Link to="/app/share?type=lender" className="btn-primary no-print">
+              <Share2 className="h-4 w-4" /> {t('Share with a lender')}
+            </Link>
+          </>
         }
       >
         <div className="mt-5 overflow-x-auto">

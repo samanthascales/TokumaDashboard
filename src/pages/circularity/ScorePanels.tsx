@@ -11,7 +11,7 @@ import { Badge, Card, CardHeader, EmptyState, Field, Gauge, Modal, Term } from '
 import { levelName, levelTone, ScoreExplainer } from '../../components/ScoreBits';
 import type { RecoveryRoute } from '../../types';
 
-const PILLAR_COPY: Record<PillarKey, { label: string; explain: string; source: string; tip: string; missing: string }> = {
+export const PILLAR_COPY: Record<PillarKey, { label: string; explain: string; source: string; tip: string; missing: string }> = {
   inflow: {
     label: tk('Circular inflow'),
     explain: tk('The share of the weight of everything you sold in the last 30 days made from recycled, reused or sustainably sourced renewable materials.'),
@@ -50,7 +50,7 @@ const PILLAR_COPY: Record<PillarKey, { label: string; explain: string; source: s
 };
 
 /** The measured number behind a pillar, in words. */
-function rawText(t: (k: string, v?: Record<string, string | number>) => string, p: Pillar) {
+export function rawText(t: (k: string, v?: Record<string, string | number>) => string, p: Pillar) {
   if (p.value === null) return null;
   switch (p.key) {
     case 'inflow':

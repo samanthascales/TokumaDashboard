@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import clsx from 'clsx';
-import { ChevronLeft, ChevronRight, Recycle, Wand2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Recycle, Share2, Wand2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useStore } from '../store/AppStore';
 import { useChartColors, useSimulatedLoad } from '../lib/hooks';
 import { fmtKg, fmtNum, fmtPct } from '../lib/format';
@@ -119,7 +120,15 @@ export default function Circularity() {
 
   return (
     <>
-      <PageHeader title={t('Circularity')} sub={t('Your circularity score, what makes it up, and how to raise it.')} />
+      <PageHeader
+        title={t('Circularity')}
+        sub={t('Your circularity score, what makes it up, and how to raise it.')}
+        actions={
+          <Link to="/app/share?type=impact" className="btn-secondary">
+            <Share2 className="h-4 w-4" /> {t('Circularity impact report')}
+          </Link>
+        }
+      />
       {!ready ? (
         <div className="grid grid-cols-12 gap-5">
           {Array.from({ length: 4 }).map((_, i) => (

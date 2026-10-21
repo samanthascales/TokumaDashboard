@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 import { CornerDownLeft, FileText, Moon, Package, Plus, Search, Truck, Upload, User, type LucideIcon } from 'lucide-react';
 import { useStore } from '../../store/AppStore';
-import { allPages, openReport } from './nav';
+import { allPages } from './nav';
 import { useLang, useT } from '../../i18n';
 
 interface Cmd {
@@ -38,7 +38,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     const go = (to: string) => () => navigate(to);
     return [
       ...allPages.map((p) => ({ id: `page:${p.to}`, group: 'Pages' as const, label: t(p.label), hint: p.to.replace('/app', '') || '/', icon: p.icon, run: go(p.to) })),
-      { id: 'act:report', group: 'Actions', label: t('Generate report'), icon: FileText, run: openReport },
+      { id: 'act:report', group: 'Actions', label: t('Share a report'), icon: FileText, run: go('/app/share') },
       { id: 'act:supplier', group: 'Actions', label: t('Add new supplier'), icon: Plus, run: go('/app/products/suppliers?new=supplier') },
       { id: 'act:product', group: 'Actions', label: t('Add new product'), icon: Plus, run: go('/app/products?new=product') },
       { id: 'act:txn', group: 'Actions', label: t('Log a transaction'), icon: Plus, run: go('/app/money?new=txn') },

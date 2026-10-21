@@ -46,7 +46,8 @@ import {
   type Recommendation,
 } from '../lib/metrics';
 import { fmtMoney, fmtMoney2, fmtPct, startOfToday, toISO, uid } from '../lib/format';
-import { balanceSheet, profitAndLoss, scoreFor, type BalanceSheet, type ProfitAndLoss } from '../lib/accounting';
+import { balanceSheet, cashRunway, profitAndLoss, scoreFor, type BalanceSheet, type ProfitAndLoss } from '../lib/accounting';
+import { fundingReadiness, type Readiness } from '../lib/readiness';
 import type { CircularityScore } from '../lib/score';
 import { countCorrect, emptyEducation, learningState, normalizeEducation, type LearningState } from '../lib/education';
 import { moduleById } from '../data/education';
@@ -206,6 +207,8 @@ export interface AppStore extends Persisted {
   score: CircularityScore;
   scorePrev: CircularityScore;
   balance: BalanceSheet;
+  /** How prepared the records are for a lender or investor (not a loan offer). */
+  readiness: Readiness;
   units90: Record<string, number>;
   inventory: InventoryRow[];
   funding: FundingTerms;
@@ -354,6 +357,22 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     () => balanceSheet(transactions, state.products, state.assets, state.liabilities, state.openingCash),
     [transactions, state.products, state.assets, state.liabilities, state.openingCash],
   );
+  const readiness = useMemo(() => {
+    const p = state.profile;
+    const from90 = toISO(lastNDays(90).from);
+    return fundingReadiness({
+      profileComplete: !!(p.businessName.trim() && p.industry.trim() && p.country.trim()),
+      salesDays: historyDays(transactions.filter((x) => x.type === 'inflow' && x.productId)),
+      hasExpenses: transactions.some((x) => x.type === 'outflow' && x.date >= from90),
+      openingCashSet: state.openingCash !== null,
+      products: state.products.length,
+      productsWithMaterials: state.products.filter((x) => x.materials.length > 0).length,
+      pillarsMeasured: score.pillars.filter((x) => x.value !== null).length,
+      profit90: profitAndLoss(transactions, lastNDays(90)).profit,
+      runwayMonths: cashRunway(transactions, balance.cash)?.months ?? null,
+      circularityScore: score.score,
+    });
+  }, [state.profile, state.openingCash, state.products, transactions, score, balance.cash]);
   const inventory = useMemo(() => inventoryRows(state.products, state.suppliers, ledger), [state.products, state.suppliers, ledger]);
   const stats = useMemo(() => customerStats(customers, transactions), [customers, transactions]);
   const funding = useMemo(() => {
@@ -674,6 +693,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     score,
     scorePrev,
     balance,
+    readiness,
     units90,
     inventory,
     funding,
