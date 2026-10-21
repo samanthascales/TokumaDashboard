@@ -27,14 +27,14 @@ export interface NavItem {
 
 export const businessNav: NavItem[] = [
   { to: '/app', label: tk('Dashboard'), icon: LayoutDashboard, end: true },
-  { to: '/app/money', label: tk('Money in & out'), icon: ArrowLeftRight },
+  { to: '/app/money', label: tk('Revenue & expenses'), icon: ArrowLeftRight },
   {
     to: '/app/products',
     label: tk('Products'),
     icon: Package,
     end: true,
     children: [
-      { to: '/app/products/inventory', label: tk('Stock'), icon: Boxes },
+      { to: '/app/products/inventory', label: tk('Inventory'), icon: Boxes },
       { to: '/app/products/suppliers', label: tk('Suppliers'), icon: Truck },
     ],
   },

@@ -21,17 +21,17 @@ The app uses hash routing (`/#/app/...`) and a relative base path, so `dist/` ca
 |---|---|---|
 | Landing / Sign in | `/`, `/signin` | Learn what Tokuma does; sign up or sign in |
 | Onboarding | `/onboarding` | Answer 4 short steps about the business |
-| **Dashboard** | `/app` | Two cards side by side: **How is my money?** (profit for the last 30 days, money in and out, progress toward a goal) and **How circular is my business?** (circularity score, level, progress toward a goal). Also: profit and score month by month, products at a glance, and next steps |
-| Money in & out | `/app/money` | Record sales and costs in plain categories, including circular income (repairs, resale, rental, take-back). Import from CSV / Excel or a Shopify, Square or Etsy export |
-| Products | `/app/products` | Each product shows its **profit per item** and its **circularity score**; edit what it is made of |
-| Stock | `/app/products/inventory` | Stock levels, low-stock warnings, when to reorder, one-click restock |
+| **Dashboard** | `/app` | Two cards side by side: **Financial performance** (net profit for the last 30 days, revenue, expenses, progress toward a goal) and **Circularity performance** (circularity score, level, progress toward a goal). Also: profit and score month by month, products at a glance, and next steps |
+| Revenue & expenses | `/app/money` | Record sales and expenses by category, including circular revenue (repairs, resale, rental, take-back). Import from CSV / Excel or a Shopify, Square or Etsy export |
+| Products | `/app/products` | Each product shows its **profit per unit** and its **circularity score**; edit what it is made of |
+| Inventory | `/app/products/inventory` | Stock levels, low-stock warnings, when to reorder, one-click restock |
 | Suppliers | `/app/products/suppliers` | Supplier sustainability ratings (part of the score), reliability, carbon |
 | **Circularity** | `/app/circularity` | The score and its five pillars, the research basis, the waste & returned-products log, ideas to raise it, materials breakdown and trend |
-| **Reports** | `/app/reports` | Basic accounting, each with a "what is this?" box: **Profit & loss**, **Balance sheet** (what you own, what you owe, what is yours), **Cash flow** (how long cash would last) and a **Break-even** calculator. Printable |
+| **Reports** | `/app/reports` | Basic accounting, each with a "what is this?" box: **Profit & loss**, **Balance sheet** (assets, liabilities, owner’s equity), **Cash flow** (including cash runway) and a **Break-even** calculator. Printable |
 | Learn | `/app/learn` | Short lessons on the circularity score, the circular economy, profit & loss, the balance sheet, cash flow and break-even, each linked to the matching page. Funding is under Learn |
 | Settings | `/app/settings` | Your profile and photo, language, theme, business profile, notifications, delete data |
 
-The menu groups pages so an owner sees six main pages. The customers page, the supplier reliability detail and the investor view still exist but are no longer in the menu. Old links (`/app/transactions`, `/app/supply-chain`, `/app/education`, `/app/funding`) forward to the new pages.
+The menu groups pages so an owner sees six main pages. Labels use standard business terms (revenue, expenses, net profit, assets, liabilities, owner’s equity, fixed costs), and each has a plain-language explanation. The customers page, the supplier reliability detail and the investor view still exist but are no longer in the menu. Old links (`/app/transactions`, `/app/supply-chain`, `/app/education`, `/app/funding`) forward to the new pages.
 
 These work on every page: the **explanation buttons** (the small "i" next to a number or word; they open on hover, keyboard focus or tap), the language menu, the Ctrl K command palette, notifications and toasts.
 
@@ -45,7 +45,7 @@ The score runs from 0 to 100 and is the main measure of how circular a business 
 | Circular outflow | Waste and returned products from the waste log, valued by R-ladder route: reuse/repair 1, refurbish/remanufacture 0.75, recycle/compost 0.5, energy recovery 0.25, landfill 0 | WBCSD CTI % circular outflow; R-ladder (Potting et al. 2017) |
 | Product life & use | X = (lifetime ÷ typical lifetime) × use intensity, normalized min–max on 0–2, weighted by mass sold | EMF MCI utility factor |
 | Resource productivity | Product revenue ÷ kg of virgin material sold, min–max on a log scale from $5 to $500 per kg | WBCSD CTI circular material productivity |
-| Circular business model | Share of money in from repairs, resale, rental, take-back and recycling services | MSCI CE indexes; CTI revenue |
+| Circular business model | Share of revenue from repairs, resale, rental, take-back and recycling services | MSCI CE indexes; CTI revenue |
 
 **Aggregation (OECD/JRC method).**
 - Equal weights (0.2 each).
@@ -69,18 +69,18 @@ The global benchmark shown next to circular inflow (6.9%) is from the Circularit
 
 ## Accounting (`src/lib/accounting.ts`)
 
-- **Profit & loss** is cash-basis: money in minus money out in the chosen period, grouped by category. Loans, investment and grants are listed separately as "money in that is not profit".
+- **Profit & loss** is cash-basis: revenue minus expenses in the chosen period, grouped by category. Loans, investment and grants are listed separately as financing (not revenue).
 - **Balance sheet**:
-  - Cash = starting cash (entered once) + all money in − all money out.
+  - Cash = opening cash balance (entered once) + all cash inflows − all cash outflows.
   - Stock is valued at unit cost.
-  - The owner adds other things they own (equipment, vehicles) and what they owe (loans, unpaid bills).
-  - What is yours = own − owe.
-- **Cash flow** shows cash in, cash out and month-end cash for the last 6 months. *Cash would last* = cash ÷ average monthly spending over the last 3 months.
-- **Break-even** = regular monthly costs (rent, wages, marketing; averaged from the last 3 months and editable) ÷ profit per item (price − cost, averaged over what sold, or one product).
+  - The owner adds other assets (equipment, vehicles) and liabilities (loans, unpaid bills).
+  - Owner’s equity = assets − liabilities.
+- **Cash flow** shows cash inflows, cash outflows and the closing cash balance for the last 6 months. *Cash runway* = cash balance ÷ average monthly expenses over the last 3 months.
+- **Break-even units** = monthly fixed costs (rent, wages, marketing; averaged from the last 3 months and editable) ÷ profit per unit (price − unit cost, averaged over what sold, or one product).
 
 ## Importing transactions
 
-**Money in & out → Import CSV / Excel** reads a `.csv` or `.xlsx` file in the browser (nothing is uploaded):
+**Revenue & expenses → Import CSV / Excel** reads a `.csv` or `.xlsx` file in the browser (nothing is uploaded):
 
 1. Pick the file (and the sheet, for workbooks with several).
 2. Match your columns to Tokuma's fields — Date and Amount are required; type, category, product, quantity, customer and note are optional. Column names are guessed from your headers.
@@ -111,7 +111,7 @@ The Spanish, Portuguese, French, Arabic and Dutch translations were machine-draf
   - leadTimeScore is 100 at ≤ 5 days and falls linearly to 0 at 45 days.
   - certificationScore is 35 points per certification, capped at 100.
 - **Funding terms**: the score, max eligibility and APR are all driven by the circularity rate, average supplier sustainability and net margin. Any change to circularity elsewhere in the app flows through to them.
-- **Revenue vs profit chart** (Money in & out) uses an accrual basis: recurring costs are spread across the period they cover, and financing inflows (grants, loans) are left out. The dashboard and reports use the simpler cash-basis profit described above.
+- **Revenue vs profit chart** (Revenue & expenses page) uses an accrual basis: recurring costs are spread across the period they cover, and financing inflows (grants, loans) are left out. The dashboard and reports use the simpler cash-basis profit described above.
 
 ## Project layout
 

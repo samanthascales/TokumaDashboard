@@ -64,7 +64,7 @@ function AddTransactionModal({ open, onClose }: { open: boolean; onClose: () => 
     <Modal
       open={open}
       onClose={onClose}
-      title={t('Record money in or out')}
+      title={t('Add transaction')}
       sub={t('A sale of a product also lowers your stock and updates your circularity score.')}
       footer={
         <>
@@ -82,14 +82,14 @@ function AddTransactionModal({ open, onClose }: { open: boolean; onClose: () => 
           value={type}
           onChange={setType}
           options={[
-            { value: 'inflow', label: t('Money in') },
-            { value: 'outflow', label: t('Money out') },
+            { value: 'inflow', label: t('Income') },
+            { value: 'outflow', label: t('Expense') },
           ]}
         />
         <div className="grid gap-4 sm:grid-cols-2">
           <Field
             label={t('Category')}
-            hint={type === 'inflow' && CIRCULAR_INCOME_CATEGORIES.has(category) ? t('This counts as circular income and raises your circularity score.') : type === 'inflow' && FINANCING_CATEGORIES.has(category) ? t('Loans and grants add to your cash, but they are not profit.') : undefined}
+            hint={type === 'inflow' && CIRCULAR_INCOME_CATEGORIES.has(category) ? t('This counts as circular revenue and raises your circularity score.') : type === 'inflow' && FINANCING_CATEGORIES.has(category) ? t('Loans and grants add to your cash, but they are not revenue.') : undefined}
           >
             <select className="input" value={category} onChange={(e) => setCategory(e.target.value)}>
               {(type === 'inflow' ? INFLOW_CATS : OUTFLOW_CATS).map((c) => (
@@ -195,8 +195,8 @@ export default function Transactions() {
   return (
     <>
       <PageHeader
-        title={t('Money in & out')}
-        sub={t('Record every sale and every cost. Tokuma uses them for your profit, your reports and your circularity score.')}
+        title={t('Revenue & expenses')}
+        sub={t('Record every sale and expense. Tokuma uses them for your profit & loss, reports and circularity score.')}
         actions={
           <>
             {!IS_EMBEDDED && (
@@ -208,17 +208,17 @@ export default function Transactions() {
               <Upload className="h-4 w-4" /> {t('Import CSV / Excel')}
             </button>
             <button className="btn-primary" onClick={() => setAdding(true)}>
-              <Plus className="h-4 w-4" /> {t('Record money in or out')}
+              <Plus className="h-4 w-4" /> {t('Add transaction')}
             </button>
           </>
         }
       />
       <div className="mb-5 grid grid-cols-2 gap-4 lg:grid-cols-4">
         {[
-          { label: t('Money in (30 days)'), value: fmtMoney(pnl30.incomeTotal), icon: ArrowDownLeft, explain: t('Everything customers paid you in the last 30 days. Loans and grants are not included.') },
-          { label: t('Money out (30 days)'), value: fmtMoney(pnl30.expenseTotal), icon: ArrowUpRight, explain: t('Everything you paid to run the business in the last 30 days.') },
-          { label: t('Profit (30 days)'), value: fmtMoney(pnl30.profit), icon: Receipt, explain: t('Money in minus money out. Above zero means you made money.') },
-          { label: t('Circular income (30 days)'), value: fmtMoney(pnl30.circularIncome), icon: Recycle, explain: t('Money from repairs, resale, rental and take-back. It counts toward your circularity score.') },
+          { label: t('Revenue (30 days)'), value: fmtMoney(pnl30.incomeTotal), icon: ArrowDownLeft, explain: t('Sales of products and services in the last 30 days. Loans and grants are not included.') },
+          { label: t('Expenses (30 days)'), value: fmtMoney(pnl30.expenseTotal), icon: ArrowUpRight, explain: t('Costs of running the business in the last 30 days.') },
+          { label: t('Profit (30 days)'), value: fmtMoney(pnl30.profit), icon: Receipt, explain: t('Revenue minus expenses. Above zero means the business was profitable.') },
+          { label: t('Circular revenue (30 days)'), value: fmtMoney(pnl30.circularIncome), icon: Recycle, explain: t('Revenue from repairs, resale, rental and take-back. It counts toward your circularity score.') },
         ].map((k) => (
           <Card key={k.label} className="p-4">
             <p className="muted flex items-center gap-1.5 text-xs">
@@ -261,7 +261,7 @@ export default function Transactions() {
                     <Upload className="h-3.5 w-3.5" /> {t('Import file')}
                   </button>
                   <button className="btn-primary btn-sm" onClick={() => setAdding(true)}>
-                    {t('Record money in or out')}
+                    {t('Add transaction')}
                   </button>
                 </div>
               }

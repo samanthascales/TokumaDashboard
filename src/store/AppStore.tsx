@@ -507,7 +507,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const addAsset: AppStore['addAsset'] = useCallback(
     (a) => {
       patch((s) => ({ assets: [...s.assets, { ...a, id: uid('ast') }] }));
-      toast({ kind: 'success', title: t('Added to what you own'), body: a.name });
+      toast({ kind: 'success', title: t('Asset added'), body: a.name });
     },
     [patch, toast],
   );
@@ -515,7 +515,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const addLiability: AppStore['addLiability'] = useCallback(
     (l) => {
       patch((s) => ({ liabilities: [...s.liabilities, { ...l, id: uid('lia') }] }));
-      toast({ kind: 'success', title: t('Added to what you owe'), body: l.name });
+      toast({ kind: 'success', title: t('Liability added'), body: l.name });
     },
     [patch, toast],
   );
@@ -523,7 +523,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const setOpeningCash = useCallback(
     (openingCash: number | null) => {
       patch({ openingCash });
-      toast({ kind: 'success', title: t('Starting cash saved') });
+      toast({ kind: 'success', title: t('Opening balance saved') });
     },
     [patch, toast],
   );

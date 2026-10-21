@@ -114,7 +114,7 @@ export function ReportModal() {
                   <th className="py-1.5">{t('Product')}</th>
                   <th>{t('Circularity')}</th>
                   <th>{t('Units (30d)')}</th>
-                  <th>{t('Stock')}</th>
+                  <th>{t('Inventory')}</th>
                   <th>{t('Status')}</th>
                 </tr>
               </thead>

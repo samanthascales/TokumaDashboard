@@ -67,7 +67,7 @@ await step('one product, no sales: circularity is "—" everywhere', async () =>
   await page.goto(B + 'app'); await page.waitForTimeout(1400);
   const r = await sidebarScore();
   if (r !== '—') throw new Error('sidebar shows ' + r);
-  const card = await page.locator('.card', { hasText: 'How circular is my business?' }).first().innerText();
+  const card = await page.locator('.card', { hasText: 'Circularity performance' }).first().innerText();
   if (!card.includes('—')) throw new Error('score card should show a dash: ' + card.split('\n').join(' | '));
   await page.screenshot({ path: SP + '/dashboard-1product.png' });
   await page.goto(B + 'app/circularity'); await page.waitForTimeout(1200);
