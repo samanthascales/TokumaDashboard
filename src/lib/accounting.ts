@@ -1,6 +1,6 @@
-import type { Asset, Liability, Product, Transaction } from '../types';
-import { FINANCING_CATEGORIES, type Window } from './metrics';
-import { CIRCULAR_INCOME_CATEGORIES } from './score';
+import type { Asset, Liability, Product, Transaction, WasteEntry } from '../types';
+import { circularityFrom, FINANCING_CATEGORIES, totalsFor, type Ledger, type Window } from './metrics';
+import { CIRCULAR_INCOME_CATEGORIES, circularityScore, type CircularityScore } from './score';
 import { addDays, startOfToday, toISO } from './format';
 
 /** Categories treated as fixed monthly costs in the break-even calculator. */
@@ -147,4 +147,17 @@ export function avgProfitPerItem(products: Product[], units: Record<string, numb
 export function breakEvenUnits(fixedCosts: number, profitPerItem: number) {
   if (profitPerItem <= 0) return null;
   return Math.ceil(fixedCosts / profitPerItem);
+}
+
+/** The circularity score for a period, from the sales, income and waste records in it. */
+export function scoreFor(w: Window, data: { products: Product[]; ledger: Ledger; transactions: Transaction[]; waste: WasteEntry[] }): CircularityScore {
+  const t = totalsFor(data.ledger, w);
+  return circularityScore({
+    products: data.products,
+    units: t.units,
+    circ: circularityFrom(data.products, t.units),
+    productRevenue: t.revenue,
+    circularIncomeShare: profitAndLoss(data.transactions, w).circularIncomeShare,
+    waste: data.waste.filter((e) => e.date >= toISO(w.from) && e.date <= toISO(w.to)),
+  });
 }

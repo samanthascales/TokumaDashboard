@@ -30,7 +30,7 @@ export function ProductTabs() {
   );
 }
 
-const matTone = { Recycled: 'green', Reused: 'blue', Virgin: 'gray' } as const;
+const matTone = { Recycled: 'green', Reused: 'blue', Renewable: 'amber', Virgin: 'gray' } as const;
 
 function ProductCard({ r, onOpen }: { r: InventoryRow; onOpen: () => void }) {
   const t = useT();
@@ -187,7 +187,7 @@ function Catalog({ onOpen }: { onOpen: (p: Product) => void }) {
                       <div className="flex gap-1">
                         {p.materials.map((m) => (
                           <Tip key={m.name} content={`${m.name} · ${fmtKg(m.weightKg)} · ${t(classifyMaterial(m))}`}>
-                            <span className={clsx('h-2.5 w-2.5 rounded-full', classifyMaterial(m) === 'Recycled' ? 'bg-brand-600' : classifyMaterial(m) === 'Reused' ? 'bg-brand-300' : 'bg-gray-300 dark:bg-gray-600')} />
+                            <span className={clsx('h-2.5 w-2.5 rounded-full', classifyMaterial(m) === 'Recycled' ? 'bg-brand-600' : classifyMaterial(m) === 'Reused' ? 'bg-brand-300' : classifyMaterial(m) === 'Renewable' ? 'bg-amber-400' : 'bg-gray-300 dark:bg-gray-600')} />
                           </Tip>
                         ))}
                       </div>

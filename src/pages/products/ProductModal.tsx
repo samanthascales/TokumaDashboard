@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { useStore } from '../../store/AppStore';
 import { avgDailySales, classifyMaterial, materialCircularity, reorderPoint } from '../../lib/metrics';
-import { Field, Modal, Ring, StockBar } from '../../components/ui';
+import { Field, Modal, Ring, StockBar, Term } from '../../components/ui';
 import type { MaterialClass, Product } from '../../types';
 import { tk, useLang, useT } from '../../i18n';
 import { fmtNum, fmtPct } from '../../lib/format';
@@ -26,6 +26,9 @@ interface Draft {
   lowStockThreshold: number | null;
   safetyStock: number | null;
   supplierId?: string;
+  lifetimeYears: number | null;
+  typicalLifetimeYears: number | null;
+  useIntensity: number;
 }
 
 const blankMaterial = (): DraftMaterial => ({ name: '', weightKg: null, type: '' });
@@ -40,11 +43,24 @@ const empty = (): Draft => ({
   lowStockThreshold: null,
   safetyStock: null,
   supplierId: undefined,
+  lifetimeYears: null,
+  typicalLifetimeYears: null,
+  useIntensity: 1,
 });
 const toDraft = (p: Product): Draft => ({
   ...p,
   materials: p.materials.map((m) => ({ name: m.name, weightKg: m.weightKg, type: classifyMaterial(m) })),
+  lifetimeYears: p.lifetimeYears ?? null,
+  typicalLifetimeYears: p.typicalLifetimeYears ?? null,
+  useIntensity: p.useIntensity ?? 1,
 });
+const toMaterial = (m: DraftMaterial) => ({ name: m.name.trim(), weightKg: m.weightKg!, recycled: m.type === 'Recycled', reused: m.type === 'Reused', renewable: m.type === 'Renewable' });
+/** How intensively the product is used compared with a typical one (EMF MCI utility, U / U_av). */
+const USE_OPTIONS = [
+  { value: 1, label: tk('Normal use') },
+  { value: 2, label: tk('Used more than usual (shared or rented)') },
+  { value: 0.5, label: tk('Used less than usual') },
+];
 const NEGATIVE_MARGIN = 'negative-margin';
 const num = (v: string) => (v.trim() === '' ? null : Number(v));
 
@@ -77,8 +93,14 @@ export function ProductModal({ open, onClose, product }: { open: boolean; onClos
         : d.materials.some((m) => !m.name.trim() || !m.weightKg || m.weightKg <= 0)
           ? t('Each material needs a name and a weight')
           : d.materials.some((m) => !m.type)
-            ? t('Choose recycled, reused or virgin for each material')
+            ? t('Choose a type for each material')
             : null;
+    e.life =
+      (d.lifetimeYears !== null && d.lifetimeYears <= 0) || (d.typicalLifetimeYears !== null && d.typicalLifetimeYears <= 0)
+        ? t('Years must be greater than 0')
+        : (d.lifetimeYears === null) !== (d.typicalLifetimeYears === null)
+          ? t('Fill in both, or leave both empty')
+          : null;
     return e;
     // eslint-disable-next-line react-hooks/exhaustive-deps -- messages follow the language
   }, [d, lang]);
@@ -102,12 +124,12 @@ export function ProductModal({ open, onClose, product }: { open: boolean; onClos
   // Score only once every material has a weight and a type the owner chose.
   const materialsComplete = d.materials.length > 0 && d.materials.every((m) => m.name.trim() && m.weightKg && m.type);
   const score = materialsComplete
-    ? materialCircularity(d.materials.map((m) => ({ name: m.name, weightKg: m.weightKg!, recycled: m.type === 'Recycled', reused: m.type === 'Reused' })))
+    ? materialCircularity(d.materials.map(toMaterial))
     : null;
   const margin = d.price && d.unitCost !== null ? ((d.price - d.unitCost) / d.price) * 100 : null;
 
   const save = () => {
-    setTouched({ name: true, price: true, unitCost: true, materials: true, stockOnHand: true, lowStockThreshold: true });
+    setTouched({ name: true, price: true, unitCost: true, materials: true, stockOnHand: true, lowStockThreshold: true, life: true });
     if (!valid) return;
     const { id, ...rest } = d;
     const out = {
@@ -119,7 +141,7 @@ export function ProductModal({ open, onClose, product }: { open: boolean; onClos
       // Blank means "no alert" / "no buffer" — the owner didn't set one.
       lowStockThreshold: rest.lowStockThreshold ?? 0,
       safetyStock: rest.safetyStock ?? 0,
-      materials: rest.materials.map((m) => ({ name: m.name.trim(), weightKg: m.weightKg!, recycled: m.type === 'Recycled', reused: m.type === 'Reused' })),
+      materials: rest.materials.map(toMaterial),
     };
     if (id && product) updateProduct({ ...product, ...out, id });
     else addProduct(out);
@@ -202,6 +224,7 @@ export function ProductModal({ open, onClose, product }: { open: boolean; onClos
                     <option value="">{t('Type…')}</option>
                     <option value="Recycled">{t('Recycled')}</option>
                     <option value="Reused">{t('Reused')}</option>
+                    <option value="Renewable">{t('Renewable')}</option>
                     <option value="Virgin">{t('Virgin')}</option>
                   </select>
                   <button className="icon-btn h-8 w-8" onClick={() => setD((x) => ({ ...x, materials: x.materials.filter((_, j) => j !== i) }))} aria-label={t('Remove material')}>
@@ -211,6 +234,41 @@ export function ProductModal({ open, onClose, product }: { open: boolean; onClos
               ))}
             </div>
             {show('materials') && <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{errors.materials}</p>}
+            <p className="muted mt-1.5 text-xs">
+              <Term label={t('Material types')}>
+                <p>{t('Recycled: made from material that was used before and processed again.')}</p>
+                <p>{t('Reused: used again as it is, like offcuts or second-hand fabric.')}</p>
+                <p>{t('Renewable: grown and certified as sustainably sourced, like organic cotton or FSC wood.')}</p>
+                <p>{t('Virgin: new material made for the first time.')}</p>
+                <p className="text-gray-300">{t('Recycled, reused and renewable count as circular in your score.')}</p>
+              </Term>
+            </p>
+          </div>
+
+          <div>
+            <span className="label">
+              <Term label={t('Product life')}>
+                <p>{t('How long your product lasts compared with a typical similar product. Longer-lasting products, and products used more because they are shared or rented, raise your circularity score.')}</p>
+                <p className="text-gray-300">{t('Optional. Leave empty if you are not sure; the score leaves it out.')}</p>
+              </Term>
+            </span>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Field label={t('Lasts (years)')} error={touched.life ? errors.life : null}>
+                <input type="number" min={0} step="0.5" className="input" placeholder={t('Optional')} value={d.lifetimeYears ?? ''} onChange={(e) => set('lifetimeYears', num(e.target.value))} />
+              </Field>
+              <Field label={t('A typical one lasts (years)')}>
+                <input type="number" min={0} step="0.5" className="input" placeholder={t('Optional')} value={d.typicalLifetimeYears ?? ''} onChange={(e) => set('typicalLifetimeYears', num(e.target.value))} />
+              </Field>
+              <Field label={t('How it is used')}>
+                <select className="input" value={d.useIntensity} onChange={(e) => set('useIntensity', Number(e.target.value))}>
+                  {USE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {t(o.label)}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -256,7 +314,7 @@ export function ProductModal({ open, onClose, product }: { open: boolean; onClos
             )}
             <div>
               <p className="text-sm font-semibold">{t('Circularity score')}</p>
-              <p className="muted text-xs">{score === null ? t('Fill in each material’s weight and type to calculate') : t('Share of weight from recycled/reused inputs')}</p>
+              <p className="muted text-xs">{score === null ? t('Fill in each material’s weight and type to calculate') : t('Share of weight from recycled, reused or renewable inputs')}</p>
             </div>
           </div>
           <div className="border-t border-gray-200 pt-4 dark:border-white/10">

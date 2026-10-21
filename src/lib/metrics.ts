@@ -18,16 +18,18 @@ import { t } from '../i18n';
 export function classifyMaterial(m: Material): MaterialClass {
   if (m.reused) return 'Reused';
   if (m.recycled) return 'Recycled';
+  if (m.renewable) return 'Renewable';
   return 'Virgin';
 }
 
-export const isCircular = (m: Material) => m.recycled || m.reused;
+/** Circular inflow (WBCSD CTI / EMF MCI): recycled, reused or sustainably sourced renewable material. */
+export const isCircular = (m: Material) => m.recycled || m.reused || !!m.renewable;
 
 export function productWeight(p: { materials: Material[] }) {
   return p.materials.reduce((s, m) => s + m.weightKg, 0);
 }
 
-/** Share (0-100) of a product's weight that comes from recycled or reused material. */
+/** Share (0-100) of a product's weight that is circular inflow: recycled, reused or sustainably renewable. */
 export function materialCircularity(materials: Material[]) {
   const total = materials.reduce((s, m) => s + m.weightKg, 0);
   if (!total) return 0;
@@ -154,7 +156,7 @@ export interface CircularityStats {
  * no rate (hasData = false) — the catalog alone is never treated as sales.
  */
 export function circularityFrom(products: Product[], units: Record<string, number>): CircularityStats {
-  const byClass: Record<MaterialClass, number> = { Recycled: 0, Reused: 0, Virgin: 0 };
+  const byClass: Record<MaterialClass, number> = { Recycled: 0, Reused: 0, Renewable: 0, Virgin: 0 };
   const byMat = new Map<string, { name: string; cls: MaterialClass; kg: number }>();
   const byProduct: CircularityStats['byProduct'] = [];
   for (const p of products) {
@@ -172,8 +174,8 @@ export function circularityFrom(products: Product[], units: Record<string, numbe
       byMat.set(key, cur);
     }
   }
-  const totalKg = byClass.Recycled + byClass.Reused + byClass.Virgin;
-  const circularKg = byClass.Recycled + byClass.Reused;
+  const totalKg = byClass.Recycled + byClass.Reused + byClass.Renewable + byClass.Virgin;
+  const circularKg = byClass.Recycled + byClass.Reused + byClass.Renewable;
   return {
     hasData: totalKg > 0,
     rate: totalKg ? (circularKg / totalKg) * 100 : 0,

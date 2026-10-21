@@ -33,15 +33,57 @@ await page.addInitScript((s) => {
   }
 }, JSON.stringify(seed));
 
-await step('circularity score follows the draft formula', async () => {
-  // materials 50 × 60 + circular income 50 × 20 + suppliers 80 × 20 = 5600 / 100 = 56
+const pillar = async (k) => (await page.getByTestId('pillar-' + k).innerText()).replace(/\n/g, ' ');
+const sidebarScore = async () => (await page.locator('aside').innerText()).match(/Circularity score\s+(\S+)/)?.[1];
+await step('circularity score: three measured pillars, geometric mean', async () => {
+  // inflow 0.5 (half recycled) · productivity $100 per kg of new material → 0.65 on the $5–$500 log scale ·
+  // business model 0.5 (repair income is half of money in). Outflow and product life aren't measured yet.
   await page.goto(B + 'app'); await page.waitForTimeout(1200);
-  const side = (await page.locator('aside').innerText()).match(/Circularity score\s+(\S+)/)?.[1];
-  if (side !== '56') throw new Error('sidebar score ' + side);
+  if ((await sidebarScore()) !== '55') throw new Error('sidebar score ' + (await sidebarScore()));
   await page.goto(B + 'app/circularity'); await page.waitForTimeout(2200);
   const b = await page.getByTestId('score-breakdown').innerText();
-  for (const s of ['56', 'Circular Grower', 'counts for 60%', 'Draft method']) if (!b.includes(s)) throw new Error('breakdown missing ' + s);
+  for (const s of ['55', 'Circular Grower', 'Research-based']) if (!b.includes(s)) throw new Error('breakdown missing ' + s);
+  if (!(await pillar('inflow')).includes('50')) throw new Error('inflow ' + (await pillar('inflow')));
+  if (!(await pillar('inflow')).includes('world average 6.9%')) throw new Error('no global benchmark');
+  if (!(await pillar('productivity')).includes('65') || !(await pillar('productivity')).includes('$100.00 earned per kg')) throw new Error('productivity ' + (await pillar('productivity')));
+  if (!(await pillar('outflow')).includes('not measured yet')) throw new Error('outflow should be unmeasured');
+  if (!(await pillar('life')).includes('not measured yet')) throw new Error('life should be unmeasured');
   await page.screenshot({ path: SP + '/shots4/score-breakdown.png' });
+});
+await step('waste sent to landfill pulls the score down; reuse lifts it', async () => {
+  const add = async (what, kg, route) => {
+    await page.getByTestId('waste-log').getByRole('button', { name: 'Record waste' }).click();
+    const d = page.getByRole('dialog');
+    await d.locator('label:has-text("What was it?") input').fill(what);
+    await d.locator('label:has-text("Weight (kg)") input').fill(String(kg));
+    await d.locator('label:has-text("Where did it go?") select').selectOption(route);
+    await d.getByRole('button', { name: 'Add', exact: true }).click();
+    await page.getByText('Waste record added').first().waitFor();
+    await page.waitForTimeout(1600);
+  };
+  await add('Packaging', 2, 'Landfill or incineration');
+  // A measured zero counts as 0.01, so the geometric score drops to 20 while a plain average would give 41.
+  if ((await sidebarScore()) !== '20') throw new Error('after landfill ' + (await sidebarScore()));
+  if (!(await page.getByTestId('score-range').innerText()).includes('Between 20 and 41')) throw new Error('range');
+  await add('Offcuts', 8, 'Reuse or repair');
+  // (8 kg × 1 + 2 kg × 0) / 10 kg = 0.8 → score 60.
+  if (!(await pillar('outflow')).includes('80')) throw new Error('outflow ' + (await pillar('outflow')));
+  if ((await sidebarScore()) !== '60') throw new Error('after reuse ' + (await sidebarScore()));
+  await page.screenshot({ path: SP + '/shots4/waste-log.png', fullPage: true });
+});
+await step('product life fills the fifth pillar', async () => {
+  await page.goto(B + 'app/products?open=p1'); await page.waitForTimeout(900);
+  const d = page.getByRole('dialog');
+  await d.getByLabel('Lasts (years)', { exact: true }).fill('4');
+  await d.getByLabel('A typical one lasts (years)', { exact: true }).fill('2');
+  await d.getByRole('button', { name: 'Save changes' }).click();
+  await page.getByText('Product updated').waitFor();
+  await page.goto(B + 'app/circularity'); await page.waitForTimeout(2200);
+  // Lasts twice as long as a typical product → X = 2 → full marks; five pillars → 67.
+  if (!(await pillar('life')).includes('100') || !(await pillar('life')).includes('2.0× the life')) throw new Error('life ' + (await pillar('life')));
+  if ((await sidebarScore()) !== '67') throw new Error('five pillars ' + (await sidebarScore()));
+  await page.getByTestId('research-basis').getByText('How the score is built').click();
+  await page.getByText('ISO 59020', { exact: false }).first().waitFor();
 });
 await step('dashboard shows profit and the score side by side; loans are not profit', async () => {
   await page.goto(B + 'app'); await page.waitForTimeout(1200);
@@ -57,7 +99,7 @@ await step('goals: set both, progress bars appear', async () => {
   await d.getByRole('button', { name: 'Save goals' }).click();
   await page.getByText('Goals saved').waitFor();
   const t = await page.locator('main').innerText();
-  for (const s of ['Goal: $300 profit a month', '50% of goal', 'Goal: a score of 70', '80% of goal']) if (!t.includes(s)) throw new Error('missing ' + s);
+  for (const s of ['Goal: $300 profit a month', '50% of goal', 'Goal: a score of 70', '96% of goal']) if (!t.includes(s)) throw new Error('missing ' + s);
 });
 await step('explanations open on hover, close on Escape, and toggle on tap', async () => {
   await page.waitForTimeout(600); // let the goals dialog finish closing

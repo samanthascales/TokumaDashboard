@@ -3,6 +3,8 @@ export interface Material {
   weightKg: number;
   recycled: boolean;
   reused: boolean;
+  /** Sustainably sourced renewable material (e.g. certified organic or FSC). Counts as circular inflow. */
+  renewable?: boolean;
 }
 
 export interface Product {
@@ -19,6 +21,11 @@ export interface Product {
   lowStockThreshold: number; // Focus 4
   safetyStock: number; // Focus 4 — used in reorderPoint
   supplierId?: string; // links to Supplier for lead time
+  /** How many years the product lasts, and how long a typical similar product lasts. null until entered. */
+  lifetimeYears?: number | null;
+  typicalLifetimeYears?: number | null;
+  /** How intensively it is used compared with a typical product: 1 = normal, 2 = e.g. shared or rented. */
+  useIntensity?: number | null;
 }
 
 export interface Supplier {
@@ -138,7 +145,7 @@ export interface NotificationPrefs {
 
 export type Role = 'business' | 'investor';
 export type ThemePref = 'light' | 'dark' | 'system';
-export type MaterialClass = 'Recycled' | 'Reused' | 'Virgin';
+export type MaterialClass = 'Recycled' | 'Reused' | 'Renewable' | 'Virgin';
 
 /** Something the business owns besides cash and stock (equipment, a van…), for the balance sheet. */
 export interface Asset {
@@ -160,4 +167,16 @@ export interface Liability {
 export interface Goals {
   monthlyProfit: number | null;
   circularityScore: number | null;
+}
+
+/** Where waste or returned products went, from the top of the R-ladder (keeps the most value) to the bottom. */
+export type RecoveryRoute = 'Reuse or repair' | 'Refurbish or remanufacture' | 'Recycle or compost' | 'Energy recovery' | 'Landfill or incineration';
+
+/** One record of production waste or returned products and what happened to it. */
+export interface WasteEntry {
+  id: string;
+  date: string; // ISO yyyy-mm-dd
+  description: string;
+  kg: number;
+  route: RecoveryRoute;
 }
