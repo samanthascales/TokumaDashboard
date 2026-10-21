@@ -59,7 +59,7 @@ await step('add product', async () => {
   await d.locator('label:has-text("Unit cost") input').fill('12');
   await d.getByPlaceholder('Material name').fill('Reclaimed sailcloth');
   await d.getByPlaceholder('0.00').fill('0.4');
-  await d.getByLabel('Material type').selectOption('Reused');
+  await d.getByLabel('Material type', { exact: true }).selectOption('Reused');
   await d.locator('label:has-text("Supplier") select').selectOption({ label: 'Harbour Sailcloth' });
   await d.getByPlaceholder('Units in stock').fill('40');
   await page.getByRole('button', { name: 'Add product' }).last().click();

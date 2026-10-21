@@ -6,7 +6,9 @@ import { tk } from '.';
  */
 export const STORED_VALUES = [
   // Material types
-  tk('Recycled'), tk('Reused'), tk('Virgin'),
+  tk('Recycled'), tk('Reused'), tk('Renewable'), tk('Virgin'),
+  // Where waste and returned products went (R-ladder)
+  tk('Reuse or repair'), tk('Refurbish or remanufacture'), tk('Recycle or compost'), tk('Energy recovery'), tk('Landfill or incineration'),
   // Transport
   tk('Sea'), tk('Rail'), tk('Road'), tk('Air'),
   // Funding

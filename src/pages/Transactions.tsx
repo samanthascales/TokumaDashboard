@@ -14,7 +14,7 @@ import { RevenueChart } from './dashboard/RevenueChart';
 import { Badge, Card, EmptyState, Field, Modal, PageHeader, Segmented, TableSkeleton, Term } from '../components/ui';
 import type { Transaction } from '../types';
 
-const INFLOW_CATS = [tk('Product sale'), tk('Repair service'), tk('Resale / second-hand'), tk('Rental'), tk('Take-back / refurbish'), tk('Other income'), tk('Grant'), tk('Loan')];
+const INFLOW_CATS = [tk('Product sale'), tk('Repair service'), tk('Resale / second-hand'), tk('Rental'), tk('Take-back / refurbish'), tk('Recycling service'), tk('Other income'), tk('Grant'), tk('Loan')];
 const OUTFLOW_CATS = [tk('Materials'), tk('Logistics'), tk('Payroll'), tk('Rent & utilities'), tk('Marketing'), tk('Packaging'), tk('Inventory purchase'), tk('Other expense')];
 const PAGE = 15;
 

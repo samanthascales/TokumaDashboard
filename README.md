@@ -26,7 +26,7 @@ The app uses hash routing (`/#/app/...`) and a relative base path, so `dist/` ca
 | Products | `/app/products` | Each product shows its **profit per item** and its **circularity score**; edit what it is made of |
 | Stock | `/app/products/inventory` | Stock levels, low-stock warnings, when to reorder, one-click restock |
 | Suppliers | `/app/products/suppliers` | Supplier sustainability ratings (part of the score), reliability, carbon |
-| **Circularity** | `/app/circularity` | The score, what makes it up, the three levels, ideas to raise it, materials breakdown and trend |
+| **Circularity** | `/app/circularity` | The score and its five pillars, the research basis, the waste & returned-products log, ideas to raise it, materials breakdown and trend |
 | **Reports** | `/app/reports` | Basic accounting, each with a "what is this?" box: **Profit & loss**, **Balance sheet** (what you own, what you owe, what is yours), **Cash flow** (how long cash would last) and a **Break-even** calculator. Printable |
 | Learn | `/app/learn` | Short lessons on the circularity score, the circular economy, profit & loss, the balance sheet, cash flow and break-even, each linked to the matching page. Funding is under Learn |
 | Settings | `/app/settings` | Your profile and photo, language, theme, business profile, notifications, delete data |
@@ -35,17 +35,37 @@ The menu groups pages so an owner sees six main pages. The customers page, the s
 
 These work on every page: the **explanation buttons** (the small "i" next to a number or word; they open on hover, keyboard focus or tap), the language menu, the Ctrl K command palette, notifications and toasts.
 
-## The circularity score (draft)
+## The circularity score
 
-The score runs from 0 to 100 and is the main measure of how circular a business is. Research on how to score circularity is still under way, so the method is labelled as a draft in the app, and everything that decides it lives in [`src/lib/score.ts`](src/lib/score.ts):
+The score runs from 0 to 100 and is the main measure of how circular a business is. It implements the **Circular Innovation Score (CIS)** from *Circularity Scoring: Research Basis for the Circular Innovation Score* (Oct 14, 2026). Everything that decides it lives in [`src/lib/score.ts`](src/lib/score.ts).
 
-| Part | Weight | Measured as |
+| Pillar | Measured in Tokuma as | Based on |
 |---|---|---|
-| Recycled and reused materials | 60 | Share of the weight of products sold in the last 30 days that came from recycled or reused material |
-| Circular income | 20 | Share of money in from repairs, resale, rental and take-back |
-| Supplier sustainability | 20 | Average sustainability rating entered for suppliers |
+| Circular inflow | Share of the weight of products sold (last 30 days) made from recycled, reused or certified renewable material | WBCSD CTI % circular inflow; EMF MCI F_R + F_U + F_S |
+| Circular outflow | Waste and returned products from the waste log, valued by R-ladder route: reuse/repair 1, refurbish/remanufacture 0.75, recycle/compost 0.5, energy recovery 0.25, landfill 0 | WBCSD CTI % circular outflow; R-ladder (Potting et al. 2017) |
+| Product life & use | X = (lifetime ÷ typical lifetime) × use intensity, normalized min–max on 0–2, weighted by mass sold | EMF MCI utility factor |
+| Resource productivity | Product revenue ÷ kg of virgin material sold, min–max on a log scale from $5 to $500 per kg | WBCSD CTI circular material productivity |
+| Circular business model | Share of money in from repairs, resale, rental, take-back and recycling services | MSCI CE indexes; CTI revenue |
 
-Parts with no data yet are left out and the other weights scaled up, so a missing number never counts as zero. There is no score until the business has sold something. Levels: **Circular Starter** 0–39, **Circular Grower** 40–69, **Circular Leader** 70–100. To change the method, edit `SCORE_WEIGHTS`, `LEVEL_FROM` or `circularityScore()` and bump `SCORE_VERSION`.
+**Aggregation (OECD/JRC method).**
+- Equal weights (0.2 each).
+- Geometric mean: CIS = 100 × Π P_k^w_k, so one weak pillar pulls the score down.
+- The linear average is shown beside it as a sensitivity band ("between X and Y depending on the method").
+- Missing data: a pillar with no data is left out and flagged "not measured yet", and the other weights are scaled up. At least two measured pillars are needed for a score.
+- A pillar measured at exactly zero counts as 0.01, so the geometric mean doesn't collapse to 0.
+
+**Draft choices still to confirm with experts:**
+- the R-ladder route values
+- the product-life scale (0–2)
+- the $5–$500 per kg productivity range
+- the 0.01 zero floor
+- the levels: **Circular Starter** 0–39, **Circular Grower** 40–69, **Circular Leader** 70–100. These are not from the research.
+
+**Not used yet:**
+- Water circularity, because small businesses rarely track it.
+- The research's finance link. It should be estimated by regression, not hard-coded. The Funding page's estimates are placeholders.
+
+The global benchmark shown next to circular inflow (6.9%) is from the Circularity Gap Report 2025.
 
 ## Accounting (`src/lib/accounting.ts`)
 
@@ -100,7 +120,7 @@ src/
   types.ts                 data model (Product, Supplier, Transaction, Customer, …)
   data/defaults.ts         the empty profile a new account starts with
   lib/metrics.ts           business calculations (circularity, stock, suppliers, funding)
-  lib/score.ts             the circularity score (draft method)
+  lib/score.ts             the circularity score (Circular Innovation Score, 5 pillars)
   lib/accounting.ts        profit & loss, balance sheet, cash flow, break-even
   i18n/                    language switching, t() and one strings file per language
   store/AppStore.tsx       app state, derived data, actions, toasts, persistence
@@ -136,7 +156,7 @@ psql -d scratch -f supabase/tests/local_auth_stub.sql -f supabase/migrations/001
 ## Testing
 
 ```bash
-npm run test:e2e      # 78 browser checks across 8 suites
+npm run test:e2e      # 80 browser checks across 8 suites
 npm run i18n:check    # every language has every text
 ```
 

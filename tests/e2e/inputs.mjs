@@ -57,8 +57,8 @@ await step('product: material type must be chosen', async () => {
   await d.getByPlaceholder('0.00').fill('0.4');
   await d.getByPlaceholder('Units in stock').fill('40');
   await page.getByRole('button', { name: 'Add product' }).last().click();
-  await d.getByText('Choose recycled, reused or virgin for each material').waitFor();
-  await d.getByLabel('Material type').selectOption('Reused');
+  await d.getByText('Choose a type for each material').waitFor();
+  await d.getByLabel('Material type', { exact: true }).selectOption('Reused');
   await page.screenshot({ path: SP + '/product-form.png' });
   await page.getByRole('button', { name: 'Add product' }).last().click();
   await page.getByText('Product added').waitFor();
@@ -83,9 +83,10 @@ await step('after logging a sale, circularity comes from it', async () => {
   await page.getByRole('dialog').getByRole('button', { name: 'Save', exact: true }).click();
   await page.getByText('Transaction logged').waitFor();
   await page.goto(B + 'app'); await page.waitForTimeout(1500);
-  // Materials 100 (all reused) × 60 + circular income 0 × 20, supplier unrated → 6000 / 80 = 75.
+  // Pillars measured: circular inflow 1 (all reused), resource productivity 1 (no new material),
+  // circular business model 0 (no repair or resale income, counted as 0.01). Geometric mean → 22.
   const r = await sidebarScore();
-  if (r !== '75') throw new Error('expected a score of 75 got ' + r);
+  if (r !== '22') throw new Error('expected a score of 22 got ' + r);
 });
 await step('old saved defaults are cleared on load', async () => {
   const p2 = await ctx.newPage();

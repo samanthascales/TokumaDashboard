@@ -5,11 +5,10 @@ import { ChevronLeft, ChevronRight, Recycle, Wand2 } from 'lucide-react';
 import { useStore } from '../store/AppStore';
 import { useChartColors, useSimulatedLoad } from '../lib/hooks';
 import { fmtKg, fmtNum, fmtPct } from '../lib/format';
-import { tk, useLang, useT } from '../i18n';
-import { LEVEL_FROM, type ScoreLevel } from '../lib/score';
-import { levelName, levelTone, ScoreExplainer } from '../components/ScoreBits';
+import { useLang, useT } from '../i18n';
+import { ResearchBasis, ScoreBreakdown, WasteLog } from './circularity/ScorePanels';
 import { buildSeries, lastNDays, type Recommendation } from '../lib/metrics';
-import { Badge, Card, CardHeader, CardSkeleton, EmptyState, Gauge, Modal, PageHeader, Ring, Segmented, Term } from '../components/ui';
+import { Badge, Card, CardHeader, CardSkeleton, EmptyState, Modal, PageHeader, Ring, Segmented, Term } from '../components/ui';
 import { LegendItem, TooltipBox } from '../components/charts/ChartTooltip';
 import type { MaterialClass } from '../types';
 
@@ -95,97 +94,6 @@ function RecommendationCarousel() {
   );
 }
 
-const PART_COPY = {
-  materials: { label: tk('Recycled and reused materials'), explain: tk('The share of the weight of everything you sold in the last 30 days that came from recycled or reused materials.'), tip: tk('Switch a new material to a recycled or reused one. See the suggestions below.') },
-  income: { label: tk('Circular income'), explain: tk('The share of your money in that came from repairs, resale, rental or take-back.'), tip: tk('Offer repairs, resell used items, rent products out, or take old products back.') },
-  suppliers: { label: tk('Supplier sustainability'), explain: tk('The average sustainability rating (0 to 100) you gave your suppliers.'), tip: tk('Rate your suppliers, and choose ones with recycled materials and green certifications.') },
-} as const;
-
-function ScoreBreakdown() {
-  const t = useT();
-  const { score, scorePrev } = useStore();
-  const change = score.score !== null && scorePrev.score !== null ? score.score - scorePrev.score : null;
-  const levels: { key: ScoreLevel; from: number; to: number }[] = [
-    { key: 'starter', from: LEVEL_FROM.starter, to: LEVEL_FROM.grower - 1 },
-    { key: 'grower', from: LEVEL_FROM.grower, to: LEVEL_FROM.leader - 1 },
-    { key: 'leader', from: LEVEL_FROM.leader, to: 100 },
-  ];
-  return (
-    <Card className="p-5 sm:p-6" data-testid="score-breakdown">
-      <div className="grid gap-6 lg:grid-cols-[auto_1fr_auto] lg:items-start">
-        <div className="flex flex-col items-center text-center">
-          <Gauge value={score.score} size={148} stroke={12} label={t('of 100')} bands={[LEVEL_FROM.grower, LEVEL_FROM.leader]} />
-          <p className="mt-2 text-sm font-semibold">
-            <Term label={t('Circularity score')}>
-              <ScoreExplainer />
-            </Term>
-          </p>
-          {score.level && (
-            <Badge tone={levelTone(score.level)} dot className="mt-1.5">
-              {levelName(score.level)}
-            </Badge>
-          )}
-          {change !== null && Math.abs(change) >= 1 && (
-            <p className="muted mt-1.5 text-xs">{change > 0 ? t('Up {n} points from the 30 days before.', { n: change }) : t('Down {n} points from the 30 days before.', { n: -change })}</p>
-          )}
-        </div>
-
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="card-title">{t('What makes up your score')}</h3>
-            <Badge tone="blue">{t('Draft method · research ongoing')}</Badge>
-          </div>
-          <p className="muted mt-1 text-sm">{t('Each part is scored from 0 to 100 and weighted. Parts without data yet are left out instead of counted as zero.')}</p>
-          <ul className="mt-4 space-y-4">
-            {score.parts.map((p) => {
-              const copy = PART_COPY[p.key];
-              return (
-                <li key={p.key}>
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                    <Term label={t(copy.label)}>
-                      <p>{t(copy.explain)}</p>
-                      <p className="text-gray-300">{t('How to raise it: {tip}', { tip: t(copy.tip) })}</p>
-                    </Term>
-                    <span className="muted text-xs">
-                      {t('counts for {pct}', { pct: fmtPct(p.weight, 0) })} · <span className="font-semibold text-gray-900 tabular-nums dark:text-white">{p.value === null ? t('no data yet') : Math.round(p.value)}</span>
-                    </span>
-                  </div>
-                  <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-gray-100 dark:bg-white/5">
-                    {p.value !== null && <div className="h-full rounded-full bg-brand-600 transition-all duration-700 dark:bg-brand-400" style={{ width: `${p.value}%` }} />}
-                  </div>
-                  <p className="muted mt-1 text-xs">{t(copy.tip)}</p>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-
-        <div className="lg:w-56">
-          <h3 className="card-title">
-            <Term label={t('Levels')}>{t('Your score puts your business at one of three levels. Each one is a step toward a fully circular business.')}</Term>
-          </h3>
-          <ol className="mt-3 space-y-2">
-            {[...levels].reverse().map((l) => (
-              <li
-                key={l.key}
-                className={clsx(
-                  'flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm',
-                  score.level === l.key ? 'border-brand-300 bg-brand-50 font-semibold dark:border-brand-500/40 dark:bg-brand-500/10' : 'border-gray-100 dark:border-white/5',
-                )}
-              >
-                <span>{levelName(l.key)}</span>
-                <span className="muted text-xs tabular-nums">
-                  {l.from}–{l.to}
-                </span>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </div>
-    </Card>
-  );
-}
-
 export default function Circularity() {
   const t = useT();
   const { lang } = useLang();
@@ -198,12 +106,13 @@ export default function Circularity() {
   const [drill, setDrill] = useState<string | null>(null);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- labels follow the language
   const trend = useMemo(() => buildSeries(ledger, products, lastNDays(365)), [ledger, products, lang]);
-  const classColor: Record<MaterialClass, string> = { Recycled: c.primary, Reused: c.secondary, Virgin: c.tertiary };
+  const classColor: Record<MaterialClass, string> = { Recycled: c.primary, Reused: c.secondary, Renewable: '#F59E0B', Virgin: c.tertiary };
+  const [wasteOpen, setWasteOpen] = useState(false);
 
   const composition =
     compView === 'material'
       ? circ30.byMaterial.map((m) => ({ name: m.name, kg: +m.kg.toFixed(1), cls: m.cls }))
-      : (['Recycled', 'Reused', 'Virgin'] as MaterialClass[]).map((k) => ({ name: t(k), kg: +circ30.byClass[k].toFixed(1), cls: k }));
+      : (['Recycled', 'Reused', 'Renewable', 'Virgin'] as MaterialClass[]).map((k) => ({ name: t(k), kg: +circ30.byClass[k].toFixed(1), cls: k }));
 
   const drillProduct = products.find((p) => p.id === drill);
 
@@ -222,21 +131,27 @@ export default function Circularity() {
       ) : (
         <div className="grid grid-cols-12 gap-5">
           <div className="col-span-12">
-            <ScoreBreakdown />
+            <ScoreBreakdown onAddWaste={() => setWasteOpen(true)} />
+          </div>
+          <div className="col-span-12">
+            <ResearchBasis />
+          </div>
+          <div className="col-span-12">
+            <WasteLog open={wasteOpen} setOpen={setWasteOpen} />
           </div>
 
           <Card className="col-span-12 lg:col-span-7">
             <CardHeader
               title={
                 <Term label={t('What your products are made of')}>
-                  {t('The materials in everything you sold in the last 30 days, by weight. Recycled and reused materials raise your score; new (virgin) materials do not.')}
+                  {t('The materials in everything you sold in the last 30 days, by weight. Recycled, reused and certified renewable materials raise your score; new (virgin) materials do not.')}
                 </Term>
               }
               sub={t('Weight sold, last 30 days')}
               right={<Segmented value={compView} onChange={setCompView} options={[{ value: 'material', label: t('By material') }, { value: 'class', label: t('By type') }]} />}
             />
             <div className="flex gap-4 px-5 pt-3">
-              {(['Recycled', 'Reused', 'Virgin'] as MaterialClass[]).map((k) => (
+              {(['Recycled', 'Reused', 'Renewable', 'Virgin'] as MaterialClass[]).map((k) => (
                 <LegendItem key={k} color={classColor[k]} label={t(k)} />
               ))}
             </div>
@@ -269,7 +184,7 @@ export default function Circularity() {
           </div>
 
           <Card className="col-span-12 lg:col-span-7">
-            <CardHeader title={t('Recycled and reused materials over time')} sub={t('Share of the weight you sold, week by week, last 12 months')} />
+            <CardHeader title={t('Circular materials over time')} sub={t('Share of the weight you sold that was recycled, reused or renewable, week by week, last 12 months')} />
             <div className="h-[260px] px-2 pb-3 pt-4" dir="ltr">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={trend} margin={{ left: 0, right: 16, top: 8, bottom: 0 }}>
@@ -337,7 +252,7 @@ export default function Circularity() {
                   <tr key={m.name} className="tr">
                     <td className="td ps-0">{m.name}</td>
                     <td className="td">
-                      <Badge tone={m.reused ? 'blue' : m.recycled ? 'green' : 'gray'}>{m.reused ? t('Reused') : m.recycled ? t('Recycled') : t('Virgin')}</Badge>
+                      <Badge tone={m.reused ? 'blue' : m.recycled ? 'green' : m.renewable ? 'amber' : 'gray'}>{m.reused ? t('Reused') : m.recycled ? t('Recycled') : m.renewable ? t('Renewable') : t('Virgin')}</Badge>
                     </td>
                     <td className="td text-end tabular-nums">{fmtKg(m.weightKg)}</td>
                   </tr>

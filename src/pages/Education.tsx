@@ -26,11 +26,12 @@ const COURSES: Course[] = [
     desc: tk('What the score means, what goes into it, and the quickest ways to raise it.'),
     points: [
       tk('Your circularity score runs from 0 to 100. It shows how well your business keeps materials in use instead of throwing them away.'),
-      tk('Most of the score comes from the materials in what you sell: recycled and reused materials count, new materials do not.'),
-      tk('Money from repairs, resale, rental and take-back also counts, and so do the sustainability ratings of your suppliers.'),
+      tk('It has five equal parts: the materials you use (circular inflow), what happens to your waste and old products (circular outflow), how long your products last, how much you earn per kilogram of new material, and how much money comes from repairs, resale and rental.'),
+      tk('The parts are combined so that a weak part pulls the score down. Being strong in one area cannot hide doing nothing in another.'),
       tk('Look at it like profit: check it every month and set a goal. A score of 40 makes you a Circular Grower, 70 a Circular Leader.'),
-      tk('The method is a draft while research continues, so the exact formula may change.'),
+      tk('The method is based on published research and standards (ISO 59020, Ellen MacArthur Foundation, WBCSD). A few details are still being confirmed.'),
     ],
+
     link: { to: '/app/circularity', label: tk('See your score') },
   },
   {

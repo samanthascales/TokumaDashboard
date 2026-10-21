@@ -6,9 +6,8 @@ import { ArrowRight, Leaf, Plus, Target, Upload, Wallet } from 'lucide-react';
 import { useStore } from '../store/AppStore';
 import { useChartColors, useSimulatedLoad } from '../lib/hooks';
 import { fmtCompactMoney, fmtMoney, fmtMonth, fmtPct, startOfToday } from '../lib/format';
-import { avgKnown, circularityFrom, totalsFor } from '../lib/metrics';
-import { profitAndLoss } from '../lib/accounting';
-import { circularityScore, LEVEL_FROM, type ScoreLevel } from '../lib/score';
+import { profitAndLoss, scoreFor } from '../lib/accounting';
+import { LEVEL_FROM, type ScoreLevel } from '../lib/score';
 import { levelName, levelTone, ScoreExplainer } from '../components/ScoreBits';
 import { t, useLang, useT } from '../i18n';
 import { Badge, Card, CardHeader, CardSkeleton, Field, Gauge, Modal, PageHeader, Term } from '../components/ui';
@@ -183,22 +182,20 @@ function ScoreCard({ onGoals }: { onGoals: () => void }) {
 function TwoBottomLines() {
   useT();
   const { lang } = useLang();
-  const { transactions, ledger, products, suppliers, theme } = useStore();
+  const { transactions, ledger, products, wasteLog, theme } = useStore();
   const c = useChartColors(theme);
   const data = useMemo(() => {
     const today = startOfToday();
-    const supplierAvg = avgKnown(suppliers.map((s) => s.sustainabilityRating));
     return Array.from({ length: 12 }, (_, i) => {
       const from = new Date(today.getFullYear(), today.getMonth() - (11 - i), 1);
       const end = new Date(from.getFullYear(), from.getMonth() + 1, 0);
       const w = { from, to: end > today ? today : end };
       const pnl = profitAndLoss(transactions, w);
-      const circ = circularityFrom(products, totalsFor(ledger, w).units);
-      const sc = circularityScore({ materials: circ.hasData ? circ.rate : null, income: pnl.circularIncomeShare, suppliers: supplierAvg }).score;
+      const sc = scoreFor(w, { products, ledger, transactions, waste: wasteLog }).score;
       return { label: fmtMonth(from), profit: Math.round(pnl.profit), score: sc, any: pnl.incomeTotal > 0 || pnl.expenseTotal > 0 };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- month labels follow the language
-  }, [transactions, ledger, products, suppliers, lang]);
+  }, [transactions, ledger, products, wasteLog, lang]);
   const empty = !data.some((d) => d.any);
   return (
     <Card>

@@ -4,6 +4,7 @@ import type {
   Asset,
   Goals,
   Liability,
+  WasteEntry,
   BusinessProfile,
   Customer,
   FundingRequest,
@@ -42,8 +43,8 @@ import {
   type Recommendation,
 } from '../lib/metrics';
 import { fmtMoney, fmtMoney2, fmtPct, startOfToday, toISO, uid } from '../lib/format';
-import { balanceSheet, profitAndLoss, type BalanceSheet, type ProfitAndLoss } from '../lib/accounting';
-import { circularityScore, type CircularityScore } from '../lib/score';
+import { balanceSheet, profitAndLoss, scoreFor, type BalanceSheet, type ProfitAndLoss } from '../lib/accounting';
+import type { CircularityScore } from '../lib/score';
 
 const lowStockText = (p: Product) => ({
   title: t('Low stock: {name}', { name: p.name }),
@@ -76,6 +77,8 @@ export interface Persisted {
   /** Cash the business had before it started recording in Tokuma; null until entered. */
   openingCash: number | null;
   goals: Goals;
+  /** Production waste and returned products, and where they went (circular outflow). */
+  wasteLog: WasteEntry[];
 }
 
 // v2: accounts start empty (v1 stored the old sample data, so it is ignored).
@@ -98,6 +101,7 @@ export function defaultState(): Persisted {
     liabilities: [],
     openingCash: null,
     goals: { monthlyProfit: null, circularityScore: null },
+    wasteLog: [],
   };
 }
 
@@ -226,6 +230,8 @@ export interface AppStore extends Persisted {
   removeLiability: (id: string) => void;
   setOpeningCash: (n: number | null) => void;
   setGoals: (g: Goals) => void;
+  addWaste: (w: Omit<WasteEntry, 'id'>) => void;
+  removeWaste: (id: string) => void;
   importTransactions: (txs: Omit<Transaction, 'id'>[], newCustomers: Customer[], noun?: 'transaction' | 'sale') => void;
   requestFunding: (r: { type: FundingType; amount: number; purpose: string }) => void;
   applyMaterialSwitch: (productId: string, materialName: string) => void;
@@ -321,15 +327,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const circPrev30 = useMemo(() => circularityFrom(state.products, unitsPrev30), [state.products, unitsPrev30]);
   const pnl30 = useMemo(() => profitAndLoss(transactions, lastNDays(30)), [transactions]);
   const pnlPrev30 = useMemo(() => profitAndLoss(transactions, lastNDays(30, 30)), [transactions]);
-  const avgSupplierRating = useMemo(() => avgKnown(state.suppliers.map((x) => x.sustainabilityRating)), [state.suppliers]);
-  const score = useMemo(
-    () => circularityScore({ materials: circ30.hasData ? circ30.rate : null, income: pnl30.circularIncomeShare, suppliers: avgSupplierRating }),
-    [circ30, pnl30.circularIncomeShare, avgSupplierRating],
-  );
-  const scorePrev = useMemo(
-    () => circularityScore({ materials: circPrev30.hasData ? circPrev30.rate : null, income: pnlPrev30.circularIncomeShare, suppliers: avgSupplierRating }),
-    [circPrev30, pnlPrev30.circularIncomeShare, avgSupplierRating],
-  );
+  const scoreData = useMemo(() => ({ products: state.products, ledger, transactions, waste: state.wasteLog }), [state.products, ledger, transactions, state.wasteLog]);
+  const score = useMemo(() => scoreFor(lastNDays(30), scoreData), [scoreData]);
+  const scorePrev = useMemo(() => scoreFor(lastNDays(30, 30), scoreData), [scoreData]);
   const balance = useMemo(
     () => balanceSheet(transactions, state.products, state.assets, state.liabilities, state.openingCash),
     [transactions, state.products, state.assets, state.liabilities, state.openingCash],
@@ -534,6 +534,14 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     },
     [patch, toast],
   );
+  const addWaste: AppStore['addWaste'] = useCallback(
+    (w) => {
+      patch((s) => ({ wasteLog: [...s.wasteLog, { ...w, id: uid('wst') }] }));
+      toast({ kind: 'success', title: t('Waste record added'), body: `${w.description} · ${t(w.route)}` });
+    },
+    [patch, toast],
+  );
+  const removeWaste = useCallback((id: string) => patch((s) => ({ wasteLog: s.wasteLog.filter((x) => x.id !== id) })), [patch]);
   const requestFunding: AppStore['requestFunding'] = useCallback(
     (r) => {
       const id = uid('fr');
@@ -626,6 +634,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     removeLiability,
     setOpeningCash,
     setGoals,
+    addWaste,
+    removeWaste,
     requestFunding,
     applyMaterialSwitch,
     dismissInsight,
