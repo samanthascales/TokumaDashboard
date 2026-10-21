@@ -13,7 +13,7 @@ page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
 page.on('console', (m) => { if (m.type() === 'error' && !m.text().includes('CERT')) errors.push(m.text()); });
 const step = async (name, fn) => { try { await fn(); console.log('OK  ', name); } catch (e) { console.log('FAIL', name, e.message.split('\n')[0]); } };
 
-for (const r of ['', 'app', 'app/money', 'app/products', 'app/products/inventory', 'app/products/suppliers', 'app/circularity', 'app/reports', 'app/reports?tab=balance', 'app/reports?tab=cash', 'app/reports?tab=breakeven', 'app/learn', 'app/learn/funding', 'app/supply-chain/reliability', 'app/settings']) {
+for (const r of ['', 'app', 'app/money', 'app/products', 'app/products/inventory', 'app/products/suppliers', 'app/circularity', 'app/reports', 'app/reports?tab=balance', 'app/reports?tab=cash', 'app/reports?tab=breakeven', 'app/learn', 'app/learn?tab=library', 'app/learn/diagnostic', 'app/learn/modules/sustainability', 'app/learn/funding', 'app/supply-chain/reliability', 'app/settings']) {
   await page.goto(B + r); await page.waitForTimeout(1300);
   await page.screenshot({ path: SP + '/empty-' + (r || 'landing').replace(/[/?=]/g, '_') + '.png' });
 }

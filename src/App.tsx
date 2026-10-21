@@ -18,6 +18,8 @@ import SupplyChain from './pages/SupplyChain';
 import Funding from './pages/Funding';
 import Customers from './pages/Customers';
 import Education from './pages/Education';
+import Diagnostic from './pages/education/Diagnostic';
+import ModulePage from './pages/education/ModulePage';
 import Settings from './pages/Settings';
 import Investor from './pages/Investor';
 import Admin from './pages/Admin';
@@ -63,6 +65,8 @@ export default function App() {
               <Route path="circularity" element={<Circularity />} />
               <Route path="reports" element={<Reports />} />
               <Route path="learn" element={<Education />} />
+              <Route path="learn/diagnostic" element={<Diagnostic />} />
+              <Route path="learn/modules/:moduleId" element={<ModulePage />} />
               <Route path="learn/funding" element={<Funding />} />
               <Route path="settings" element={<Settings />} />
               <Route path="supply-chain/reliability" element={<SupplyChain view="reliability" />} />

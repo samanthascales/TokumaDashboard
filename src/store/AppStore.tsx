@@ -2,6 +2,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type {
   AppNotification,
   Asset,
+  Deliverable,
+  EducationProgress,
   Goals,
   Liability,
   WasteEntry,
@@ -10,6 +12,7 @@ import type {
   FundingRequest,
   FundingType,
   MaterialClass,
+  ModuleId,
   NotificationPrefs,
   Product,
   Role,
@@ -45,6 +48,8 @@ import {
 import { fmtMoney, fmtMoney2, fmtPct, startOfToday, toISO, uid } from '../lib/format';
 import { balanceSheet, profitAndLoss, scoreFor, type BalanceSheet, type ProfitAndLoss } from '../lib/accounting';
 import type { CircularityScore } from '../lib/score';
+import { countCorrect, emptyEducation, learningState, normalizeEducation, type LearningState } from '../lib/education';
+import { moduleById } from '../data/education';
 
 const lowStockText = (p: Product) => ({
   title: t('Low stock: {name}', { name: p.name }),
@@ -79,6 +84,8 @@ export interface Persisted {
   goals: Goals;
   /** Production waste and returned products, and where they went (circular outflow). */
   wasteLog: WasteEntry[];
+  /** Progress through the education program (Learn). */
+  education: EducationProgress;
 }
 
 // v2: accounts start empty (v1 stored the old sample data, so it is ignored).
@@ -102,6 +109,7 @@ export function defaultState(): Persisted {
     openingCash: null,
     goals: { monthlyProfit: null, circularityScore: null },
     wasteLog: [],
+    education: emptyEducation(),
   };
 }
 
@@ -134,6 +142,7 @@ export function normalizeState(raw: Partial<Persisted> | null | undefined): Pers
     profile: { ...base.profile, ...(r.profile ?? {}) },
     prefs: { ...base.prefs, ...(r.prefs ?? {}) },
     goals: { ...base.goals, ...(r.goals ?? {}) },
+    education: normalizeEducation(r.education),
   });
 }
 
@@ -209,6 +218,8 @@ export interface AppStore extends Persisted {
   filteredProductIds: Set<string> | null;
   toasts: Toast[];
   flashFunding: number; // increments whenever circularity-driven terms change
+  /** Learning path, milestones, scores and investor-matching gate, calculated from `education`. */
+  learning: LearningState;
 
   setThemePref: (t: ThemePref) => void;
   setRole: (r: Role) => void;
@@ -243,6 +254,15 @@ export interface AppStore extends Persisted {
   setProfile: (p: BusinessProfile, message?: string) => void;
   setPrefs: (p: NotificationPrefs) => void;
   markFundingSeen: () => void;
+  /** Starts the diagnostic timer (once; later calls keep the original start). */
+  startDiagnostic: () => void;
+  answerDiagnostic: (questionId: string, option: number) => void;
+  /** `auto` when the timer ran out. */
+  submitDiagnostic: (auto?: boolean) => void;
+  completeLesson: (moduleId: ModuleId, lessonId: string) => void;
+  submitCheckpoint: (moduleId: ModuleId, answers: Record<string, number>) => void;
+  saveDeliverable: (moduleId: ModuleId, d: Deliverable) => void;
+  resetEducation: () => void;
   resetData: () => void;
   /** Replaces all persisted data at once (loading an account, or opening a support view). */
   replaceAll: (next: Partial<Persisted> | null) => void;
@@ -581,6 +601,58 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     () => patch({ fundingSeen: { apr: funding.apr, maxEligibility: funding.maxEligibility, rate: circ30.rate } }),
     [patch, funding.apr, funding.maxEligibility, circ30.rate],
   );
+  const learning = useMemo(() => learningState(state.education), [state.education]);
+  const patchEducation = useCallback(
+    (fn: (e: EducationProgress) => EducationProgress) => patch((s) => ({ education: fn(s.education) })),
+    [patch],
+  );
+  const startDiagnostic = useCallback(
+    () => patchEducation((e) => (e.diagnostic.startedAt ? e : { ...e, diagnostic: { ...e.diagnostic, startedAt: new Date().toISOString() } })),
+    [patchEducation],
+  );
+  const answerDiagnostic = useCallback(
+    (questionId: string, option: number) =>
+      patchEducation((e) => (e.diagnostic.submittedAt ? e : { ...e, diagnostic: { ...e.diagnostic, answers: { ...e.diagnostic.answers, [questionId]: option } } })),
+    [patchEducation],
+  );
+  const submitDiagnostic = useCallback(
+    (auto?: boolean) => {
+      if (state.education.diagnostic.submittedAt) return;
+      patchEducation((e) => (e.diagnostic.submittedAt ? e : { ...e, diagnostic: { ...e.diagnostic, submittedAt: new Date().toISOString() } }));
+      toast({ kind: auto ? 'info' : 'success', title: auto ? t('Time is up: your diagnostic was submitted') : t('Diagnostic submitted'), body: t('Your learning path is ready.') });
+    },
+    [patchEducation, toast, state.education.diagnostic.submittedAt],
+  );
+  const completeLesson = useCallback(
+    (moduleId: ModuleId, lessonId: string) =>
+      patchEducation((e) => {
+        const m = e.modules[moduleId];
+        if (m.lessonsDone.includes(lessonId)) return e;
+        return { ...e, modules: { ...e.modules, [moduleId]: { ...m, lessonsDone: [...m.lessonsDone, lessonId] } } };
+      }),
+    [patchEducation],
+  );
+  const submitCheckpoint = useCallback(
+    (moduleId: ModuleId, answers: Record<string, number>) => {
+      const questions = moduleById(moduleId)?.checkpoint ?? [];
+      const result = { correct: countCorrect(questions, answers), total: questions.length, date: new Date().toISOString() };
+      patchEducation((e) => ({ ...e, modules: { ...e.modules, [moduleId]: { ...e.modules[moduleId], checkpoint: result } } }));
+      toast({ kind: 'success', title: t('Checkpoint submitted'), body: t('{correct} of {total} correct', { correct: result.correct, total: result.total }) });
+    },
+    [patchEducation, toast],
+  );
+  const saveDeliverable = useCallback(
+    (moduleId: ModuleId, d: Deliverable) => {
+      patchEducation((e) => ({ ...e, modules: { ...e.modules, [moduleId]: { ...e.modules[moduleId], deliverable: d } } }));
+      toast({ kind: 'success', title: t('Deliverable saved') });
+    },
+    [patchEducation, toast],
+  );
+  const resetEducation = useCallback(() => {
+    patch({ education: emptyEducation() });
+    toast({ kind: 'info', title: t('Learning progress cleared') });
+  }, [patch, toast]);
+
   const replaceAll = useCallback((next: Partial<Persisted> | null) => {
     setState(normalizeState(next));
     setMaterialFilter(null);
@@ -614,6 +686,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     filteredProductIds,
     toasts,
     flashFunding,
+    learning,
     setThemePref,
     setRole,
     setMaterialFilter,
@@ -645,6 +718,13 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     setProfile,
     setPrefs,
     markFundingSeen,
+    startDiagnostic,
+    answerDiagnostic,
+    submitDiagnostic,
+    completeLesson,
+    submitCheckpoint,
+    saveDeliverable,
+    resetEducation,
     resetData,
     replaceAll,
     snapshot: state,
