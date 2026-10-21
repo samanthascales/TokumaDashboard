@@ -39,7 +39,7 @@ export type FieldKey = 'date' | 'amount' | 'unitPrice' | 'type' | 'category' | '
 
 export const FIELDS: { key: FieldKey; label: string; required?: boolean; help: string }[] = [
   { key: 'date', label: tk('Date'), required: true, help: tk('When the money moved') },
-  { key: 'amount', label: tk('Amount (line total)'), help: tk('Negative numbers or a Type column mark money out') },
+  { key: 'amount', label: tk('Amount (line total)'), help: tk('Negative numbers or a Type column mark expenses') },
   { key: 'unitPrice', label: tk('Unit price'), help: tk('Used with Quantity when a row has no line total') },
   { key: 'type', label: tk('Type (in / out)'), help: tk('e.g. “in”, “out”, “income”, “expense”, “credit”, “debit”') },
   { key: 'category', label: tk('Category'), help: tk('e.g. Product sale, Materials, Rent') },

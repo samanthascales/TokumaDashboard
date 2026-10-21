@@ -53,17 +53,17 @@ function MoneyCard({ onGoals }: { onGoals: () => void }) {
             <Wallet className="h-5 w-5" />
           </span>
           <div>
-            <h2 className="font-semibold">{t('How is my money?')}</h2>
+            <h2 className="font-semibold">{t('Financial performance')}</h2>
             <p className="muted text-xs">{t('Last 30 days')}</p>
           </div>
         </div>
-        {has && <Badge tone={tone} dot>{tone === 'green' ? t('Healthy') : tone === 'amber' ? t('Below goal') : t('Losing money')}</Badge>}
+        {has && <Badge tone={tone} dot>{tone === 'green' ? t('Healthy') : tone === 'amber' ? t('Below goal') : t('Net loss')}</Badge>}
       </div>
 
       <p className="muted mt-5 text-sm">
-        <Term label={t('Profit')}>
-          <p>{t('Profit is the money left over after paying your costs: money in from sales and services, minus money out for things like materials, rent and wages.')}</p>
-          <p>{t('Loans, investment and grants are not counted, because they are not money your business earned.')}</p>
+        <Term label={t('Net profit')}>
+          <p>{t('Net profit is revenue (from sales and services) minus expenses (such as materials, rent and wages).')}</p>
+          <p>{t('Loans, investment and grants are not counted, because they are not revenue.')}</p>
         </Term>
       </p>
       <p className={clsx('mt-1 text-4xl font-bold tracking-tight tabular-nums', has && p < 0 && 'text-red-600 dark:text-red-400')} data-testid="home-profit">
@@ -71,10 +71,10 @@ function MoneyCard({ onGoals }: { onGoals: () => void }) {
       </p>
       <p className="mt-2 text-sm">
         {!has
-          ? t('Record your sales and costs to see your profit.')
+          ? t('Record your sales and expenses to see your net profit.')
           : p >= 0
-            ? t('You earned {amount} more than you spent.', { amount: fmtMoney(p) })
-            : t('You spent {amount} more than you earned.', { amount: fmtMoney(-p) })}
+            ? t('Revenue was {amount} more than expenses.', { amount: fmtMoney(p) })
+            : t('Expenses were {amount} more than revenue.', { amount: fmtMoney(-p) })}
         {change !== null && (
           <span className="muted">
             {' '}
@@ -86,13 +86,13 @@ function MoneyCard({ onGoals }: { onGoals: () => void }) {
       <div className="mt-5 grid grid-cols-2 gap-3">
         <div className="rounded-xl bg-gray-50 p-3 dark:bg-white/[0.03]">
           <p className="muted text-xs">
-            <Term label={t('Money in')}>{t('Everything customers paid you: product sales, repairs, resale, rental and other income.')}</Term>
+            <Term label={t('Revenue')}>{t('What customers paid you: product sales, repairs, resale, rental and other income.')}</Term>
           </p>
           <p className="num mt-0.5 text-lg text-brand-700 dark:text-brand-400">{fmtMoney(pnl30.incomeTotal)}</p>
         </div>
         <div className="rounded-xl bg-gray-50 p-3 dark:bg-white/[0.03]">
           <p className="muted text-xs">
-            <Term label={t('Money out')}>{t('Everything you paid for running the business: materials, stock, rent, wages, shipping, marketing and other costs.')}</Term>
+            <Term label={t('Expenses')}>{t('Costs of running the business: materials, inventory, rent, wages, shipping, marketing and other costs.')}</Term>
           </p>
           <p className="num mt-0.5 text-lg">{fmtMoney(pnl30.expenseTotal)}</p>
         </div>
@@ -100,7 +100,7 @@ function MoneyCard({ onGoals }: { onGoals: () => void }) {
 
       <div className="mt-auto pt-5">
         {goals.monthlyProfit ? (
-          <GoalBar value={p} goal={goals.monthlyProfit} label={t('Goal: {amount} profit a month', { amount: fmtMoney(goals.monthlyProfit) })} />
+          <GoalBar value={p} goal={goals.monthlyProfit} label={t('Goal: {amount} net profit a month', { amount: fmtMoney(goals.monthlyProfit) })} />
         ) : (
           <button className="btn-ghost btn-sm -ms-2" onClick={onGoals}>
             <Target className="h-3.5 w-3.5" /> {t('Set a profit goal')}
@@ -132,7 +132,7 @@ function ScoreCard({ onGoals }: { onGoals: () => void }) {
             <Leaf className="h-5 w-5" />
           </span>
           <div>
-            <h2 className="font-semibold">{t('How circular is my business?')}</h2>
+            <h2 className="font-semibold">{t('Circularity performance')}</h2>
             <p className="muted text-xs">{t('Last 30 days')}</p>
           </div>
         </div>
@@ -201,8 +201,8 @@ function TwoBottomLines() {
     <Card>
       <CardHeader
         title={
-          <Term label={t('Money and circularity, month by month')}>
-            <p>{t('Bars show your profit each month: blue when you made money, red when you lost money.')}</p>
+          <Term label={t('Profit and circularity, month by month')}>
+            <p>{t('Bars show net profit each month: blue for a profit, red for a loss.')}</p>
             <p>{t('The line shows your circularity score. A strong business grows both at the same time.')}</p>
           </Term>
         }
@@ -213,7 +213,7 @@ function TwoBottomLines() {
         <LegendItem color={c.primary} label={t('Circularity score')} />
       </div>
       <div className="relative h-[280px] px-2 pb-3 pt-2" dir="ltr">
-        {empty && <p className="muted absolute inset-0 z-10 flex items-center justify-center px-6 text-center text-sm">{t('Your profit and circularity score will appear here as you record sales and costs.')}</p>}
+        {empty && <p className="muted absolute inset-0 z-10 flex items-center justify-center px-6 text-center text-sm">{t('Your net profit and circularity score will appear here as you record sales and expenses.')}</p>}
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data} margin={{ left: 0, right: 4, top: 8, bottom: 0 }}>
             <CartesianGrid vertical={false} stroke={c.grid} />
@@ -281,7 +281,7 @@ function ProductsAtAGlance() {
               <tr>
                 <th className="th">{t('Product')}</th>
                 <th className="th text-end">
-                  <Term label={t('Profit per item')}>{t('What you keep from each sale: the price minus what the item cost you to make or buy.')}</Term>
+                  <Term label={t('Profit per unit')}>{t('Price minus unit cost: what you keep from each sale before fixed costs.')}</Term>
                 </th>
                 <th className="th text-end">
                   <Term label={t('Circularity score')}>{t('For a product, the score is the share of its weight that comes from recycled or reused materials.')}</Term>
@@ -332,7 +332,7 @@ export function GoalsModal({ open, onClose }: { open: boolean; onClose: () => vo
       open={open}
       onClose={onClose}
       title={t('Your goals')}
-      sub={t('Set one goal for money and one for circularity. Your progress shows on your dashboard.')}
+      sub={t('Set one financial goal and one circularity goal. Your progress shows on your dashboard.')}
       footer={
         <>
           <button className="btn-secondary" onClick={onClose}>
@@ -352,7 +352,7 @@ export function GoalsModal({ open, onClose }: { open: boolean; onClose: () => vo
       }
     >
       <div className="space-y-4">
-        <Field label={t('Profit goal for each month ($)')} hint={t('Leave empty for no goal.')}>
+        <Field label={t('Monthly net profit goal ($)')} hint={t('Leave empty for no goal.')}>
           <input type="number" min={0} className="input" value={profit} onChange={(e) => setProfit(e.target.value)} />
         </Field>
         <Field label={t('Circularity score goal (1–100)')} error={err} hint={t('Circular Grower starts at {a}, Circular Leader at {b}.', { a: LEVEL_FROM.grower, b: LEVEL_FROM.leader })}>
@@ -376,7 +376,7 @@ export default function Home() {
     <>
       <PageHeader
         title={firstName ? t('{greeting}, {name}', { greeting: greeting(), name: firstName }) : greeting()}
-        sub={profile.businessName ? t('How {name} is doing with money and with circularity', { name: profile.businessName }) : t('How your business is doing with money and with circularity')}
+        sub={profile.businessName ? t('{name}: financial and circularity performance', { name: profile.businessName }) : t('Your financial and circularity performance')}
         actions={
           <>
             <button className="btn-secondary" onClick={() => setGoalsOpen(true)}>
@@ -386,7 +386,7 @@ export default function Home() {
               <Upload className="h-4 w-4" /> {t('Import sales')}
             </button>
             <button className="btn-primary" onClick={() => navigate('/app/money?new=txn')}>
-              <Plus className="h-4 w-4" /> {t('Record money in or out')}
+              <Plus className="h-4 w-4" /> {t('Add transaction')}
             </button>
           </>
         }

@@ -337,7 +337,7 @@ export function ImportModal({ open, onClose, mode = 'transactions' }: { open: bo
             </div>
             <div className="space-y-3">
               {mapping.type === null && (
-                <p className="muted text-xs">{sales ? t('Every row is a sale. Negative amounts are recorded as refunds (money out).') : t('No type column: positive amounts are imported as money in, negative amounts as money out.')}</p>
+                <p className="muted text-xs">{sales ? t('Every row is a sale. Negative amounts are recorded as refunds (expenses).') : t('No type column: positive amounts are imported as income, negative amounts as expenses.')}</p>
               )}
               {mapping.customer !== null && (
                 <div className="flex items-center justify-between gap-3">

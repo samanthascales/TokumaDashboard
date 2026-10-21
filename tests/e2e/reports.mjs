@@ -37,7 +37,7 @@ const pillar = async (k) => (await page.getByTestId('pillar-' + k).innerText()).
 const sidebarScore = async () => (await page.locator('aside').innerText()).match(/Circularity score\s+(\S+)/)?.[1];
 await step('circularity score: three measured pillars, geometric mean', async () => {
   // inflow 0.5 (half recycled) · productivity $100 per kg of new material → 0.65 on the $5–$500 log scale ·
-  // business model 0.5 (repair income is half of money in). Outflow and product life aren't measured yet.
+  // business model 0.5 (repair revenue is half of total revenue). Outflow and product life aren't measured yet.
   await page.goto(B + 'app'); await page.waitForTimeout(1200);
   if ((await sidebarScore()) !== '55') throw new Error('sidebar score ' + (await sidebarScore()));
   await page.goto(B + 'app/circularity'); await page.waitForTimeout(2200);
@@ -45,7 +45,7 @@ await step('circularity score: three measured pillars, geometric mean', async ()
   for (const s of ['55', 'Circular Grower', 'Research-based']) if (!b.includes(s)) throw new Error('breakdown missing ' + s);
   if (!(await pillar('inflow')).includes('50')) throw new Error('inflow ' + (await pillar('inflow')));
   if (!(await pillar('inflow')).includes('world average 6.9%')) throw new Error('no global benchmark');
-  if (!(await pillar('productivity')).includes('65') || !(await pillar('productivity')).includes('$100.00 earned per kg')) throw new Error('productivity ' + (await pillar('productivity')));
+  if (!(await pillar('productivity')).includes('65') || !(await pillar('productivity')).includes('$100.00 revenue per kg')) throw new Error('productivity ' + (await pillar('productivity')));
   if (!(await pillar('outflow')).includes('not measured yet')) throw new Error('outflow should be unmeasured');
   if (!(await pillar('life')).includes('not measured yet')) throw new Error('life should be unmeasured');
   await page.screenshot({ path: SP + '/shots4/score-breakdown.png' });
@@ -89,23 +89,23 @@ await step('dashboard shows profit and the score side by side; loans are not pro
   await page.goto(B + 'app'); await page.waitForTimeout(1200);
   const profit = await page.getByTestId('home-profit').innerText();
   if (profit !== '$150') throw new Error('profit ' + profit);
-  if (!(await page.locator('main').innerText()).includes('You earned $150 more than you spent.')) throw new Error('missing plain sentence');
+  if (!(await page.locator('main').innerText()).includes('Revenue was $150 more than expenses.')) throw new Error('missing plain sentence');
 });
 await step('goals: set both, progress bars appear', async () => {
   await page.getByRole('button', { name: 'Goals' }).click();
   const d = page.getByRole('dialog');
-  await d.locator('label:has-text("Profit goal") input').fill('300');
+  await d.locator('label:has-text("Monthly net profit goal") input').fill('300');
   await d.locator('label:has-text("Circularity score goal") input').fill('70');
   await d.getByRole('button', { name: 'Save goals' }).click();
   await page.getByText('Goals saved').waitFor();
   const t = await page.locator('main').innerText();
-  for (const s of ['Goal: $300 profit a month', '50% of goal', 'Goal: a score of 70', '96% of goal']) if (!t.includes(s)) throw new Error('missing ' + s);
+  for (const s of ['Goal: $300 net profit a month', '50% of goal', 'Goal: a score of 70', '96% of goal']) if (!t.includes(s)) throw new Error('missing ' + s);
 });
 await step('explanations open on hover, close on Escape, and toggle on tap', async () => {
   await page.waitForTimeout(600); // let the goals dialog finish closing
-  const btn = page.getByRole('button', { name: 'What does “Profit” mean?' }).first();
+  const btn = page.getByRole('button', { name: 'What does “Net profit” mean?' }).first();
   await btn.hover();
-  await page.getByRole('tooltip').getByText('Profit is the money left over', { exact: false }).waitFor({ timeout: 2000 }).catch(() => { throw new Error('hover did not open the explanation'); });
+  await page.getByRole('tooltip').getByText('Net profit is revenue', { exact: false }).waitFor({ timeout: 2000 }).catch(() => { throw new Error('hover did not open the explanation'); });
   await page.screenshot({ path: SP + '/shots4/explain-hover.png' });
   await page.keyboard.press('Escape');
   await page.getByRole('tooltip').waitFor({ state: 'detached', timeout: 2000 }).catch(() => { throw new Error('Escape did not close it'); });
@@ -122,30 +122,30 @@ await step('explanations open on hover, close on Escape, and toggle on tap', asy
   await m.getByRole('tooltip').waitFor({ state: 'detached', timeout: 2000 }).catch(() => { throw new Error('second tap did not close it'); });
   await m.close();
 });
-await step('profit & loss lists money in and out by category; the loan is kept apart', async () => {
+await step('profit & loss lists revenue and expenses by category; the loan is kept apart', async () => {
   await page.goto(B + 'app/reports'); await page.waitForTimeout(800);
   const t = await page.getByTestId('pnl').innerText();
-  for (const s of ['Product sale', 'Repair service', 'Total money in\n$200', 'Rent & utilities', 'Total money out\n$50', 'Money in that is not profit', 'Loan']) if (!t.includes(s)) throw new Error('missing ' + JSON.stringify(s));
+  for (const s of ['Product sale', 'Repair service', 'Total revenue\n$200', 'Rent & utilities', 'Total expenses\n$50', 'Financing (not revenue)', 'Loan']) if (!t.includes(s)) throw new Error('missing ' + JSON.stringify(s));
   if ((await page.getByTestId('pnl-profit').innerText()) !== '$150') throw new Error('profit');
   const side = await page.locator('main').innerText();
-  if (!side.includes('Out of every $1 that came in, you kept 75¢.')) throw new Error('margin sentence');
-  if (!side.includes('50% of your money in.')) throw new Error('circular income share');
+  if (!side.includes('For every $1 of revenue, you kept 75¢ as profit.')) throw new Error('margin sentence');
+  if (!side.includes('50% of your revenue.')) throw new Error('circular income share');
   await page.screenshot({ path: SP + '/shots4/report-pnl.png', fullPage: true });
 });
-await step('balance sheet: cash + stock + things you own − what you owe', async () => {
+await step('balance sheet: assets − liabilities = owner’s equity', async () => {
   await page.getByRole('tab', { name: 'Balance sheet' }).click(); await page.waitForTimeout(400);
-  // cash 1000 + 200 + 400 − 50 = 1550; stock 10 × $20 = 200
+  // cash 1000 + 200 + 400 − 50 = 1550; inventory 10 × $20 = 200
   let own = await page.getByTestId('assets').innerText();
   if (!own.includes('$1,550') || !own.includes('$200') || !own.includes('$1,750')) throw new Error('assets ' + own.replace(/\n/g, ' | '));
   await page.getByTestId('assets').getByRole('button', { name: 'Add' }).click();
   let d = page.getByRole('dialog');
   await d.locator('label:has-text("Name") input').fill('Sewing machine');
-  await d.locator('label:has-text("worth today") input').fill('500');
+  await d.locator('label:has-text("Current value") input').fill('500');
   await d.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByTestId('liabilities').getByRole('button', { name: 'Add' }).click();
   d = page.getByRole('dialog');
   await d.locator('label:has-text("Name") input').fill('Bank loan');
-  await d.locator('label:has-text("still owe") input').fill('400');
+  await d.locator('label:has-text("Amount owed") input').fill('400');
   await d.getByRole('button', { name: 'Add', exact: true }).click();
   await page.waitForTimeout(300);
   const eq = await page.getByTestId('equity').innerText();
@@ -161,7 +161,7 @@ await step('cash flow: cash today and how long it would last', async () => {
   // spent $50 in 90 days → $16.67 a month → 1550 / 16.67 = 93 months
   if (!/93(\.\d)? months/.test(t)) throw new Error('runway: ' + (t.match(/[\d.]+ months/) ?? ['none'])[0]);
 });
-await step('break-even: regular costs ÷ profit per item', async () => {
+await step('break-even: fixed costs ÷ profit per unit', async () => {
   await page.getByRole('tab', { name: 'Break-even' }).click(); await page.waitForTimeout(400);
   await page.getByTestId('be-fixed').fill('600');
   await page.getByTestId('be-per').fill('20');
@@ -170,9 +170,9 @@ await step('break-even: regular costs ÷ profit per item', async () => {
   await page.getByText('Each item costs more than you sell it for').waitFor();
 });
 await step('learn: a lesson opens and links to its report', async () => {
-  await page.goto(B + 'app/learn'); await page.waitForTimeout(900);
+  await page.goto(B + 'app/learn?tab=library'); await page.waitForTimeout(900);
   await page.getByText('Your balance sheet in plain words').click();
-  await page.getByRole('dialog').getByText('What you own (assets)', { exact: false }).waitFor();
+  await page.getByRole('dialog').getByText('Assets: your cash', { exact: false }).waitFor();
   await page.getByRole('button', { name: 'Open your balance sheet' }).click();
   await page.waitForURL(/tab=balance/);
 });

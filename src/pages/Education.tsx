@@ -1,10 +1,14 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import clsx from 'clsx';
 import { BookOpen, CheckCircle2, Clock, PlayCircle, Search } from 'lucide-react';
 import { useSimulatedLoad } from '../lib/hooks';
-import { Badge, Card, CardSkeleton, EmptyState, Modal, PageHeader, Segmented } from '../components/ui';
+import { Badge, Card, CardSkeleton, EmptyState, Modal, PageHeader, Segmented, Tabs } from '../components/ui';
 import { tk, useT } from '../i18n';
+import Program from './education/Program';
+
+type Tab = 'program' | 'library';
+const TABS: Tab[] = ['program', 'library'];
 
 interface Course {
   id: number;
@@ -26,7 +30,7 @@ const COURSES: Course[] = [
     desc: tk('What the score means, what goes into it, and the quickest ways to raise it.'),
     points: [
       tk('Your circularity score runs from 0 to 100. It shows how well your business keeps materials in use instead of throwing them away.'),
-      tk('It has five equal parts: the materials you use (circular inflow), what happens to your waste and old products (circular outflow), how long your products last, how much you earn per kilogram of new material, and how much money comes from repairs, resale and rental.'),
+      tk('It has five equal parts: the materials you use (circular inflow), what happens to your waste and old products (circular outflow), how long your products last, revenue per kilogram of new material, and the share of revenue from repairs, resale and rental.'),
       tk('The parts are combined so that a weak part pulls the score down. Being strong in one area cannot hide doing nothing in another.'),
       tk('Look at it like profit: check it every month and set a goal. A score of 40 makes you a Circular Grower, 70 a Circular Leader.'),
       tk('The method is based on published research and standards (ISO 59020, Ellen MacArthur Foundation, WBCSD). A few details are still being confirmed.'),
@@ -46,45 +50,45 @@ const COURSES: Course[] = [
     link: { to: '/app/circularity', label: tk('See your score') },
   },
   {
-    id: 10, title: tk('Reading your profit & loss'), cat: tk('Money basics'), kind: tk('Guide'), mins: 4, progress: 0,
-    desc: tk('Money in, money out, and what is left: the report that shows whether you made money.'),
+    id: 10, title: tk('Reading your profit & loss'), cat: tk('Finance basics'), kind: tk('Guide'), mins: 4, progress: 0,
+    desc: tk('Revenue, expenses and net profit: the report that shows whether the business was profitable.'),
     points: [
-      tk('Money in is what customers paid you. Money out is what you paid to run the business.'),
-      tk('Profit = money in − money out. If the result is below zero, it is a loss.'),
+      tk('Revenue is what customers paid you. Expenses are what you paid to run the business.'),
+      tk('Net profit = revenue − expenses. If the result is below zero, it is a net loss.'),
       tk('Loans and grants are not profit: a loan must be paid back, and a grant usually happens only once.'),
       tk('Profit margin tells you how much of each dollar you keep. If it is low, look at your prices and your biggest costs.'),
     ],
     link: { to: '/app/reports', label: tk('Open your profit & loss') },
   },
   {
-    id: 11, title: tk('Your balance sheet in plain words'), cat: tk('Money basics'), kind: tk('Guide'), mins: 4, progress: 0,
-    desc: tk('What you own, what you owe, and what is yours.'),
+    id: 11, title: tk('Your balance sheet in plain words'), cat: tk('Finance basics'), kind: tk('Guide'), mins: 4, progress: 0,
+    desc: tk('Assets, liabilities and owner’s equity.'),
     points: [
-      tk('What you own (assets): your cash, the stock you have to sell, and equipment like machines or a van.'),
-      tk('What you owe (liabilities): loans, unpaid bills and credit card balances.'),
-      tk('What you own − what you owe = what is yours (owner’s equity). Growing this number over time means your business is getting stronger.'),
+      tk('Assets: your cash, inventory you can sell, and equipment such as machines or a van.'),
+      tk('Liabilities: loans, unpaid bills and credit card balances.'),
+      tk('Assets − liabilities = owner’s equity. If equity grows over time, your business is getting stronger.'),
       tk('Banks often ask for a balance sheet before they give a loan.'),
     ],
     link: { to: '/app/reports?tab=balance', label: tk('Open your balance sheet') },
   },
   {
-    id: 12, title: tk('Cash flow: why profit is not the same as cash'), cat: tk('Money basics'), kind: tk('Guide'), mins: 4, progress: 0,
+    id: 12, title: tk('Cash flow: why profit is not the same as cash'), cat: tk('Finance basics'), kind: tk('Guide'), mins: 4, progress: 0,
     desc: tk('How a business can make money on paper and still run short of cash.'),
     points: [
-      tk('Cash flow is when money actually arrives and leaves your bank account.'),
+      tk('Cash flow is the timing of cash coming into and going out of your bank account.'),
       tk('You can make a profit and still run short of cash, for example after buying a lot of stock before a busy season.'),
-      tk('Try to keep enough cash to cover at least 3 months of normal spending.'),
-      tk('If cash is tight, collect money owed to you sooner and spread out big purchases.'),
+      tk('Try to keep enough cash to cover at least 3 months of expenses.'),
+      tk('If cash is tight, collect receivables (money owed to you) sooner and spread out large purchases.'),
     ],
     link: { to: '/app/reports?tab=cash', label: tk('Open your cash flow') },
   },
   {
-    id: 13, title: tk('Finding your break-even point'), cat: tk('Money basics'), kind: tk('Guide'), mins: 3, progress: 0,
+    id: 13, title: tk('Finding your break-even point'), cat: tk('Finance basics'), kind: tk('Guide'), mins: 3, progress: 0,
     desc: tk('How many items you need to sell each month to cover your costs.'),
     points: [
-      tk('Regular costs (rent, wages, marketing) have to be paid every month, whatever you sell.'),
-      tk('Each item you sell brings in its profit per item: the price minus what it cost you.'),
-      tk('Break-even = regular costs ÷ profit per item. Sell more than that and you make a profit.'),
+      tk('Fixed costs (rent, wages, marketing) have to be paid every month, however much you sell.'),
+      tk('Each unit you sell earns its profit per unit: the price minus the unit cost.'),
+      tk('Break-even units = fixed costs ÷ profit per unit. Sell more than that and you make a profit.'),
       tk('Raising your price a little or lowering your cost can lower your break-even point a lot.'),
     ],
     link: { to: '/app/reports?tab=breakeven', label: tk('Try the calculator') },
@@ -96,6 +100,33 @@ const COURSES: Course[] = [
 ];
 
 export default function Education() {
+  const t = useT();
+  const [params, setParams] = useSearchParams();
+  const raw = params.get('tab') as Tab | null;
+  const tab: Tab = raw && TABS.includes(raw) ? raw : 'program';
+  const setTab = (v: Tab) => setParams(v === 'program' ? {} : { tab: v }, { replace: true });
+  return (
+    <>
+      <PageHeader title={t('Learn')} sub={t('A learning program that gets your business ready for investors, plus short lessons on running a business. No business background needed.')}>
+        <div className="mt-5 overflow-x-auto">
+          <Tabs
+            value={tab}
+            onChange={setTab}
+            tabs={[
+              { value: 'program', label: t('Program') },
+              { value: 'library', label: t('Lesson library') },
+            ]}
+          />
+        </div>
+      </PageHeader>
+      <div key={tab} className="animate-page-in">
+        {tab === 'program' ? <Program /> : <LessonLibrary />}
+      </div>
+    </>
+  );
+}
+
+function LessonLibrary() {
   const t = useT();
   const navigate = useNavigate();
   const ready = useSimulatedLoad('education');
@@ -109,7 +140,7 @@ export default function Education() {
 
   return (
     <>
-      <PageHeader title={t('Learn')} sub={t('Short lessons on running a business and making it circular. No business background needed.')} />
+      <p className="muted mb-4 text-sm">{t('Short lessons on running a business and making it circular. No business background needed.')}</p>
       {inProgress && (
         <Card className="mb-5 flex flex-col gap-4 p-5 sm:flex-row sm:items-center">
           <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">

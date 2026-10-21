@@ -41,4 +41,7 @@ export const en: Dict = {
     other: 'Suggested: {count} units (covers lead time + 30 days of your sales + safety stock)',
   },
   'Win back {count} at-risk customers': { one: 'Win back {count} at-risk customer', other: 'Win back {count} at-risk customers' },
+  // Learning program
+  '{count} questions are unanswered. They will count as wrong.': { one: '{count} question is unanswered. It will count as wrong.', other: '{count} questions are unanswered. They will count as wrong.' },
+  '{count} questions. Your result counts toward your scores.': { one: '{count} question. Your result counts toward your scores.', other: '{count} questions. Your result counts toward your scores.' },
 };

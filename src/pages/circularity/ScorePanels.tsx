@@ -35,17 +35,17 @@ const PILLAR_COPY: Record<PillarKey, { label: string; explain: string; source: s
   },
   productivity: {
     label: tk('Resource productivity'),
-    explain: tk('How much money you earn for each kilogram of new (virgin) material in what you sell. Earning more from less new material is more circular.'),
+    explain: tk('Revenue for each kilogram of new (virgin) material in what you sell. More revenue from less new material is more circular.'),
     source: 'WBCSD Circular Transition Indicators (circular material productivity)',
     tip: tk('Use less new material per product, or replace it with recycled or reused material.'),
     missing: tk('Sell a product that has its materials filled in.'),
   },
   businessModel: {
     label: tk('Circular business model'),
-    explain: tk('The share of your money in that came from repairs, resale, rental or sharing, take-back and recycling services.'),
+    explain: tk('The share of your revenue from repairs, resale, rental or sharing, take-back and recycling services.'),
     source: 'MSCI circular economy indexes · WBCSD CTI revenue',
     tip: tk('Offer repairs, resell used items, rent products out, or take old products back.'),
-    missing: tk('Record money coming in.'),
+    missing: tk('Record revenue.'),
   },
 };
 
@@ -60,9 +60,9 @@ function rawText(t: (k: string, v?: Record<string, string | number>) => string, 
     case 'life':
       return t('{x}× the life and use of a typical product', { x: fmtNum(p.raw!) }) + (p.coverage && p.coverage.measured < p.coverage.total ? ` · ${t('{n} of {total} products sold have this filled in', { n: p.coverage.measured, total: p.coverage.total })}` : '');
     case 'productivity':
-      return p.raw === null ? t('No new material used') : t('{amount} earned per kg of new material', { amount: fmtMoney2(p.raw) });
+      return p.raw === null ? t('No new material used') : t('{amount} revenue per kg of new material', { amount: fmtMoney2(p.raw) });
     case 'businessModel':
-      return t('{pct} of money in', { pct: fmtPct(p.raw!, 0) });
+      return t('{pct} of revenue', { pct: fmtPct(p.raw!, 0) });
   }
 }
 
@@ -79,7 +79,7 @@ export function ScoreBreakdown({ onAddWaste }: { onAddWaste: () => void }) {
   const action: Partial<Record<PillarKey, { label: string; run: () => void }>> = {
     outflow: { label: t('Record waste'), run: onAddWaste },
     life: { label: t('Open products'), run: () => navigate('/app/products') },
-    businessModel: { label: t('Record money in'), run: () => navigate('/app/money?new=txn') },
+    businessModel: { label: t('Record revenue'), run: () => navigate('/app/money?new=txn') },
   };
   return (
     <Card className="p-5 sm:p-6" data-testid="score-breakdown">

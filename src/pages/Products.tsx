@@ -21,7 +21,7 @@ export function ProductTabs() {
         {t('Products')}
       </NavLink>
       <NavLink to="/app/products/inventory" className={cls}>
-        {t('Stock')}
+        {t('Inventory')}
       </NavLink>
       <NavLink to="/app/products/suppliers" className={cls}>
         {t('Suppliers')}
@@ -57,13 +57,13 @@ function ProductCard({ r, onOpen }: { r: InventoryRow; onOpen: () => void }) {
         </div>
         <div>
           <p className="muted text-[11px]">
-            <Term label={t('Cost')}>{t('What one item costs you to make or buy, including its materials.')}</Term>
+            <Term label={t('Unit cost')}>{t('What one item costs you to make or buy, including its materials.')}</Term>
           </p>
           <p className="num">{fmtMoney2(p.unitCost)}</p>
         </div>
         <div>
           <p className="muted text-[11px]">
-            <Term label={t('Profit per item')}>{t('What you keep from each sale: the price minus the cost.')} {t('Here: {pct} of the price.', { pct: fmtPct(margin, 0) })}</Term>
+            <Term label={t('Profit per unit')}>{t('Price minus unit cost: what you keep from each sale.')} {t('Margin: {pct} of the price.', { pct: fmtPct(margin, 0) })}</Term>
           </p>
           <p className={clsx('num', p.price - p.unitCost < 0 && 'text-red-600 dark:text-red-400')}>{fmtMoney2(p.price - p.unitCost)}</p>
         </div>
@@ -168,9 +168,9 @@ function Catalog({ onOpen }: { onOpen: (p: Product) => void }) {
                 {th('name', t('Product'))}
                 <th className="th">{t('Materials')}</th>
                 {th('price', t('Price'), true)}
-                {th('margin', t('Profit per item'), true)}
+                {th('margin', t('Profit per unit'), true)}
                 {th('circularityScore', t('Circularity score'), true)}
-                {th('stockOnHand', t('Stock'))}
+                {th('stockOnHand', t('Inventory'))}
                 <th className="th text-end">{t('Status')}</th>
               </tr>
             </thead>
@@ -228,7 +228,7 @@ function Inventory({ onOpen }: { onOpen: (p: Product) => void }) {
 
   const tiles = [
     { label: t('Units on hand'), value: fmtInt(units), sub: t('{count} SKUs', { count: inventory.length }) },
-    { label: t('Inventory value'), value: fmtMoney(value), sub: t('at unit cost'), explain: t('What all the stock you have would cost to replace. It appears on your balance sheet as something you own.') },
+    { label: t('Inventory value'), value: fmtMoney(value), sub: t('at unit cost'), explain: t('The cost of all the inventory you have. It appears on your balance sheet as an asset.') },
     { label: t('Below threshold'), value: critical, sub: t('critical — order now'), tone: critical ? 'text-red-600 dark:text-red-400' : '' },
     { label: t('At reorder point'), value: reorder, sub: t('order within lead time'), tone: reorder ? 'text-amber-600 dark:text-amber-400' : '' },
   ];
@@ -399,8 +399,8 @@ export default function Products({ view }: { view: 'catalog' | 'inventory' }) {
   return (
     <>
       <PageHeader
-        title={view === 'catalog' ? t('Products') : t('Stock')}
-        sub={view === 'catalog' ? t('Every product shows two things: what you earn from it, and how circular it is.') : t('How many of each product you have, and when to order more.')}
+        title={view === 'catalog' ? t('Products') : t('Inventory')}
+        sub={view === 'catalog' ? t('Every product shows two things: what you earn from it, and how circular it is.') : t('How many units of each product you have, and when to reorder.')}
         actions={
           <>
             {attention > 0 && view === 'catalog' && (
