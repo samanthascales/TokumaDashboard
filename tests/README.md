@@ -17,6 +17,7 @@ npm run test:e2e -- --no-build   # reuse the last build
 | `import` | Importing product lists from Shopify, Etsy and Square exports |
 | `sales-import` | Importing sales history from CSV and Excel; charts update |
 | `nav` | The menu's six main pages, collapsible groups, and old links forwarding to new pages |
+| `share` | Funding readiness adds up and moves with data; lender report preview and toggles; the link opens read-only in a browser with no account or data; impact report has no financial figures and fits a phone; broken or edited links are handled safely |
 | `reports` | The circularity score's five pillars and geometric mean (including waste and product life), profit on the dashboard, goals, explanation buttons (hover, Escape, tap on a phone), profit & loss, balance sheet, cash flow, break-even, lessons |
 | `i18n` | All six languages: every text is translated, Arabic is right-to-left, no page overflows |
 | `profile` | Editing your profile and photo from the top-right menu and from Settings |

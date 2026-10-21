@@ -8,6 +8,7 @@ import { tk, useT } from '../i18n';
 import { avgKnown, fundingTerms, lastNDays, totalsFor } from '../lib/metrics';
 import { AnimatedNumber, Badge, Card, CardHeader, CardSkeleton, EmptyState, Field, Modal, PageHeader } from '../components/ui';
 import type { FundingStatus, FundingType } from '../types';
+import { ReadinessCard } from './funding/ReadinessCard';
 
 const TYPES: { type: FundingType; icon: typeof Coins; desc: string; range: string }[] = [
   { type: 'Loan', icon: Landmark, desc: tk('Green working-capital loan priced on your circularity data.'), range: tk('Up to your max eligibility') },
@@ -21,7 +22,7 @@ const statusTone: Record<FundingStatus, 'amber' | 'blue' | 'green' | 'red'> = { 
 
 export default function Funding() {
   const t = useT();
-  const { verification, funding, circ30, fundingSeen, markFundingSeen, flashFunding, fundingRequests, requestFunding, suppliers, ledger, role } = useStore();
+  const { verification, funding, circ30, score, fundingSeen, markFundingSeen, flashFunding, fundingRequests, requestFunding, suppliers, ledger, role } = useStore();
   const ready = useSimulatedLoad('funding');
   const [req, setReq] = useState<FundingType | null>(null);
   const [amount, setAmount] = useState<number | null>(null);
@@ -91,7 +92,7 @@ export default function Funding() {
             {verification.verified ? (
               <>
                 <p className="text-lg font-semibold">{t('Verified Circular Business')}</p>
-                <p className="text-sm text-brand-100/80">{t('Your transactions, materials and supplier data are verified. Lenders see a live circularity score of {pct}.', { pct: fmtPct(circ30.rate) })}</p>
+                <p className="text-sm text-brand-100/80">{t('Your sales, materials and supplier records are complete. Share a report to show lenders your numbers and your circularity score of {n}.', { n: score.score ?? '—' })}</p>
               </>
             ) : (
               <>
@@ -107,12 +108,10 @@ export default function Funding() {
               </>
             )}
           </div>
-          <div className="text-end">
-            <p className="text-xs uppercase tracking-wider text-brand-200">{t('Funding score')}</p>
-            {funding.score === null ? <p className="text-3xl font-bold text-white/50">—</p> : <AnimatedNumber value={funding.score} format={(n) => `${Math.round(n)}/100`} className="text-3xl font-bold" />}
-          </div>
         </div>
       </div>
+
+      <ReadinessCard />
 
       {changed && (
         <div className="mb-5 flex animate-page-in items-center gap-3 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-800 dark:border-brand-500/20 dark:bg-brand-500/[0.07] dark:text-brand-200">

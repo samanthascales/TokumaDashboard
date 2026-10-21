@@ -3,7 +3,6 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { CommandPalette } from './CommandPalette';
-import { ReportModal } from './ReportModal';
 import { SupportBanner } from './Account';
 import { ProfileModal } from './ProfileEditor';
 
@@ -38,7 +37,6 @@ export function AppLayout() {
         </main>
       </div>
       <CommandPalette open={palette} onClose={() => setPalette(false)} />
-      <ReportModal />
       <ProfileModal />
     </div>
   );

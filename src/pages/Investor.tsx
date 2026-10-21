@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { BadgeCheck, FileText, Landmark, Leaf, Recycle, ShieldCheck, TrendingUp } from 'lucide-react';
 import { useStore } from '../store/AppStore';
@@ -7,7 +8,6 @@ import { fmtCompactMoney, fmtKg, fmtMoney, fmtPct } from '../lib/format';
 import { avgKnown, buildSeries, lastNDays, reliabilityScore, riskLevel, totalsFor } from '../lib/metrics';
 import { AnimatedNumber, Badge, Card, CardHeader, CardSkeleton, Gauge, PageHeader } from '../components/ui';
 import { TooltipBox } from '../components/charts/ChartTooltip';
-import { openReport } from '../components/layout/nav';
 import { useLang, useT } from '../i18n';
 
 export default function Investor() {
@@ -28,9 +28,9 @@ export default function Investor() {
         title={profile.businessName || t('Your business')}
         sub={[t(profile.industry), profile.country, t(profile.circularModel)].filter(Boolean).join(' · ')}
         actions={
-          <button className="btn-primary" onClick={openReport}>
-            <FileText className="h-4 w-4" /> {t('Generate report')}
-          </button>
+          <Link to="/app/share?type=lender" className="btn-primary">
+            <FileText className="h-4 w-4" /> {t('Share a report')}
+          </Link>
         }
       >
         <div className="mt-3 flex flex-wrap gap-2">

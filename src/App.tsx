@@ -11,6 +11,8 @@ import SignIn from './pages/SignIn';
 import Onboarding from './pages/Onboarding';
 import Home from './pages/Home';
 import Reports from './pages/Reports';
+import Share from './pages/Share';
+import SharedReport from './pages/SharedReport';
 import Products from './pages/Products';
 import Transactions from './pages/Transactions';
 import Circularity from './pages/Circularity';
@@ -41,6 +43,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/signin" element={<SignIn />} />
+            <Route path="/r/:data" element={<SharedReport />} />
             <Route
               path="/onboarding"
               element={
@@ -64,6 +67,7 @@ export default function App() {
               <Route path="products/suppliers" element={<SupplyChain view="overview" />} />
               <Route path="circularity" element={<Circularity />} />
               <Route path="reports" element={<Reports />} />
+              <Route path="share" element={<Share />} />
               <Route path="learn" element={<Education />} />
               <Route path="learn/diagnostic" element={<Diagnostic />} />
               <Route path="learn/modules/:moduleId" element={<ModulePage />} />

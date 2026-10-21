@@ -3,6 +3,7 @@ import {
   Boxes,
   BriefcaseBusiness,
   FileBarChart,
+  Share2,
   GraduationCap,
   Landmark,
   LayoutDashboard,
@@ -39,7 +40,13 @@ export const businessNav: NavItem[] = [
     ],
   },
   { to: '/app/circularity', label: tk('Circularity'), icon: Recycle },
-  { to: '/app/reports', label: tk('Reports'), icon: FileBarChart, badge: 'new' },
+  {
+    to: '/app/reports',
+    label: tk('Reports'),
+    icon: FileBarChart,
+    end: true,
+    children: [{ to: '/app/share', label: tk('Share a report'), icon: Share2, badge: 'new' }],
+  },
   {
     to: '/app/learn',
     label: tk('Learn'),
@@ -66,5 +73,4 @@ export const allPages = [
   { to: '/app/investor', label: tk('Investor Overview'), icon: BriefcaseBusiness },
 ];
 
-export const openReport = () => window.dispatchEvent(new CustomEvent('tokuma:report'));
 export const openProfile = () => window.dispatchEvent(new CustomEvent('tokuma:profile'));
