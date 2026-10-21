@@ -7,7 +7,7 @@ import { adminNavItem, businessNav, investorNav, type NavItem } from './nav';
 import { useCloud } from '../../store/CloudProvider';
 import { AnimatedNumber } from '../ui';
 import { useT } from '../../i18n';
-import { fmtPct } from '../../lib/format';
+import { levelName } from '../ScoreBits';
 
 export function Logo({ className, light }: { className?: string; light?: boolean }) {
   return (
@@ -116,7 +116,7 @@ function Item({ item, onNavigate, depth = 0 }: { item: NavItem; onNavigate?: () 
 
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const t = useT();
-  const { role, circ30, profile } = useStore();
+  const { role, score, profile } = useStore();
   const { isAdmin } = useCloud();
   const base = role === 'investor' ? investorNav : businessNav;
   const nav = isAdmin ? [...base, adminNavItem] : base;
@@ -146,16 +146,19 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
             ))}
           </ul>
         </nav>
-        <div className="m-3 rounded-xl bg-gradient-to-br from-brand-700/40 to-brand-900/30 p-4 ring-1 ring-brand-500/20">
+        <NavLink to="/app/circularity" onClick={onClose} className="m-3 block rounded-xl bg-gradient-to-br from-brand-700/40 to-brand-900/30 p-4 ring-1 ring-brand-500/20 transition hover:ring-brand-400/40">
           <div className="flex items-center gap-2 text-xs font-medium text-brand-200">
-            <Sparkles className="h-3.5 w-3.5" /> {t('Circularity rate')}
+            <Sparkles className="h-3.5 w-3.5" /> {t('Circularity score')}
           </div>
-          <AnimatedNumber value={circ30.hasData ? circ30.rate : null} format={(n) => fmtPct(n)} className="mt-1 block text-2xl font-bold text-white" />
+          <p className="mt-1 flex items-baseline gap-1 text-white">
+            <AnimatedNumber value={score.score} format={(n) => String(Math.round(n))} className="text-2xl font-bold" />
+            {score.score !== null && <span className="text-xs text-gray-400">/ 100</span>}
+          </p>
           <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
-            <div className="h-full rounded-full bg-brand-400 transition-all duration-700" style={{ width: `${circ30.rate}%` }} />
+            <div className="h-full rounded-full bg-brand-400 transition-all duration-700" style={{ width: `${score.score ?? 0}%` }} />
           </div>
-          <p className="mt-2 text-[11px] text-gray-400">{circ30.hasData ? t('Last 30 days · from sales × materials') : t('Log sales of products to calculate')}</p>
-        </div>
+          <p className="mt-2 text-[11px] text-gray-400">{score.level ? `${levelName(score.level)} · ${t('Last 30 days')}` : t('Log sales of products to calculate')}</p>
+        </NavLink>
       </aside>
     </>
   );

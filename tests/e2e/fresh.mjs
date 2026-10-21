@@ -13,14 +13,14 @@ page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
 page.on('console', (m) => { if (m.type() === 'error' && !m.text().includes('CERT')) errors.push(m.text()); });
 const step = async (name, fn) => { try { await fn(); console.log('OK  ', name); } catch (e) { console.log('FAIL', name, e.message.split('\n')[0]); } };
 
-for (const r of ['', 'app', 'app/products', 'app/products/inventory', 'app/transactions', 'app/circularity', 'app/supply-chain', 'app/supply-chain/reliability', 'app/funding', 'app/customers', 'app/investor', 'app/settings']) {
+for (const r of ['', 'app', 'app/money', 'app/products', 'app/products/inventory', 'app/products/suppliers', 'app/circularity', 'app/reports', 'app/reports?tab=balance', 'app/reports?tab=cash', 'app/reports?tab=breakeven', 'app/learn', 'app/learn/funding', 'app/supply-chain/reliability', 'app/settings']) {
   await page.goto(B + r); await page.waitForTimeout(1300);
-  await page.screenshot({ path: SP + '/empty-' + (r || 'landing').replace(/\//g, '_') + '.png' });
+  await page.screenshot({ path: SP + '/empty-' + (r || 'landing').replace(/[/?=]/g, '_') + '.png' });
 }
 const land = await page.goto(B); await page.waitForTimeout(500);
 await step('no 527 claim on landing', async () => { if ((await page.content()).includes('527')) throw new Error('527 still present'); });
 await step('no sample names anywhere on empty app', async () => {
-  for (const r of ['app', 'app/supply-chain', 'app/transactions', 'app/customers']) {
+  for (const r of ['app', 'app/products/suppliers', 'app/money', 'app/reports', 'app/customers']) {
     await page.goto(B + r); await page.waitForTimeout(1000);
     const t = await page.content();
     for (const w of ['EcoFab', 'ThreadLoop', 'Alex Rivera', 'WoolCycle', 'Bamboo Crew']) if (t.includes(w)) throw new Error(w + ' on ' + r);
@@ -45,7 +45,7 @@ await step('onboarding -> profile saved', async () => {
   await page.getByText('Loopy Goods', { exact: false }).first().waitFor();
 });
 await step('add supplier', async () => {
-  await page.goto(B + 'app/supply-chain?new=supplier'); await page.waitForTimeout(900);
+  await page.goto(B + 'app/products/suppliers?new=supplier'); await page.waitForTimeout(900);
   await page.getByPlaceholder('e.g. EcoFab Textiles').fill('Harbour Sailcloth');
   await page.getByRole('dialog').locator('label:has-text("Country") input').fill('Canada');
   await page.getByRole('button', { name: 'Add supplier' }).last().click();
@@ -66,8 +66,8 @@ await step('add product', async () => {
   await page.getByText('Product added').waitFor();
 });
 await step('log sale', async () => {
-  await page.goto(B + 'app/transactions?new=txn'); await page.waitForTimeout(900);
-  await page.getByRole('button', { name: 'Save transaction' }).click();
+  await page.goto(B + 'app/money?new=txn'); await page.waitForTimeout(900);
+  await page.getByRole('dialog').getByRole('button', { name: 'Save', exact: true }).click();
   await page.getByText('Transaction logged').waitFor();
 });
 await step('dashboard after setup: checklist gone, numbers present', async () => {

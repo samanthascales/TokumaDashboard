@@ -109,8 +109,15 @@
     visibility: hidden;
   }
   #print-report,
-  #print-report * {
+  #print-report *,
+  .print-area,
+  .print-area * {
     visibility: visible;
+  }
+  .print-area {
+    position: absolute;
+    inset: 0 0 auto 0;
+    padding: 24px;
   }
   #print-report {
     position: absolute;

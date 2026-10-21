@@ -51,7 +51,7 @@ export type Ledger = Map<string, DayEntry>;
 const WEEKLY_CATEGORIES = new Set(['Materials', 'Logistics']);
 const MONTHLY_CATEGORIES = new Set(['Payroll', 'Rent & utilities', 'Marketing', 'Packaging']);
 /** Financing inflows are excluded from profit so a grant or loan doesn't read as a sales spike. */
-const FINANCING_CATEGORIES = new Set(['Grant', 'Loan', 'Equity']);
+export const FINANCING_CATEGORIES = new Set(['Grant', 'Loan', 'Equity']);
 
 function entry(ledger: Ledger, iso: string) {
   let e = ledger.get(iso);
@@ -431,47 +431,6 @@ export function fundingTerms(circularityRate: number | null, annualRevenue: numb
 }
 
 /* ------------------------------------------------------------------ */
-/* Milestones                                                          */
-/* ------------------------------------------------------------------ */
-
-export interface MilestoneStage {
-  name: string;
-  min: number;
-  criteria: { label: string; met: boolean }[];
-}
-
-export function milestoneStages(ctx: { rate: number; suppliers: number; products: number; avgReliability: number; historyDays: number }): MilestoneStage[] {
-  return [
-    {
-      name: t('Circular Starter'),
-      min: 0,
-      criteria: [
-        { label: t('Business profile completed'), met: true },
-        { label: t('At least 1 product with materials logged'), met: ctx.products >= 1 },
-      ],
-    },
-    {
-      name: t('Circular Grower'),
-      min: 40,
-      criteria: [
-        { label: t('Circularity rate ≥ {pct}', { pct: fmtPct(40, 0) }), met: ctx.rate >= 40 },
-        { label: t('3+ suppliers tracked'), met: ctx.suppliers >= 3 },
-        { label: t('90+ days of transactions'), met: ctx.historyDays >= 90 },
-      ],
-    },
-    {
-      name: t('Circular Leader'),
-      min: 65,
-      criteria: [
-        { label: t('Circularity rate ≥ {pct}', { pct: fmtPct(65, 0) }), met: ctx.rate >= 65 },
-        { label: t('Avg supplier reliability ≥ 80'), met: ctx.avgReliability >= 80 },
-        { label: t('5+ products tracked'), met: ctx.products >= 5 },
-      ],
-    },
-  ];
-}
-
-/* ------------------------------------------------------------------ */
 /* Recommendations & insights                                          */
 /* ------------------------------------------------------------------ */
 
@@ -572,7 +531,7 @@ export function generateInsights(ctx: {
       impact: t('Reduce stock-out risk'),
       confidence: 'Medium',
       actionLabel: t('Review supplier'),
-      action: { type: 'navigate', to: '/app/supply-chain/reliability' },
+      action: { type: 'navigate', to: '/app/products/suppliers' },
     });
   }
   if (ctx.funding.ready && ctx.funding.maxEligibility) out.push({
@@ -583,7 +542,7 @@ export function generateInsights(ctx: {
     impact: t('Score {score}/100', { score: ctx.funding.score! }),
     confidence: 'High',
     actionLabel: t('View funding'),
-    action: { type: 'navigate', to: '/app/funding' },
+    action: { type: 'navigate', to: '/app/learn/funding' },
   });
   const atRisk = ctx.customers.filter((c) => c.segment === 'At-risk');
   if (atRisk.length) {

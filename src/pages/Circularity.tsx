@@ -1,13 +1,15 @@
 import { useMemo, useState } from 'react';
-import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import clsx from 'clsx';
-import { ChevronLeft, ChevronRight, Info, Leaf, Package, Recycle, Scale, Wand2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Recycle, Wand2 } from 'lucide-react';
 import { useStore } from '../store/AppStore';
 import { useChartColors, useSimulatedLoad } from '../lib/hooks';
-import { fmtInt, fmtKg, fmtNum, fmtPct } from '../lib/format';
-import { useLang, useT } from '../i18n';
+import { fmtKg, fmtNum, fmtPct } from '../lib/format';
+import { tk, useLang, useT } from '../i18n';
+import { LEVEL_FROM, type ScoreLevel } from '../lib/score';
+import { levelName, levelTone, ScoreExplainer } from '../components/ScoreBits';
 import { buildSeries, lastNDays, type Recommendation } from '../lib/metrics';
-import { AnimatedNumber, Badge, Card, CardHeader, CardSkeleton, Delta, EmptyState, Modal, PageHeader, Ring, Segmented } from '../components/ui';
+import { Badge, Card, CardHeader, CardSkeleton, EmptyState, Gauge, Modal, PageHeader, Ring, Segmented, Term } from '../components/ui';
 import { LegendItem, TooltipBox } from '../components/charts/ChartTooltip';
 import type { MaterialClass } from '../types';
 
@@ -19,7 +21,7 @@ function RecommendationCarousel() {
   if (!recs.length)
     return (
       <Card className="h-full">
-        <CardHeader title={t('Strategy recommendations')} />
+        <CardHeader title={t('Ideas to raise your score')} />
         {products.length === 0 ? (
           <EmptyState
             icon={<Recycle className="h-6 w-6" />}
@@ -34,14 +36,14 @@ function RecommendationCarousel() {
   const idx = Math.min(i, recs.length - 1);
   const r: Recommendation = recs[idx]!;
   const bars = [
-    { name: t('Current'), value: +r.current.toFixed(1) },
-    { name: t('Projected'), value: +r.projected.toFixed(1) },
+    { name: t('Now'), value: +r.current.toFixed(1) },
+    { name: t('After'), value: +r.projected.toFixed(1) },
   ];
   return (
     <Card className="flex h-full flex-col">
       <CardHeader
-        title={t('Strategy recommendations')}
-        sub={t('Ranked by projected gain on your last-90-day sales mix · {n} of {total}', { n: idx + 1, total: recs.length })}
+        title={<Term label={t('Ideas to raise your score')}>{t('Each idea switches one new material to a recycled one. The bars show your recycled and reused materials share now, and after the change, based on what you sold in the last 90 days.')}</Term>}
+        sub={t('Biggest gain first · {n} of {total}', { n: idx + 1, total: recs.length })}
         right={
           <div className="flex gap-1">
             <button className="icon-btn h-8 w-8" disabled={idx === 0} onClick={() => setI(idx - 1)} aria-label={t('Previous')}>
@@ -76,7 +78,7 @@ function RecommendationCarousel() {
           </ResponsiveContainer>
         </div>
         <div className="mt-auto flex items-center justify-between gap-3 pt-3">
-          <Badge tone="green">{t('+{n} pts circularity', { n: fmtNum(r.gain) })}</Badge>
+          <Badge tone="green">{t('+{n} points on materials', { n: fmtNum(r.gain) })}</Badge>
           {role === 'business' && (
             <button className="btn-primary btn-sm" onClick={() => applyMaterialSwitch(r.productId, r.materialName)}>
               <Wand2 className="h-3.5 w-3.5" /> {t('Apply to product')}
@@ -93,13 +95,106 @@ function RecommendationCarousel() {
   );
 }
 
+const PART_COPY = {
+  materials: { label: tk('Recycled and reused materials'), explain: tk('The share of the weight of everything you sold in the last 30 days that came from recycled or reused materials.'), tip: tk('Switch a new material to a recycled or reused one. See the suggestions below.') },
+  income: { label: tk('Circular income'), explain: tk('The share of your money in that came from repairs, resale, rental or take-back.'), tip: tk('Offer repairs, resell used items, rent products out, or take old products back.') },
+  suppliers: { label: tk('Supplier sustainability'), explain: tk('The average sustainability rating (0 to 100) you gave your suppliers.'), tip: tk('Rate your suppliers, and choose ones with recycled materials and green certifications.') },
+} as const;
+
+function ScoreBreakdown() {
+  const t = useT();
+  const { score, scorePrev } = useStore();
+  const change = score.score !== null && scorePrev.score !== null ? score.score - scorePrev.score : null;
+  const levels: { key: ScoreLevel; from: number; to: number }[] = [
+    { key: 'starter', from: LEVEL_FROM.starter, to: LEVEL_FROM.grower - 1 },
+    { key: 'grower', from: LEVEL_FROM.grower, to: LEVEL_FROM.leader - 1 },
+    { key: 'leader', from: LEVEL_FROM.leader, to: 100 },
+  ];
+  return (
+    <Card className="p-5 sm:p-6" data-testid="score-breakdown">
+      <div className="grid gap-6 lg:grid-cols-[auto_1fr_auto] lg:items-start">
+        <div className="flex flex-col items-center text-center">
+          <Gauge value={score.score} size={148} stroke={12} label={t('of 100')} bands={[LEVEL_FROM.grower, LEVEL_FROM.leader]} />
+          <p className="mt-2 text-sm font-semibold">
+            <Term label={t('Circularity score')}>
+              <ScoreExplainer />
+            </Term>
+          </p>
+          {score.level && (
+            <Badge tone={levelTone(score.level)} dot className="mt-1.5">
+              {levelName(score.level)}
+            </Badge>
+          )}
+          {change !== null && Math.abs(change) >= 1 && (
+            <p className="muted mt-1.5 text-xs">{change > 0 ? t('Up {n} points from the 30 days before.', { n: change }) : t('Down {n} points from the 30 days before.', { n: -change })}</p>
+          )}
+        </div>
+
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="card-title">{t('What makes up your score')}</h3>
+            <Badge tone="blue">{t('Draft method · research ongoing')}</Badge>
+          </div>
+          <p className="muted mt-1 text-sm">{t('Each part is scored from 0 to 100 and weighted. Parts without data yet are left out instead of counted as zero.')}</p>
+          <ul className="mt-4 space-y-4">
+            {score.parts.map((p) => {
+              const copy = PART_COPY[p.key];
+              return (
+                <li key={p.key}>
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                    <Term label={t(copy.label)}>
+                      <p>{t(copy.explain)}</p>
+                      <p className="text-gray-300">{t('How to raise it: {tip}', { tip: t(copy.tip) })}</p>
+                    </Term>
+                    <span className="muted text-xs">
+                      {t('counts for {pct}', { pct: fmtPct(p.weight, 0) })} · <span className="font-semibold text-gray-900 tabular-nums dark:text-white">{p.value === null ? t('no data yet') : Math.round(p.value)}</span>
+                    </span>
+                  </div>
+                  <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-gray-100 dark:bg-white/5">
+                    {p.value !== null && <div className="h-full rounded-full bg-brand-600 transition-all duration-700 dark:bg-brand-400" style={{ width: `${p.value}%` }} />}
+                  </div>
+                  <p className="muted mt-1 text-xs">{t(copy.tip)}</p>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+
+        <div className="lg:w-56">
+          <h3 className="card-title">
+            <Term label={t('Levels')}>{t('Your score puts your business at one of three levels. Each one is a step toward a fully circular business.')}</Term>
+          </h3>
+          <ol className="mt-3 space-y-2">
+            {[...levels].reverse().map((l) => (
+              <li
+                key={l.key}
+                className={clsx(
+                  'flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm',
+                  score.level === l.key ? 'border-brand-300 bg-brand-50 font-semibold dark:border-brand-500/40 dark:bg-brand-500/10' : 'border-gray-100 dark:border-white/5',
+                )}
+              >
+                <span>{levelName(l.key)}</span>
+                <span className="muted text-xs tabular-nums">
+                  {l.from}–{l.to}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 export default function Circularity() {
   const t = useT();
   const { lang } = useLang();
-  const { circ30, circPrev30, products, ledger, theme } = useStore();
+  const { circ30, products, ledger, theme } = useStore();
   const c = useChartColors(theme);
   const ready = useSimulatedLoad('circularity');
   const [compView, setCompView] = useState<'material' | 'class'>('material');
+  // Material names take less room on a phone so the bars stay readable.
+  const narrow = typeof window !== 'undefined' && window.innerWidth < 640;
   const [drill, setDrill] = useState<string | null>(null);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- labels follow the language
   const trend = useMemo(() => buildSeries(ledger, products, lastNDays(365)), [ledger, products, lang]);
@@ -112,24 +207,10 @@ export default function Circularity() {
 
   const drillProduct = products.find((p) => p.id === drill);
 
-  const tiles = [
-    // Deltas are null (hidden) unless both periods have real sales to compare.
-    { label: t('Circularity rate'), value: circ30.hasData ? circ30.rate : null, fmt: (n: number) => fmtPct(n), delta: circ30.hasData && circPrev30.hasData ? circ30.rate - circPrev30.rate : null, icon: Recycle, suffix: ` ${t('pts')}` },
-    { label: t('Total circular weight'), value: circ30.hasData ? circ30.circularKg : null, fmt: fmtKg, delta: circPrev30.circularKg ? ((circ30.circularKg - circPrev30.circularKg) / circPrev30.circularKg) * 100 : null, icon: Leaf, suffix: '%' },
-    { label: t('Virgin material use'), value: circ30.hasData ? circ30.virginKg : null, fmt: fmtKg, delta: circPrev30.virginKg ? ((circ30.virginKg - circPrev30.virginKg) / circPrev30.virginKg) * 100 : null, icon: Scale, suffix: '%', invert: true },
-    { label: t('Products tracked'), value: products.length, fmt: (n: number) => fmtInt(n), delta: null, icon: Package, suffix: '' },
-  ];
 
   return (
     <>
-      <PageHeader title={t('Circularity metrics')} sub={t("Calculated live from logged sales × each product's bill of materials (last 30 days)")}>
-        <div className="mt-4 flex items-start gap-2 rounded-lg border border-brand-200/60 bg-brand-50/60 px-3 py-2 text-xs text-brand-800 dark:border-brand-500/20 dark:bg-brand-500/[0.06] dark:text-brand-200">
-          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          <span>
-            {t("Circularity rate = weight of recycled + reused material in units sold ÷ total material weight sold. Edit a product's materials or log a sale and every number here updates.")}
-          </span>
-        </div>
-      </PageHeader>
+      <PageHeader title={t('Circularity')} sub={t('Your circularity score, what makes it up, and how to raise it.')} />
       {!ready ? (
         <div className="grid grid-cols-12 gap-5">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -140,24 +221,17 @@ export default function Circularity() {
         </div>
       ) : (
         <div className="grid grid-cols-12 gap-5">
-          {tiles.map((x) => (
-            <Card key={x.label} className="col-span-6 p-5 lg:col-span-3">
-              <p className="muted flex items-center gap-1.5 text-xs">
-                <x.icon className="h-3.5 w-3.5" /> {x.label}
-              </p>
-              <AnimatedNumber value={x.value} format={x.fmt} className="mt-2 block text-[26px] font-bold leading-none" />
-              {x.delta !== null && (
-                <div className="mt-2 flex items-center gap-1.5">
-                  <Delta value={x.delta} suffix={x.suffix} invert={x.invert} />
-                  <span className="muted text-[11px]">{t('vs prior 30d')}</span>
-                </div>
-              )}
-            </Card>
-          ))}
+          <div className="col-span-12">
+            <ScoreBreakdown />
+          </div>
 
           <Card className="col-span-12 lg:col-span-7">
             <CardHeader
-              title={t('Material composition')}
+              title={
+                <Term label={t('What your products are made of')}>
+                  {t('The materials in everything you sold in the last 30 days, by weight. Recycled and reused materials raise your score; new (virgin) materials do not.')}
+                </Term>
+              }
               sub={t('Weight sold, last 30 days')}
               right={<Segmented value={compView} onChange={setCompView} options={[{ value: 'material', label: t('By material') }, { value: 'class', label: t('By type') }]} />}
             />
@@ -171,7 +245,7 @@ export default function Circularity() {
                 <BarChart data={composition} layout="vertical" margin={{ left: 8, right: 48, top: 4, bottom: 4 }} barCategoryGap={6}>
                   <CartesianGrid horizontal={false} stroke={c.grid} />
                   <XAxis type="number" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: c.axis }} tickFormatter={(v) => `${v}kg`} />
-                  <YAxis type="category" dataKey="name" interval={0} tickLine={false} axisLine={false} width={170} tick={{ fontSize: 12, fill: c.axis }} />
+                  <YAxis type="category" dataKey="name" interval={0} tickLine={false} axisLine={false} width={narrow ? 100 : 170} tick={{ fontSize: 12, fill: c.axis }} />
                   <Tooltip
                     cursor={{ fill: theme === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)' }}
                     content={({ active, payload }) => {
@@ -195,14 +269,13 @@ export default function Circularity() {
           </div>
 
           <Card className="col-span-12 lg:col-span-7">
-            <CardHeader title={t('Circularity trend')} sub={t('Weekly, trailing 12 months — shifts with product mix and material changes')} />
+            <CardHeader title={t('Recycled and reused materials over time')} sub={t('Share of the weight you sold, week by week, last 12 months')} />
             <div className="h-[260px] px-2 pb-3 pt-4" dir="ltr">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={trend} margin={{ left: 0, right: 16, top: 8, bottom: 0 }}>
                   <CartesianGrid vertical={false} stroke={c.grid} />
                   <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: c.axis }} minTickGap={28} />
                   <YAxis domain={['dataMin - 3', 'dataMax + 3']} tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: c.axis }} tickFormatter={(v) => `${Math.round(v)}%`} width={40} />
-                  <ReferenceLine y={65} stroke={c.neutral} strokeDasharray="4 4" label={{ value: t('Leader {pct}', { pct: fmtPct(65, 0) }), position: 'insideTopLeft', fontSize: 10, fill: c.axis }} />
                   <Tooltip
                     content={({ active, payload }) => {
                       if (!active || !payload?.length) return null;
@@ -217,7 +290,10 @@ export default function Circularity() {
           </Card>
 
           <Card className="col-span-12 lg:col-span-5">
-            <CardHeader title={t('Product circularity ranking')} sub={t('Click a product for its material breakdown')} />
+            <CardHeader
+              title={<Term label={t('Circularity score by product')}>{t('For a product, the score is the share of its weight that comes from recycled or reused materials.')}</Term>}
+              sub={t('Click a product for its material breakdown')}
+            />
             <ul className="space-y-1 p-3">
               {circ30.byProduct.length === 0 && <li className="muted px-2 py-8 text-center text-sm">{t('Products you add will be ranked here by circularity.')}</li>}
               {circ30.byProduct.map((p, i) => (

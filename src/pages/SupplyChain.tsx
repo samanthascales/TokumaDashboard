@@ -7,8 +7,9 @@ import { useSimulatedLoad } from '../lib/hooks';
 import { fmtCompact, fmtInt, fmtNum, fmtPct } from '../lib/format';
 import { t as tr, useT } from '../i18n';
 import { avgKnown, certificationScore, leadTimeScore, reliabilityScore, riskLevel } from '../lib/metrics';
-import { Badge, Card, CardHeader, CardSkeleton, EmptyState, Gauge, Modal, PageHeader, StatusBadge, TableSkeleton, Tip } from '../components/ui';
+import { Badge, Card, CardHeader, CardSkeleton, EmptyState, Gauge, Modal, PageHeader, StatusBadge, TableSkeleton, Term, Tip } from '../components/ui';
 import { SupplierModal } from './supply/SupplierModal';
+import { ProductTabs } from './Products';
 import type { Supplier } from '../types';
 
 function Tabs() {
@@ -17,7 +18,7 @@ function Tabs() {
     clsx('-mb-px inline-flex items-center gap-2 border-b-2 px-3 py-2 text-sm font-medium transition', isActive ? 'border-brand-600 text-gray-900 dark:border-brand-400 dark:text-white' : 'border-transparent text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200');
   return (
     <div className="mt-5 flex gap-1 border-b border-gray-200 dark:border-white/10">
-      <NavLink to="/app/supply-chain" end className={cls}>
+      <NavLink to="/app/products/suppliers" end className={cls}>
         {t('Overview')}
       </NavLink>
       <NavLink to="/app/supply-chain/reliability" className={cls}>
@@ -62,14 +63,15 @@ function Overview({ onOpen }: { onOpen: (s: Supplier) => void }) {
   });
 
   const tiles = [
-    { label: t('Sustainability rating'), value: avgSust === null ? '—' : `${Math.round(avgSust)}/100`, sub: avgSust === null ? t('no ratings entered yet') : t('avg of entered ratings'), icon: Leaf },
+    { label: t('Sustainability rating'), value: avgSust === null ? '—' : `${Math.round(avgSust)}/100`, sub: avgSust === null ? t('no ratings entered yet') : t('avg of entered ratings'), icon: Leaf, explain: t('How earth-friendly your suppliers are, from 0 to 100, based on the ratings you entered. It counts toward your circularity score.') },
     {
       label: t('Logistics carbon'),
       value: withCarbon.length ? `${fmtCompact(totalCarbon)} kg` : '—',
       sub: withCarbon.length ? t('CO₂e per year · {n} of {total} suppliers', { n: withCarbon.length, total: suppliers.length }) : t('no carbon figures entered yet'),
       icon: Truck,
+      explain: t('An estimate of the greenhouse gas from shipping your materials each year, from the figures you entered.'),
     },
-    { label: t('Avg reliability'), value: avgRel === null ? '—' : `${Math.round(avgRel)}/100`, sub: avgRel === null ? t('needs lead time + on-time delivery') : t('{count} high-risk suppliers', { count: highRisk }), icon: ShieldCheck },
+    { label: t('Avg reliability'), explain: t('How dependable your suppliers are: how fast they deliver, how often they are on time, and their certifications.'), value: avgRel === null ? '—' : `${Math.round(avgRel)}/100`, sub: avgRel === null ? t('needs lead time + on-time delivery') : t('{count} high-risk suppliers', { count: highRisk }), icon: ShieldCheck },
     { label: t('Suppliers'), value: suppliers.length, sub: t('{count} countries', { count: byCountry.length }), icon: Factory },
   ];
 
@@ -78,7 +80,7 @@ function Overview({ onOpen }: { onOpen: (s: Supplier) => void }) {
       {tiles.map((x) => (
         <Card key={x.label} className="col-span-6 p-5 lg:col-span-3">
           <p className="muted flex items-center gap-1.5 text-xs">
-            <x.icon className="h-3.5 w-3.5" /> {x.label}
+            <x.icon className="h-3.5 w-3.5" /> {'explain' in x && x.explain ? <Term label={x.label}>{x.explain}</Term> : x.label}
           </p>
           <p className="num mt-2 text-[26px] leading-none">{x.value}</p>
           <p className="muted mt-1.5 text-[11px]">{x.sub}</p>
@@ -380,7 +382,7 @@ function SupplierDetail({ supplier, onClose, onEdit }: { supplier: Supplier | nu
                       <span className="muted">{t('No reorder point — lead time not entered')}</span>
                     ) : (
                       <Tip content={t('({avg}/day × {lead}d) + {safety}', { avg: fmtNum(r.avgDaily, 2), lead: r.leadTime!, safety: r.product.safetyStock })}>
-                        <span className="border-b border-dashed border-gray-300 dark:border-gray-600">{t('ROP {n}', { n: r.reorderPoint })}</span>
+                        <span className="border-b border-dashed border-gray-300 dark:border-gray-600">{t('Reorder at {n}', { n: r.reorderPoint })}</span>
                       </Tip>
                     )}
                   </td>
@@ -419,17 +421,24 @@ export default function SupplyChain({ view }: { view: 'overview' | 'reliability'
   return (
     <>
       <PageHeader
-        title={view === 'overview' ? t('Supply chain') : t('Supplier reliability')}
-        sub={view === 'overview' ? t('Sustainability, carbon and origins across your supplier network') : t('Computed reliability scores, lead times and delivery performance')}
+        title={view === 'overview' ? t('Suppliers') : t('Supplier reliability')}
+        sub={view === 'overview' ? t('The businesses you buy materials from, and how earth-friendly they are.') : t('Computed reliability scores, lead times and delivery performance')}
         actions={
-          role === 'business' && (
-            <button className="btn-primary" onClick={() => setAdding(true)}>
-              <Plus className="h-4 w-4" /> {t('Add supplier')}
-            </button>
-          )
+          <>
+            {view === 'overview' && suppliers.length > 0 && (
+              <NavLink to="/app/supply-chain/reliability" className="btn-secondary">
+                <ShieldCheck className="h-4 w-4" /> {t('Reliability scores')}
+              </NavLink>
+            )}
+            {role === 'business' && (
+              <button className="btn-primary" onClick={() => setAdding(true)}>
+                <Plus className="h-4 w-4" /> {t('Add supplier')}
+              </button>
+            )}
+          </>
         }
       >
-        <Tabs />
+        {view === 'overview' ? <ProductTabs /> : <Tabs />}
       </PageHeader>
       {!ready ? (
         view === 'overview' ? (

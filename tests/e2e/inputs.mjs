@@ -14,10 +14,10 @@ page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
 page.on('console', (m) => { if (m.type() === 'error' && !m.text().includes('CERT')) errors.push(m.text()); });
 const step = async (name, fn) => { try { await fn(); console.log('OK  ', name); } catch (e) { console.log('FAIL', name, '—', e.message.split('\n')[0]); } };
 const text = async () => page.locator('main').innerText();
-const sidebarRate = async () => (await page.locator('aside').innerText()).match(/Circularity rate\s+(\S+)/)?.[1];
+const sidebarScore = async () => (await page.locator('aside').innerText()).match(/Circularity score\s+(\S+)/)?.[1];
 
 await step('supplier with only name + country shows no score', async () => {
-  await page.goto(B + 'app/supply-chain?new=supplier'); await page.waitForTimeout(900);
+  await page.goto(B + 'app/products/suppliers?new=supplier'); await page.waitForTimeout(900);
   const d = page.getByRole('dialog');
   const gauge = await d.locator('aside').innerText();
   if (/\b\d{1,3}\b\s*SCORE/.test(gauge)) throw new Error('preview shows a score before input: ' + gauge.replace(/\n/g, ' '));
@@ -65,27 +65,27 @@ await step('product: material type must be chosen', async () => {
 });
 await step('one product, no sales: circularity is "—" everywhere', async () => {
   await page.goto(B + 'app'); await page.waitForTimeout(1400);
-  const r = await sidebarRate();
+  const r = await sidebarScore();
   if (r !== '—') throw new Error('sidebar shows ' + r);
-  const card = await page.locator('.card', { hasText: 'Circularity rate' }).first().innerText();
-  const main = card.split('\n').find((l) => l.includes('%') || l.includes('—')) || '';
-  if (!card.includes('—')) throw new Error('rate card should show a dash: ' + card.split('\n').join(' | '));
+  const card = await page.locator('.card', { hasText: 'How circular is my business?' }).first().innerText();
+  if (!card.includes('—')) throw new Error('score card should show a dash: ' + card.split('\n').join(' | '));
   await page.screenshot({ path: SP + '/dashboard-1product.png' });
   await page.goto(B + 'app/circularity'); await page.waitForTimeout(1200);
-  const c = await text();
-  if (/Circularity rate\s+\d/.test(c)) throw new Error('circularity tile shows a number');
-  await page.goto(B + 'app/funding'); await page.waitForTimeout(1200);
+  const c = await page.getByTestId('score-breakdown').innerText();
+  if (!c.includes('—')) throw new Error('circularity score should be a dash: ' + c.slice(0, 120));
+  await page.goto(B + 'app/learn/funding'); await page.waitForTimeout(1200);
   const f = await text();
   if (/Estimated APR\s+\d/.test(f) || /Max eligibility\s+\$/.test(f)) throw new Error('funding shows numbers: ' + f.slice(0, 300));
   await page.screenshot({ path: SP + '/funding-nosales.png' });
 });
 await step('after logging a sale, circularity comes from it', async () => {
-  await page.goto(B + 'app/transactions?new=txn'); await page.waitForTimeout(900);
-  await page.getByRole('button', { name: 'Save transaction' }).click();
+  await page.goto(B + 'app/money?new=txn'); await page.waitForTimeout(900);
+  await page.getByRole('dialog').getByRole('button', { name: 'Save', exact: true }).click();
   await page.getByText('Transaction logged').waitFor();
   await page.goto(B + 'app'); await page.waitForTimeout(1500);
-  const r = await sidebarRate();
-  if (r !== '100.0%') throw new Error('expected 100.0% (all reused) got ' + r);
+  // Materials 100 (all reused) × 60 + circular income 0 × 20, supplier unrated → 6000 / 80 = 75.
+  const r = await sidebarScore();
+  if (r !== '75') throw new Error('expected a score of 75 got ' + r);
 });
 await step('old saved defaults are cleared on load', async () => {
   const p2 = await ctx.newPage();

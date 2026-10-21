@@ -8,6 +8,7 @@ import { useT } from '../../i18n';
 import { fmtNum } from '../../lib/format';
 
 export { clsx };
+export { Explain, Term } from './Explain';
 
 /* ---------------- Card ---------------- */
 
@@ -178,10 +179,12 @@ export function Segmented<T extends string>({ options, value, onChange, classNam
 
 export function Tabs<T extends string>({ tabs, value, onChange }: { tabs: { value: T; label: string; count?: number }[]; value: T; onChange: (v: T) => void }) {
   return (
-    <div className="flex gap-1 border-b border-gray-200 dark:border-white/10">
+    <div className="flex gap-1 border-b border-gray-200 dark:border-white/10" role="tablist">
       {tabs.map((t) => (
         <button
           key={t.value}
+          role="tab"
+          aria-selected={t.value === value}
           onClick={() => onChange(t.value)}
           className={clsx(
             '-mb-px inline-flex items-center gap-2 border-b-2 px-3 py-2 text-sm font-medium transition',
@@ -347,7 +350,7 @@ export function StockBar({ stock, threshold, reorderPoint, compact }: { stock: n
       {!compact && (
         <div className="mt-1.5 flex justify-between text-[11px] text-gray-500 dark:text-gray-400">
           <span className="tabular-nums">{t('{n} on hand', { n: stock })}</span>
-          <span className="tabular-nums">{reorderPoint === null ? t('No reorder point') : t('ROP {n}', { n: reorderPoint })}</span>
+          <span className="tabular-nums">{reorderPoint === null ? t('No reorder point') : t('Reorder at {n}', { n: reorderPoint })}</span>
         </div>
       )}
     </div>
@@ -364,7 +367,7 @@ export function StatusBadge({ status }: { status: 'critical' | 'reorder' | 'heal
 /* ---------------- Gauge ---------------- */
 
 /** A 270° score gauge. Pass null when there isn't enough input for a score; it shows "—" instead of a number. */
-export function Gauge({ value: raw, size = 96, label, stroke = 9 }: { value: number | null; size?: number; label?: string; stroke?: number }) {
+export function Gauge({ value: raw, size = 96, label, stroke = 9, bands = [65, 80] }: { value: number | null; size?: number; label?: string; stroke?: number; bands?: [number, number] }) {
   const value = raw ?? 0;
   const [shown, setShown] = useState(0);
   const mounted = useRef(false);
@@ -376,7 +379,7 @@ export function Gauge({ value: raw, size = 96, label, stroke = 9 }: { value: num
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   const arc = 0.75; // 270° gauge
-  const color = value >= 80 ? 'stroke-brand-600 dark:stroke-brand-400' : value >= 65 ? 'stroke-amber-400' : 'stroke-red-500';
+  const color = value >= bands[1] ? 'stroke-brand-600 dark:stroke-brand-400' : value >= bands[0] ? 'stroke-amber-400' : 'stroke-red-500';
   return (
     <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="rotate-[135deg]">

@@ -1,6 +1,8 @@
-# Tokuma — Circular ERP Dashboard
+# Tokuma — Business Dashboard
 
-A React + Tailwind + Recharts single-page app for Tokuma's business-facing circular-economy ERP. It rebuilds the Cluster 0 platform walkthrough as a production-feeling SaaS product and adds the Focus 2 (seasonal revenue analytics), Focus 4 (inventory) and Focus 5 (supplier reliability) upgrades.
+Tokuma is a dashboard for small businesses, built for owners with no business training. It helps them run the business and understand it. Most businesses judge success by money alone. Tokuma gives the **circularity score** (how well the business keeps materials in use) the same weight as **profit**, and shows the two side by side on every main page. Every number has a plain-language explanation the owner can open by hovering over it or tapping it.
+
+Built with React, Tailwind and Recharts.
 
 ## Run it
 
@@ -15,28 +17,50 @@ The app uses hash routing (`/#/app/...`) and a relative base path, so `dist/` ca
 
 ## What's inside
 
-| Area | Route | Highlights |
+| Page | Route | What the owner can do |
 |---|---|---|
-| Landing / Sign in | `/`, `/signin` | Two-portal split, animated gradient, count-up "Trusted by 500+", mock Google OAuth |
-| Onboarding wizard | `/onboarding` | 4 steps, % progress, inline validation, live profile preview |
-| **Business Hub** | `/app` | Low-stock banner, KPI cards with sparklines, Revenue vs Profit (30D/90D/YTD/12M/Custom, prior-period overlay, automatic peak annotation, click-to-drill modal), material-mix donut that filters the dashboard, milestone stepper with hover criteria, AI insights feed (dismiss / act, impact + confidence tags) |
-| Products | `/app/products` | Grid/table toggle, sortable table, stock bars, add/edit modal with bill-of-materials editor |
-| **Inventory** (Focus 4) | `/app/products/inventory` | `stockOnHand`, `lowStockThreshold`, auto `reorderPoint`, days of cover, suggested order, restock flow |
-| Transactions | `/app/transactions` | Filter, search, paginate, CSV export, **import from CSV / Excel (.xlsx)**; sales link to product and customer |
-| Circularity Metrics | `/app/circularity` | Calculated live from transactions × materials, composition, trend, ranking, ranked recommendation carousel |
-| Supply Chain | `/app/supply-chain` | Sustainability, logistics carbon, transport mix, material origins, key suppliers |
-| **Supplier Reliability** (Focus 5) | `/app/supply-chain/reliability` | Computed reliability score, gauges, sortable table, supplier drill-down, add/edit supplier modal |
-| Funding | `/app/funding` | Verified banner, reactive eligibility and APR (flash plus a "since your last visit" note), what-if slider, request flow, history with status badges |
-| Customers | `/app/customers` | Repeat-purchase rate, products bought, New / Repeat / At-risk segments, order history modal |
-| Education Hub | `/app/education` | Restyled to match the design system |
-| Settings | `/app/settings` | Your profile (photo, name, job title, contact details — also opened from your name in the top bar), language, light / dark / system theme, business profile (reuses the wizard fields), notification preferences, delete all data |
-| Investor view | `/app/investor` | Opened from the role switcher. Shows impact, funding readiness and supply-chain risk |
+| Landing / Sign in | `/`, `/signin` | Learn what Tokuma does; sign up or sign in |
+| Onboarding | `/onboarding` | Answer 4 short steps about the business |
+| **Dashboard** | `/app` | Two cards side by side: **How is my money?** (profit for the last 30 days, money in and out, progress toward a goal) and **How circular is my business?** (circularity score, level, progress toward a goal). Also: profit and score month by month, products at a glance, and next steps |
+| Money in & out | `/app/money` | Record sales and costs in plain categories, including circular income (repairs, resale, rental, take-back). Import from CSV / Excel or a Shopify, Square or Etsy export |
+| Products | `/app/products` | Each product shows its **profit per item** and its **circularity score**; edit what it is made of |
+| Stock | `/app/products/inventory` | Stock levels, low-stock warnings, when to reorder, one-click restock |
+| Suppliers | `/app/products/suppliers` | Supplier sustainability ratings (part of the score), reliability, carbon |
+| **Circularity** | `/app/circularity` | The score, what makes it up, the three levels, ideas to raise it, materials breakdown and trend |
+| **Reports** | `/app/reports` | Basic accounting, each with a "what is this?" box: **Profit & loss**, **Balance sheet** (what you own, what you owe, what is yours), **Cash flow** (how long cash would last) and a **Break-even** calculator. Printable |
+| Learn | `/app/learn` | Short lessons on the circularity score, the circular economy, profit & loss, the balance sheet, cash flow and break-even, each linked to the matching page. Funding is under Learn |
+| Settings | `/app/settings` | Your profile and photo, language, theme, business profile, notifications, delete data |
 
-These work across every page: the language menu (globe icon), the ⌘K / Ctrl K command palette, the notification bell, toasts, skeleton loading states, empty states with a call to action, page transitions, count-up numbers, and "Generate report" (a printable PDF summary).
+The menu groups pages so an owner sees six main pages. The customers page, the supplier reliability detail and the investor view still exist but are no longer in the menu. Old links (`/app/transactions`, `/app/supply-chain`, `/app/education`, `/app/funding`) forward to the new pages.
+
+These work on every page: the **explanation buttons** (the small "i" next to a number or word; they open on hover, keyboard focus or tap), the language menu, the Ctrl K command palette, notifications and toasts.
+
+## The circularity score (draft)
+
+The score runs from 0 to 100 and is the main measure of how circular a business is. Research on how to score circularity is still under way, so the method is labelled as a draft in the app, and everything that decides it lives in [`src/lib/score.ts`](src/lib/score.ts):
+
+| Part | Weight | Measured as |
+|---|---|---|
+| Recycled and reused materials | 60 | Share of the weight of products sold in the last 30 days that came from recycled or reused material |
+| Circular income | 20 | Share of money in from repairs, resale, rental and take-back |
+| Supplier sustainability | 20 | Average sustainability rating entered for suppliers |
+
+Parts with no data yet are left out and the other weights scaled up, so a missing number never counts as zero. There is no score until the business has sold something. Levels: **Circular Starter** 0–39, **Circular Grower** 40–69, **Circular Leader** 70–100. To change the method, edit `SCORE_WEIGHTS`, `LEVEL_FROM` or `circularityScore()` and bump `SCORE_VERSION`.
+
+## Accounting (`src/lib/accounting.ts`)
+
+- **Profit & loss** is cash-basis: money in minus money out in the chosen period, grouped by category. Loans, investment and grants are listed separately as "money in that is not profit".
+- **Balance sheet**:
+  - Cash = starting cash (entered once) + all money in − all money out.
+  - Stock is valued at unit cost.
+  - The owner adds other things they own (equipment, vehicles) and what they owe (loans, unpaid bills).
+  - What is yours = own − owe.
+- **Cash flow** shows cash in, cash out and month-end cash for the last 6 months. *Cash would last* = cash ÷ average monthly spending over the last 3 months.
+- **Break-even** = regular monthly costs (rent, wages, marketing; averaged from the last 3 months and editable) ÷ profit per item (price − cost, averaged over what sold, or one product).
 
 ## Importing transactions
 
-**Transactions → Import CSV / Excel** reads a `.csv` or `.xlsx` file in the browser (nothing is uploaded):
+**Money in & out → Import CSV / Excel** reads a `.csv` or `.xlsx` file in the browser (nothing is uploaded):
 
 1. Pick the file (and the sheet, for workbooks with several).
 2. Match your columns to Tokuma's fields — Date and Amount are required; type, category, product, quantity, customer and note are optional. Column names are guessed from your headers.
@@ -61,13 +85,13 @@ The Spanish, Portuguese, French, Arabic and Dutch translations were machine-draf
 
 ## Key formulas (`src/lib/metrics.ts`)
 
-- **Circularity rate** = recycled + reused material weight in units sold ÷ total material weight sold. Units come from `Transaction.productId` / `quantity`, and weights come from each product's `materials`. When there are no sales it falls back to the catalog, so the rate never sits at a static 0%.
+- **Recycled and reused materials share** (the main part of the circularity score) = recycled + reused material weight in units sold ÷ total material weight sold. Units come from `Transaction.productId` / `quantity`, and weights come from each product's `materials`. With no sales there is no share (shown as "—").
 - **Reorder point** = `ceil(avgDailySales × supplier.avgLeadTimeDays + safetyStock)`. The lead time is pulled automatically from the linked supplier.
 - **Reliability score** = `0.3 × leadTimeScore + 0.5 × onTimeDeliveryRate + 0.2 × certificationScore`
   - leadTimeScore is 100 at ≤ 5 days and falls linearly to 0 at 45 days.
   - certificationScore is 35 points per certification, capped at 100.
 - **Funding terms**: the score, max eligibility and APR are all driven by the circularity rate, average supplier sustainability and net margin. Any change to circularity elsewhere in the app flows through to them.
-- **Profit** is shown on an accrual basis. Recurring costs are spread across the period they cover, and financing inflows (grants, loans) are left out.
+- **Revenue vs profit chart** (Money in & out) uses an accrual basis: recurring costs are spread across the period they cover, and financing inflows (grants, loans) are left out. The dashboard and reports use the simpler cash-basis profit described above.
 
 ## Project layout
 
@@ -75,7 +99,9 @@ The Spanish, Portuguese, French, Arabic and Dutch translations were machine-draf
 src/
   types.ts                 data model (Product, Supplier, Transaction, Customer, …)
   data/defaults.ts         the empty profile a new account starts with
-  lib/metrics.ts           all business calculations
+  lib/metrics.ts           business calculations (circularity, stock, suppliers, funding)
+  lib/score.ts             the circularity score (draft method)
+  lib/accounting.ts        profit & loss, balance sheet, cash flow, break-even
   i18n/                    language switching, t() and one strings file per language
   store/AppStore.tsx       app state, derived data, actions, toasts, persistence
   components/ui            design-system primitives (Card, Modal, Gauge, StockBar, Skeleton, …)
@@ -110,7 +136,7 @@ psql -d scratch -f supabase/tests/local_auth_stub.sql -f supabase/migrations/001
 ## Testing
 
 ```bash
-npm run test:e2e      # 67 browser checks across 7 suites
+npm run test:e2e      # 78 browser checks across 8 suites
 npm run i18n:check    # every language has every text
 ```
 
