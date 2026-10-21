@@ -170,7 +170,7 @@ await step('break-even: fixed costs ÷ profit per unit', async () => {
   await page.getByText('Each item costs more than you sell it for').waitFor();
 });
 await step('learn: a lesson opens and links to its report', async () => {
-  await page.goto(B + 'app/learn'); await page.waitForTimeout(900);
+  await page.goto(B + 'app/learn?tab=library'); await page.waitForTimeout(900);
   await page.getByText('Your balance sheet in plain words').click();
   await page.getByRole('dialog').getByText('Assets: your cash', { exact: false }).waitFor();
   await page.getByRole('button', { name: 'Open your balance sheet' }).click();

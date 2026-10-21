@@ -18,7 +18,7 @@ const SECTIONS: Section[] = ['me', 'account', 'language', 'appearance', 'profile
 export default function Settings() {
   const t = useT();
   const { lang, setLang } = useLang();
-  const { themePref, setThemePref, profile, setProfile, prefs, setPrefs, resetData, toast } = useStore();
+  const { themePref, setThemePref, profile, setProfile, prefs, setPrefs, resetData, resetEducation, toast } = useStore();
   const cloud = useCloud();
   const [params, setParams] = useSearchParams();
   const [section, setSection] = useState<Section>('me');
@@ -33,6 +33,7 @@ export default function Settings() {
   const [draft, setDraft] = useState<BusinessProfile>(profile);
   const [touched, setTouched] = useState<Partial<Record<keyof BusinessProfile, boolean>>>({});
   const [confirmReset, setConfirmReset] = useState(false);
+  const [confirmEduReset, setConfirmEduReset] = useState(false);
   const dirty = JSON.stringify(draft) !== JSON.stringify(profile);
   // Pick up changes saved elsewhere (e.g. the profile photo) unless there are unsaved edits here.
   useEffect(() => {
@@ -144,6 +145,14 @@ export default function Settings() {
                   </button>
                 </div>
               </Card>
+              <Card>
+                <CardHeader title={t('Learning progress')} sub={t('Clear your diagnostic, lessons, checkpoints and deliverables so you can start the learning program again.')} />
+                <div className="p-5">
+                  <button className="btn-secondary" onClick={() => setConfirmEduReset(true)}>
+                    <RotateCcw className="h-4 w-4" /> {t('Reset learning progress')}
+                  </button>
+                </div>
+              </Card>
             </>
           )}
 
@@ -248,6 +257,31 @@ export default function Settings() {
         }
       >
         <p className="muted text-sm">{t('Your theme and language settings are kept. You can set up your business again from Settings or the dashboard checklist.')}</p>
+      </Modal>
+      <Modal
+        open={confirmEduReset}
+        onClose={() => setConfirmEduReset(false)}
+        size="sm"
+        title={t('Reset learning progress?')}
+        sub={t("This clears everything you've done in the learning program and can't be undone.")}
+        footer={
+          <>
+            <button className="btn-secondary" onClick={() => setConfirmEduReset(false)}>
+              {t('Cancel')}
+            </button>
+            <button
+              className="btn-danger"
+              onClick={() => {
+                resetEducation();
+                setConfirmEduReset(false);
+              }}
+            >
+              {t('Reset learning progress')}
+            </button>
+          </>
+        }
+      >
+        <p className="muted text-sm">{t('Your business data is kept.')}</p>
       </Modal>
     </>
   );

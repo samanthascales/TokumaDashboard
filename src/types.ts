@@ -163,6 +163,50 @@ export interface Liability {
   amount: number;
 }
 
+/* ---------------- Education program ---------------- */
+
+export type ModuleId = 'sustainability' | 'operations' | 'finance' | 'impact';
+export type DeliverableKind = 'statement' | 'wasteLog' | 'financialSnapshot' | 'kpi';
+
+export interface WasteLogEntry {
+  date: string; // ISO yyyy-mm-dd
+  material: string;
+  inKg: number | null;
+  outKg: number | null;
+  /** What happened to the output: reused, recycled, thrown away… in the owner's words. */
+  fate: string;
+}
+
+/** A module's milestone deliverable, entered in the platform. `date` is when it was last saved. */
+export type Deliverable =
+  | { kind: 'statement'; text: string; date: string }
+  | { kind: 'wasteLog'; entries: WasteLogEntry[]; date: string }
+  | { kind: 'financialSnapshot'; period: string; revenue: number | null; costs: number | null; date: string }
+  | { kind: 'kpi'; name: string; unit: string; baseline: number | null; target: number | null; date: string };
+
+export interface QuizResult {
+  correct: number;
+  total: number;
+  date: string; // ISO datetime
+}
+
+export interface ModuleProgress {
+  lessonsDone: string[];
+  /** Latest checkpoint attempt; null until taken. Pre-tested modules use the diagnostic instead. */
+  checkpoint: QuizResult | null;
+  deliverable: Deliverable | null;
+}
+
+/** What the business has done in the education program. Statuses and scores are calculated from this, never stored. */
+export interface EducationProgress {
+  diagnostic: {
+    startedAt: string | null; // ISO datetime; the timer runs from here
+    answers: Record<string, number>;
+    submittedAt: string | null;
+  };
+  modules: Record<ModuleId, ModuleProgress>;
+}
+
 /** Targets the owner sets; null until they choose one. */
 export interface Goals {
   monthlyProfit: number | null;

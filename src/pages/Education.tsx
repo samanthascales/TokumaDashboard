@@ -1,10 +1,14 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import clsx from 'clsx';
 import { BookOpen, CheckCircle2, Clock, PlayCircle, Search } from 'lucide-react';
 import { useSimulatedLoad } from '../lib/hooks';
-import { Badge, Card, CardSkeleton, EmptyState, Modal, PageHeader, Segmented } from '../components/ui';
+import { Badge, Card, CardSkeleton, EmptyState, Modal, PageHeader, Segmented, Tabs } from '../components/ui';
 import { tk, useT } from '../i18n';
+import Program from './education/Program';
+
+type Tab = 'program' | 'library';
+const TABS: Tab[] = ['program', 'library'];
 
 interface Course {
   id: number;
@@ -97,6 +101,33 @@ const COURSES: Course[] = [
 
 export default function Education() {
   const t = useT();
+  const [params, setParams] = useSearchParams();
+  const raw = params.get('tab') as Tab | null;
+  const tab: Tab = raw && TABS.includes(raw) ? raw : 'program';
+  const setTab = (v: Tab) => setParams(v === 'program' ? {} : { tab: v }, { replace: true });
+  return (
+    <>
+      <PageHeader title={t('Learn')} sub={t('A learning program that gets your business ready for investors, plus short lessons on running a business. No business background needed.')}>
+        <div className="mt-5 overflow-x-auto">
+          <Tabs
+            value={tab}
+            onChange={setTab}
+            tabs={[
+              { value: 'program', label: t('Program') },
+              { value: 'library', label: t('Lesson library') },
+            ]}
+          />
+        </div>
+      </PageHeader>
+      <div key={tab} className="animate-page-in">
+        {tab === 'program' ? <Program /> : <LessonLibrary />}
+      </div>
+    </>
+  );
+}
+
+function LessonLibrary() {
+  const t = useT();
   const navigate = useNavigate();
   const ready = useSimulatedLoad('education');
   const [openId, setOpenId] = useState<number | null>(null);
@@ -109,7 +140,7 @@ export default function Education() {
 
   return (
     <>
-      <PageHeader title={t('Learn')} sub={t('Short lessons on running a business and making it circular. No business background needed.')} />
+      <p className="muted mb-4 text-sm">{t('Short lessons on running a business and making it circular. No business background needed.')}</p>
       {inProgress && (
         <Card className="mb-5 flex flex-col gap-4 p-5 sm:flex-row sm:items-center">
           <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">

@@ -35,7 +35,7 @@ const seed = {
   role: 'business',
 };
 
-const pages = ['', 'app', 'app/money', 'app/products', 'app/products/inventory', 'app/products/suppliers', 'app/circularity', 'app/reports', 'app/reports?tab=balance', 'app/reports?tab=cash', 'app/reports?tab=breakeven', 'app/supply-chain/reliability', 'app/learn', 'app/learn/funding', 'app/customers', 'app/settings', 'app/investor', 'signin', 'onboarding'];
+const pages = ['', 'app', 'app/money', 'app/products', 'app/products/inventory', 'app/products/suppliers', 'app/circularity', 'app/reports', 'app/reports?tab=balance', 'app/reports?tab=cash', 'app/reports?tab=breakeven', 'app/supply-chain/reliability', 'app/learn', 'app/learn?tab=library', 'app/learn/diagnostic', 'app/learn/modules/sustainability', 'app/learn/funding', 'app/customers', 'app/settings', 'app/investor', 'signin', 'onboarding'];
 
 async function ctxFor(lang, locale = 'en-US') {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale });
