@@ -178,4 +178,11 @@ See [`tests/README.md`](tests/README.md) for what each suite covers and how to r
 
 ## Deployment
 
-Every push to `main` runs `.github/workflows/deploy.yml`, which builds the app and publishes `dist/` to the `gh-pages` branch. GitHub Pages serves that branch at https://samanthascales.github.io/TokumaDashboard/. If the site doesn't appear, open **Settings → Pages** and set the source to **Deploy from a branch → `gh-pages` / root**.
+**Vercel (recommended while the repo is private).** `vercel.json` holds the settings: `npm ci`, `npm run build` (which also copies the OCR engine), output `dist`. To set it up once:
+
+1. Sign in at [vercel.com](https://vercel.com) with GitHub and choose **Add New → Project**.
+2. Import `samanthascales/TokumaDashboard` (allow Vercel access to the private repo if asked). The settings are read from `vercel.json`; leave them as they are.
+3. To turn on accounts, add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` under **Environment Variables**. Without them the dashboard runs in local mode.
+4. Press **Deploy**. Every push to `main` then updates the production site, and every other branch gets its own preview link.
+
+**GitHub Pages.** Every push to `main` also runs `.github/workflows/deploy.yml`, which publishes `dist/` to the `gh-pages` branch. GitHub Pages only serves it while the repo is public (or on a paid GitHub plan): open **Settings → Pages** and set the source to **Deploy from a branch → `gh-pages` / root**.
