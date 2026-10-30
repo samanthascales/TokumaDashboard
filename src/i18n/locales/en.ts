@@ -2,6 +2,7 @@ import type { Dict } from '..';
 
 // English is the source text used as keys, so only plural forms are listed here.
 export const en: Dict = {
+  '{count} more suggestions': { one: '{count} more suggestion', other: '{count} more suggestions' },
   '{count} materials found. Check them before adding.': { one: '{count} material found. Check it before adding.', other: '{count} materials found. Check them before adding.' },
   '{count} at reorder point': { one: '{count} at reorder point', other: '{count} at reorder point' },
   '{count} businesses': { one: '{count} business', other: '{count} businesses' },

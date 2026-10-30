@@ -26,23 +26,19 @@ await step('no sample names anywhere on empty app', async () => {
     for (const w of ['EcoFab', 'ThreadLoop', 'Alex Rivera', 'WoolCycle', 'Bamboo Crew']) if (t.includes(w)) throw new Error(w + ' on ' + r);
   }
 });
-await step('onboarding -> profile saved', async () => {
-  await page.goto(B + 'onboarding');
-  await page.getByPlaceholder('Jane Doe').fill('Sam Test');
-  await page.getByPlaceholder('you@company.com').fill('sam@test.co');
-  await page.getByPlaceholder('Founder & CEO').fill('Founder');
-  await page.getByRole('button', { name: /Next step/ }).click();
+await step('onboarding: three short questions, then the dashboard', async () => {
+  await page.goto(B + 'onboarding'); await page.waitForTimeout(600);
+  await page.getByText('Step 1 of 3').waitFor();
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await page.getByText('Enter your business name').waitFor();
   await page.getByPlaceholder('Your business name').fill('Loopy Goods');
-  await page.getByPlaceholder('Canada').fill('Canada');
-  await page.getByPlaceholder('e.g. We make bags').fill('We make bags from reclaimed sailcloth and canvas.');
-  await page.getByRole('button', { name: /Next step/ }).click();
-  await page.getByRole('button', { name: 'Reused canvas' }).click();
-  await page.getByRole('button', { name: 'Reuse & resale' }).click();
-  await page.getByRole('button', { name: /Next step/ }).click();
-  await page.locator('select').first().selectOption('Pre-revenue');
-  await page.getByRole('button', { name: /Finish/ }).click();
+  await page.getByPlaceholder('Jane').fill('Sam');
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await page.getByRole('button', { name: 'Clothing & textiles' }).click();
+  await page.getByRole('button', { name: /Look around first/ }).click();
   await page.getByText('Good', { exact: false }).first().waitFor();
-  await page.getByText('Loopy Goods', { exact: false }).first().waitFor();
+  await page.getByText('Sam', { exact: false }).first().waitFor();
+  await page.getByTestId('getting-started').getByText('0 of 2 done').waitFor();
 });
 await step('add supplier', async () => {
   await page.goto(B + 'app/products/suppliers?new=supplier'); await page.waitForTimeout(900);
@@ -72,7 +68,8 @@ await step('log sale', async () => {
 });
 await step('dashboard after setup: checklist gone, numbers present', async () => {
   await page.goto(B + 'app'); await page.waitForTimeout(1500);
-  if (await page.getByText('Get started with Tokuma').count()) throw new Error('checklist still shown');
+  if (await page.getByTestId('getting-started').count()) throw new Error('checklist still shown');
+  await page.getByTestId('next-step').waitFor();
   await page.getByText('$45').first().waitFor();
   await page.screenshot({ path: SP + '/after-setup.png' });
 });

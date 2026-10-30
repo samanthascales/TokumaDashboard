@@ -21,25 +21,18 @@ const REVENUE_BANDS = [tk('Pre-revenue'), '<$100k', '$100k–$250k', '$250k–$1
 
 export type Errors = Partial<Record<keyof BusinessProfile, string | null>>;
 
+// Only the business name is required; everything else is optional and only checked when filled in.
 export function validate(step: StepKey, p: BusinessProfile): Errors {
   const e: Errors = {};
   if (step === 'profile') {
-    e.ownerName = p.ownerName.trim().length < 2 ? t('Enter your full name') : null;
-    e.email = !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.email) ? t('Enter a valid email address') : null;
-    e.role = !p.role.trim() ? t('Tell us your role') : null;
+    e.ownerName = p.ownerName.trim() && p.ownerName.trim().length < 2 ? t('Enter your full name') : null;
+    e.email = p.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.email) ? t('Enter a valid email address') : null;
   }
   if (step === 'identity') {
     e.businessName = p.businessName.trim().length < 2 ? t('Business name is required') : null;
-    e.country = !p.country.trim() ? t('Country is required') : null;
     e.founded = p.founded && !/^(19|20)\d{2}$/.test(p.founded) ? t('Use a 4-digit year') : p.founded && +p.founded > new Date().getFullYear() ? t('Year cannot be in the future') : null;
-    e.description = p.description.trim().length < 20 ? t('A short description helps investors ({count} more characters)', { count: Math.max(0, 20 - p.description.trim().length) }) : null;
-  }
-  if (step === 'products') {
-    e.primaryMaterials = p.primaryMaterials.length === 0 ? t('Pick at least one material') : null;
-    e.circularModel = !p.circularModel ? t('Choose your circular model') : null;
   }
   if (step === 'financials') {
-    e.annualRevenue = !p.annualRevenue ? t('Select a revenue band') : null;
     e.fundingGoal = p.fundingGoal && (isNaN(+p.fundingGoal) || +p.fundingGoal < 0) ? t('Enter a number') : null;
   }
   return e;
