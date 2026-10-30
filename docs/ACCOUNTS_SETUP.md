@@ -24,8 +24,8 @@ This creates the tables and turns on Row Level Security, so each business can re
 
 Open **Authentication → URL Configuration** and set these:
 
-- **Site URL:** `https://samanthascales.github.io/TokumaDashboard/`
-- **Redirect URLs:** add `https://samanthascales.github.io/TokumaDashboard/`. If you'll run the app on your computer, also add `http://localhost:5173/`.
+- **Site URL:** `https://tokuma-dashboard.vercel.app/`
+- **Redirect URLs:** add `https://tokuma-dashboard.vercel.app/`. If you'll run the app on your computer, also add `http://localhost:5173/`.
 
 Confirmation and password-reset emails link back to these addresses.
 
