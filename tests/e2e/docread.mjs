@@ -24,7 +24,7 @@ const INVOICE_HTML = `<html><body style="font-family:Arial;font-size:30px;paddin
 const openForm = async () => {
   await page.goto(B + 'app/products?new=product'); await page.waitForTimeout(900);
   const d = page.getByRole('dialog');
-  await d.getByRole('button', { name: 'Fill in from a document' }).click();
+  await d.getByRole('button', { name: 'Scan a document' }).click();
   return d;
 };
 const readFile = async (d, file, timeout = 20000) => {
@@ -36,12 +36,22 @@ await step('document reading is optional: product saves without it', async () =>
   await page.goto(B + 'app/products?new=product'); await page.waitForTimeout(900);
   const d = page.getByRole('dialog');
   if (await d.getByTestId('read-document').count()) throw new Error('panel should be closed by default');
-  await d.getByRole('button', { name: 'Fill in from a document' }).waitFor();
+  await d.getByText('Have an invoice or receipt?').waitFor();
+  await d.getByRole('button', { name: 'Scan a document' }).waitFor();
+});
+
+await step('Products page: "Add from an invoice" opens the form with the scanner ready', async () => {
+  await page.goto(B + 'app/products'); await page.reload(); await page.waitForTimeout(900);
+  await page.getByRole('button', { name: 'Add from an invoice' }).first().click();
+  const panel = page.getByRole('dialog').getByTestId('read-document');
+  await panel.getByRole('button', { name: 'Take a photo' }).waitFor();
+  await panel.getByRole('button', { name: 'Upload a file' }).waitFor();
+  await page.keyboard.press('Escape');
 });
 
 await step('text invoice: finds materials, types and weights', async () => {
   const d = await openForm();
-  if (!(await d.getByTestId('read-document').innerText()).includes('not uploaded anywhere')) throw new Error('missing privacy note');
+  if (!(await d.getByTestId('read-document').innerText()).includes('Nothing is uploaded')) throw new Error('missing privacy note');
   await readFile(d, FIX + '/supplier_invoice.txt');
   const panel = d.getByTestId('read-document');
   await panel.getByText('4 materials found').waitFor();
@@ -49,6 +59,7 @@ await step('text invoice: finds materials, types and weights', async () => {
   for (const n of ['Polyester', 'Organic cotton', 'Denim', 'Steel']) if (!names.includes(n)) throw new Error('missing ' + n + ' in ' + names);
   const types = await panel.getByLabel('Material type').evaluateAll((els) => els.map((e) => e.value));
   if (types.join() !== 'Recycled,Renewable,Reused,') throw new Error('types ' + types);
+  if ((await panel.getByText('Check this').count()) !== 1) throw new Error('only the steel row (no type) should be flagged');
   await page.screenshot({ path: SP + '/docread-review.png' });
 });
 
@@ -100,7 +111,7 @@ await step('Spanish: labels and material names are translated', async () => {
   await page.evaluate(() => localStorage.setItem('tokuma-lang', 'es'));
   await page.goto(B + 'app/products?new=product'); await page.reload(); await page.waitForTimeout(900);
   const d = page.getByRole('dialog');
-  await d.getByRole('button', { name: 'Completar desde un documento' }).click();
+  await d.getByRole('button', { name: 'Escanear un documento' }).click();
   await d.locator('#read-document-file').setInputFiles(FIX + '/supplier_invoice.txt');
   await d.getByText('Se encontraron 4 materiales').waitFor();
   const names = await d.getByTestId('read-document').locator('input.input:not([type=number])').evaluateAll((els) => els.map((e) => e.value));
@@ -112,7 +123,7 @@ await step('mobile: the panel fits the screen', async () => {
   const m = await (await browser.newContext({ viewport: { width: 390, height: 844 } })).newPage();
   await m.goto(B + 'app/products?new=product'); await m.waitForTimeout(900);
   const d = m.getByRole('dialog');
-  await d.getByRole('button', { name: 'Fill in from a document' }).click();
+  await d.getByRole('button', { name: 'Scan a document' }).click();
   await d.locator('#read-document-file').setInputFiles(FIX + '/supplier_invoice.txt');
   await d.getByText('4 materials found').waitFor();
   const [sw, cw] = await d.evaluate((el) => [el.scrollWidth, el.clientWidth]);

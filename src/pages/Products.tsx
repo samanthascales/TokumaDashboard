@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { NavLink, useSearchParams } from 'react-router-dom';
 import clsx from 'clsx';
-import { AlertTriangle, ArrowUpDown, Boxes, Calculator, LayoutGrid, List, PackagePlus, Plus, Search, Truck } from 'lucide-react';
+import { AlertTriangle, ArrowUpDown, Boxes, Calculator, LayoutGrid, List, PackagePlus, Plus, ScanLine, Search, Truck } from 'lucide-react';
 import { useStore } from '../store/AppStore';
 import { useSimulatedLoad } from '../lib/hooks';
 import { fmtInt, fmtKg, fmtMoney, fmtMoney2, fmtNum, fmtPct } from '../lib/format';
@@ -381,6 +381,8 @@ export default function Products({ view }: { view: 'catalog' | 'inventory' }) {
   const [params, setParams] = useSearchParams();
   const [editing, setEditing] = useState<Product | null>(null);
   const [adding, setAdding] = useState(false);
+  // Opens the new-product form with the document scanner already showing.
+  const [scanning, setScanning] = useState(false);
   const ready = useSimulatedLoad(`products-${view}`);
   const attention = inventory.filter((r) => r.status !== 'healthy').length;
 
@@ -391,6 +393,10 @@ export default function Products({ view }: { view: 'catalog' | 'inventory' }) {
       if (p) setEditing(p);
     }
     if (params.get('new') === 'product') setAdding(true);
+    if (params.get('new') === 'scan') {
+      setAdding(true);
+      setScanning(true);
+    }
     if (open || params.get('new')) setParams({}, { replace: true });
   }, [params, products, setParams]);
 
@@ -407,6 +413,11 @@ export default function Products({ view }: { view: 'catalog' | 'inventory' }) {
               <NavLink to="/app/products/inventory" className="btn-secondary text-amber-700 dark:text-amber-300">
                 <AlertTriangle className="h-4 w-4" /> {t('{count} need restock', { count: attention })}
               </NavLink>
+            )}
+            {view === 'catalog' && (
+              <button className="btn-secondary" onClick={() => { setScanning(true); setAdding(true); }}>
+                <ScanLine className="h-4 w-4" /> {t('Add from an invoice')}
+              </button>
             )}
             <button className="btn-primary" onClick={() => setAdding(true)}>
               <Plus className="h-4 w-4" /> {t('Add product')}
@@ -431,9 +442,14 @@ export default function Products({ view }: { view: 'catalog' | 'inventory' }) {
           <EmptyState icon={<PackagePlus className="h-6 w-6" />} title={t('No products yet')}
             body={t('Add your first product and its materials to start tracking circularity and stock.')}
             action={
-              <button className="btn-primary" onClick={() => setAdding(true)}>
-                <Plus className="h-4 w-4" /> {t('Add product')}
-              </button>
+              <div className="flex flex-wrap justify-center gap-2">
+                <button className="btn-primary" onClick={() => setAdding(true)}>
+                  <Plus className="h-4 w-4" /> {t('Add product')}
+                </button>
+                <button className="btn-secondary" onClick={() => { setScanning(true); setAdding(true); }}>
+                  <ScanLine className="h-4 w-4" /> {t('Add from an invoice')}
+                </button>
+              </div>
             } />
         </Card>
       ) : view === 'catalog' ? (
@@ -441,7 +457,7 @@ export default function Products({ view }: { view: 'catalog' | 'inventory' }) {
       ) : (
         <Inventory onOpen={setEditing} />
       )}
-      <ProductModal open={adding || !!current} product={current} onClose={() => { setAdding(false); setEditing(null); }} />
+      <ProductModal open={adding || !!current} product={current} startScanning={scanning} onClose={() => { setAdding(false); setEditing(null); setScanning(false); }} />
     </>
   );
 }
