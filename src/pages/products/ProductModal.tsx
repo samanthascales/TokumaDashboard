@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { FileText, Plus, Trash2 } from 'lucide-react';
 import { useStore } from '../../store/AppStore';
 import { avgDailySales, classifyMaterial, materialCircularity, reorderPoint } from '../../lib/metrics';
 import { Field, Modal, Ring, StockBar, Term } from '../../components/ui';
 import type { MaterialClass, Product } from '../../types';
 import { tk, useLang, useT } from '../../i18n';
 import { fmtNum, fmtPct } from '../../lib/format';
+import { ReadDocumentPanel, type ReadMaterial } from './ReadDocument';
 
 // Form state keeps "not entered yet" (null / '') separate from real values, so
 // nothing is pre-filled and no number is shown until the owner types it.
@@ -72,11 +73,13 @@ export function ProductModal({ open, onClose, product }: { open: boolean; onClos
   const { suppliers, addProduct, updateProduct, deleteProduct, ledger } = useStore();
   const [d, setD] = useState<Draft>(empty);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [reading, setReading] = useState(false);
 
   useEffect(() => {
     if (open) {
       setD(product ? toDraft(product) : empty());
       setTouched({});
+      setReading(false);
     }
   }, [open, product]);
 
@@ -114,6 +117,12 @@ export function ProductModal({ open, onClose, product }: { open: boolean; onClos
   };
   const setMat = (i: number, m: Partial<DraftMaterial>) => {
     setD((x) => ({ ...x, materials: x.materials.map((mm, j) => (j === i ? { ...mm, ...m } : mm)) }));
+    setTouched((x) => ({ ...x, materials: true }));
+  };
+
+  // Materials read from a document replace empty rows and are added after the rest.
+  const addRead = (read: ReadMaterial[]) => {
+    setD((x) => ({ ...x, materials: [...x.materials.filter((m) => m.name.trim() || m.weightKg || m.type), ...read] }));
     setTouched((x) => ({ ...x, materials: true }));
   };
 
@@ -178,7 +187,7 @@ export function ProductModal({ open, onClose, product }: { open: boolean; onClos
       }
     >
       <div className="grid gap-6 lg:grid-cols-[1fr_260px]">
-        <div className="space-y-5">
+        <div className="min-w-0 space-y-5">
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label={t('Product name')} error={show('name')} className="sm:col-span-2">
               <input className={`input ${show('name') ? 'input-error' : ''}`} value={d.name} onChange={(e) => set('name', e.target.value)} placeholder={t('e.g. Organic Cotton T-Shirt')} />
@@ -206,12 +215,20 @@ export function ProductModal({ open, onClose, product }: { open: boolean; onClos
           </div>
 
           <div>
-            <div className="mb-2 flex items-center justify-between">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-1">
               <span className="label mb-0">{t('Bill of materials')}</span>
-              <button className="btn-ghost btn-sm" onClick={() => setD((x) => ({ ...x, materials: [...x.materials, blankMaterial()] }))}>
-                <Plus className="h-3.5 w-3.5" /> {t('Add material')}
-              </button>
+              <div className="flex flex-wrap items-center gap-1">
+                {!reading && (
+                  <button className="btn-ghost btn-sm" onClick={() => setReading(true)}>
+                    <FileText className="h-3.5 w-3.5" /> {t('Fill in from a document')}
+                  </button>
+                )}
+                <button className="btn-ghost btn-sm" onClick={() => setD((x) => ({ ...x, materials: [...x.materials, blankMaterial()] }))}>
+                  <Plus className="h-3.5 w-3.5" /> {t('Add material')}
+                </button>
+              </div>
             </div>
+            {reading && <ReadDocumentPanel onAdd={addRead} onClose={() => setReading(false)} />}
             <div className="space-y-2">
               {d.materials.map((m, i) => (
                 <div key={i} className="grid grid-cols-[1fr_90px_120px_32px] items-center gap-2">

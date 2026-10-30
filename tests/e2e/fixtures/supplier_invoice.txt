@@ -1,0 +1,9 @@
+GreenThread Supplies Ltd
+INVOICE #2291   Date: 12/10/2026
+Qty  Description                                 Unit    Total
+2    Recycled polyester (rPET) yarn, 25 kg roll   $3.10   $155.00
+1    GOTS organic cotton jersey, 40 kg            $6.20   $248.00
+3    Reclaimed denim offcuts 12kg                 $1.00   $12.00
+1    Steel buckles 500 g                          $9.00   $9.00
+     Packaging and delivery                               $15.00
+Subtotal $439.00

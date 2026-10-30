@@ -91,6 +91,16 @@ The global benchmark shown next to circular inflow (6.9%) is from the Circularit
 
 Without a type column, negative amounts are money out. A sale without a quantity adds revenue but no units. Imports don't change stock on hand. Files in SharePoint, OneDrive or Google Sheets need to be downloaded first. Parsing uses `papaparse` and `read-excel-file`, loaded only when an import starts.
 
+## Reading materials from documents
+
+**Products → Add/Edit product → Fill in from a document** is optional. The owner picks a supplier invoice, receipt or spec sheet (photo, PDF, or `.txt`/`.csv`) and Tokuma suggests materials for the product:
+
+1. The text is read on the device: text files directly, PDFs with `pdfjs-dist`, photos and scanned PDFs with `tesseract.js` (English text recognition). Both load only when a document is read. The recognition engine is served by the site itself: `scripts/copy-ocr.mjs` copies it from `node_modules` into `public/ocr` before `dev` and `build` (generated, not committed). No document leaves the device.
+2. `src/lib/docread/parse.ts` looks at each line for a known material (about 30, with keywords in all six languages), a weight (kg, g, lb, oz, tonnes) and words that give the type: *recycled* / *post-consumer* / *rPET* → Recycled; *reclaimed* / *offcuts* / *deadstock* → Reused; *organic* / *FSC* / *GOTS* → Renewable. "30% recycled, 10 kg" becomes 3 kg recycled + 7 kg virgin. Each suggestion is marked Sure, Check this or Unsure.
+3. The owner reviews every suggestion (name, weight, type, include or not) and can divide the weights by the number of products the document covers. Nothing is added until they press **Add**.
+
+The screens use the `DocumentReader` interface in `src/lib/docread/index.ts`, so an AI-based reader (through a server function that keeps the API key secret) can replace the on-device one later without changing the UI.
+
 ## Languages
 
 Tokuma is available in English, Spanish (Latin America), Portuguese (Brazil), French, Arabic and Dutch (for Suriname). The first visit uses the browser's language when it's one of these, otherwise English. People can switch with the globe button in the top bar (also on the landing and sign-in pages) or under **Settings → Language**; the choice is saved per device.
@@ -125,6 +135,7 @@ src/
   lib/accounting.ts        profit & loss, balance sheet, cash flow, break-even
   lib/readiness.ts         funding readiness checklist
   lib/share.ts             shared report snapshot: encode, decode and validate
+  lib/docread/             reading materials from invoices and receipts (text, PDF, OCR)
   i18n/                    language switching, t() and one strings file per language
   store/AppStore.tsx       app state, derived data, actions, toasts, persistence
   components/ui            design-system primitives (Card, Modal, Gauge, StockBar, Skeleton, …)
@@ -159,7 +170,7 @@ psql -d scratch -f supabase/tests/local_auth_stub.sql -f supabase/migrations/001
 ## Testing
 
 ```bash
-npm run test:e2e      # 101 browser checks across 10 suites
+npm run test:e2e      # 110 browser checks across 11 suites
 npm run i18n:check    # every language has every text
 ```
 
