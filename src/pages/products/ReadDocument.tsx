@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { FileText, Loader2, ShieldCheck, X } from 'lucide-react';
+import { Camera, Loader2, ShieldCheck, Upload, X } from 'lucide-react';
 import { Badge, Field, Term, clsx } from '../../components/ui';
 import { ACCEPTED_FILES, MAX_FILE_MB, UnsupportedFileError, documentReader, type Confidence, type MaterialSuggestion, type ReadResult } from '../../lib/docread';
 import type { MaterialClass } from '../../types';
@@ -15,7 +15,7 @@ interface Row extends MaterialSuggestion {
   include: boolean;
 }
 
-const CONFIDENCE_TONE: Record<Confidence, 'green' | 'amber' | 'gray'> = { high: 'green', medium: 'amber', low: 'gray' };
+const CONFIDENCE_TONE: Record<Confidence, 'green' | 'amber' | 'gray'> = { high: 'green', medium: 'amber', low: 'amber' };
 const num = (v: string) => (v.trim() === '' ? null : Number(v));
 const round = (n: number) => Math.round(n * 1000) / 1000;
 
@@ -26,7 +26,8 @@ const round = (n: number) => Math.round(n * 1000) / 1000;
  */
 export function ReadDocumentPanel({ onAdd, onClose }: { onAdd: (materials: ReadMaterial[]) => void; onClose: () => void }) {
   const t = useT();
-  const inputRef = useRef<HTMLInputElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState<{ name: string; progress: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +54,7 @@ export function ReadDocumentPanel({ onAdd, onClose }: { onAdd: (materials: ReadM
       );
     } finally {
       setBusy(null);
-      if (inputRef.current) inputRef.current.value = '';
+      for (const r of [fileRef, cameraRef]) if (r.current) r.current.value = '';
     }
   };
 
@@ -64,21 +65,21 @@ export function ReadDocumentPanel({ onAdd, onClose }: { onAdd: (materials: ReadM
     onAdd(chosen.map((r) => ({ name: r.name, weightKg: perUnit(r.weightKg), type: r.type })));
     onClose();
   };
-  const confidenceLabel = (c: Confidence) => (c === 'high' ? t('Sure') : c === 'medium' ? t('Check this') : t('Unsure'));
+  const confidenceLabel = (c: Confidence) => (c === 'medium' ? t('Check this') : t('Not sure'));
 
   return (
     <div className="mb-3 rounded-xl border border-gray-200 p-4 dark:border-white/10" data-testid="read-document">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-semibold">
-            <Term label={t('Fill in from a document')}>
+            <Term label={t('Scan a document')}>
               <p>{t('Upload a supplier invoice, receipt or spec sheet. Tokuma looks for materials, weights and words like “recycled”, “reclaimed” or “FSC”, and suggests materials for this product.')}</p>
               <p>{t('You check every suggestion before it is added. This is optional: you can always type materials in yourself.')}</p>
             </Term>
           </p>
           <p className="muted mt-0.5 flex items-center gap-1 text-xs">
             <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
-            {documentReader.onDevice ? t('Read on this device. Your document is not uploaded anywhere.') : t('Your document is sent securely to be read and is not stored.')}
+            {documentReader.onDevice ? t('Stays on your device. Nothing is uploaded.') : t('Your document is sent securely to be read and is not stored.')}
           </p>
         </div>
         <button className="icon-btn h-8 w-8 shrink-0" onClick={onClose} aria-label={t('Close')}>
@@ -97,8 +98,7 @@ export function ReadDocumentPanel({ onAdd, onClose }: { onAdd: (materials: ReadM
           <p className="muted mt-1.5 text-xs">{t('Photos can take up to a minute the first time.')}</p>
         </div>
       ) : (
-        <label
-          htmlFor="read-document-file"
+        <div
           onDragOver={(e) => {
             e.preventDefault();
             setDragging(true);
@@ -110,15 +110,22 @@ export function ReadDocumentPanel({ onAdd, onClose }: { onAdd: (materials: ReadM
             read(e.dataTransfer.files?.[0]);
           }}
           className={clsx(
-            'mt-3 flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed px-4 py-5 text-center transition',
-            dragging ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/10' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50 dark:border-white/10 dark:hover:bg-white/[0.02]',
+            'mt-3 rounded-lg border-2 border-dashed p-4 text-center transition',
+            dragging ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/10' : 'border-gray-200 dark:border-white/10',
           )}
         >
-          <FileText className="h-6 w-6 text-gray-400" />
-          <span className="mt-1.5 text-sm font-medium">{result ? t('Read another document') : t('Choose a photo, PDF or text file')}</span>
-          <span className="muted text-xs">{t('or drag it here · up to {mb} MB', { mb: MAX_FILE_MB })}</span>
-          <input id="read-document-file" ref={inputRef} type="file" accept={ACCEPTED_FILES} className="sr-only" onChange={(e) => read(e.target.files?.[0])} />
-        </label>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <button type="button" className="btn-primary justify-center" onClick={() => cameraRef.current?.click()}>
+              <Camera className="h-4 w-4" /> {t('Take a photo')}
+            </button>
+            <button type="button" className="btn-secondary justify-center" onClick={() => fileRef.current?.click()}>
+              <Upload className="h-4 w-4" /> {result ? t('Read another document') : t('Upload a file')}
+            </button>
+          </div>
+          <p className="muted mt-2 text-xs">{t('Photo, PDF or text file, up to {mb} MB. You can also drag it here.', { mb: MAX_FILE_MB })}</p>
+          <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="sr-only" tabIndex={-1} aria-hidden="true" onChange={(e) => read(e.target.files?.[0])} />
+          <input id="read-document-file" ref={fileRef} type="file" accept={ACCEPTED_FILES} className="sr-only" tabIndex={-1} aria-hidden="true" onChange={(e) => read(e.target.files?.[0])} />
+        </div>
       )}
       {error && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{error}</p>}
 
@@ -147,20 +154,18 @@ export function ReadDocumentPanel({ onAdd, onClose }: { onAdd: (materials: ReadM
                         <option value="Virgin">{t('Virgin')}</option>
                       </select>
                     </div>
-                    <div className="mt-1.5 flex items-center gap-2 ps-7">
-                      <Badge tone={CONFIDENCE_TONE[r.confidence]}>{confidenceLabel(r.confidence)}</Badge>
-                      <span className="muted min-w-0 truncate text-xs" title={r.line}>
-                        “{r.line}”
-                      </span>
-                    </div>
+                    {r.confidence !== 'high' && (
+                      <div className="mt-1.5 flex items-center gap-2 ps-7">
+                        <Badge tone={CONFIDENCE_TONE[r.confidence]}>{confidenceLabel(r.confidence)}</Badge>
+                        <span className="muted min-w-0 truncate text-xs" title={r.line}>
+                          “{r.line}”
+                        </span>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
-              <Field
-                label={t('How many products does this document cover?')}
-                hint={t('Optional. Invoices usually list a whole order: enter how many products it makes and the weights are divided to give the weight per product.')}
-                className="mt-3 max-w-sm"
-              >
+              <Field label={t('How many products does this order make? (optional)')} hint={t('Weights are divided to give the weight of one product.')} className="mt-3 max-w-sm">
                 <input type="number" min={1} step={1} className="input" placeholder={t('Optional')} value={units ?? ''} onChange={(e) => setUnits(num(e.target.value))} />
               </Field>
             </>

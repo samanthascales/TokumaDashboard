@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FileText, Plus, Trash2 } from 'lucide-react';
+import { Plus, ScanLine, Trash2 } from 'lucide-react';
 import { useStore } from '../../store/AppStore';
 import { avgDailySales, classifyMaterial, materialCircularity, reorderPoint } from '../../lib/metrics';
 import { Field, Modal, Ring, StockBar, Term } from '../../components/ui';
@@ -67,7 +67,7 @@ const num = (v: string) => (v.trim() === '' ? null : Number(v));
 
 const CATEGORIES = [tk('Tops'), tk('Outerwear'), tk('Bottoms'), tk('Accessories'), tk('Home'), tk('Other')];
 
-export function ProductModal({ open, onClose, product }: { open: boolean; onClose: () => void; product?: Product | null }) {
+export function ProductModal({ open, onClose, product, startScanning }: { open: boolean; onClose: () => void; product?: Product | null; startScanning?: boolean }) {
   const t = useT();
   const { lang } = useLang();
   const { suppliers, addProduct, updateProduct, deleteProduct, ledger } = useStore();
@@ -79,9 +79,9 @@ export function ProductModal({ open, onClose, product }: { open: boolean; onClos
     if (open) {
       setD(product ? toDraft(product) : empty());
       setTouched({});
-      setReading(false);
+      setReading(!!startScanning);
     }
-  }, [open, product]);
+  }, [open, product, startScanning]);
 
   const errors = useMemo(() => {
     const e: Record<string, string | null> = {};
@@ -217,18 +217,26 @@ export function ProductModal({ open, onClose, product }: { open: boolean; onClos
           <div>
             <div className="mb-2 flex flex-wrap items-center justify-between gap-1">
               <span className="label mb-0">{t('Bill of materials')}</span>
-              <div className="flex flex-wrap items-center gap-1">
-                {!reading && (
-                  <button className="btn-ghost btn-sm" onClick={() => setReading(true)}>
-                    <FileText className="h-3.5 w-3.5" /> {t('Fill in from a document')}
-                  </button>
-                )}
-                <button className="btn-ghost btn-sm" onClick={() => setD((x) => ({ ...x, materials: [...x.materials, blankMaterial()] }))}>
-                  <Plus className="h-3.5 w-3.5" /> {t('Add material')}
+              <button className="btn-ghost btn-sm" onClick={() => setD((x) => ({ ...x, materials: [...x.materials, blankMaterial()] }))}>
+                <Plus className="h-3.5 w-3.5" /> {t('Add material')}
+              </button>
+            </div>
+            {reading ? (
+              <ReadDocumentPanel onAdd={addRead} onClose={() => setReading(false)} />
+            ) : (
+              <div className="mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-brand-300 bg-brand-50/60 p-3 dark:border-brand-500/30 dark:bg-brand-500/5">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-brand-600 dark:bg-white/10 dark:text-brand-300">
+                  <ScanLine className="h-4 w-4" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium">{t('Have an invoice or receipt?')}</p>
+                  <p className="muted text-xs">{t('Scan it and Tokuma fills in the materials for you. Optional.')}</p>
+                </div>
+                <button className="btn-secondary btn-sm" onClick={() => setReading(true)}>
+                  {t('Scan a document')}
                 </button>
               </div>
-            </div>
-            {reading && <ReadDocumentPanel onAdd={addRead} onClose={() => setReading(false)} />}
+            )}
             <div className="space-y-2">
               {d.materials.map((m, i) => (
                 <div key={i} className="grid grid-cols-[1fr_90px_120px_32px] items-center gap-2">
