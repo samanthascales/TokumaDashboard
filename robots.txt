@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://samanthascales.github.io/TokumaDashboard/sitemap.xml
+Sitemap: https://tokuma-dashboard.vercel.app/sitemap.xml
