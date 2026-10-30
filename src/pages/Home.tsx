@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Bar, CartesianGrid, Cell, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import clsx from 'clsx';
-import { ArrowRight, Leaf, Plus, Target, Upload, Wallet } from 'lucide-react';
+import { ArrowRight, Leaf, Plus, Target, Wallet } from 'lucide-react';
 import { useStore } from '../store/AppStore';
 import { useChartColors, useSimulatedLoad } from '../lib/hooks';
 import { fmtCompactMoney, fmtMoney, fmtMonth, fmtPct, startOfToday } from '../lib/format';
@@ -12,7 +12,7 @@ import { levelName, levelTone, ScoreExplainer } from '../components/ScoreBits';
 import { t, useLang, useT } from '../i18n';
 import { Badge, Card, CardHeader, CardSkeleton, Field, Gauge, Modal, PageHeader, Term } from '../components/ui';
 import { LegendItem, TooltipBox } from '../components/charts/ChartTooltip';
-import { GettingStarted, InsightsFeed, LowStockBanner } from './dashboard/Widgets';
+import { GettingStarted, LowStockBanner, NextStep } from './dashboard/Widgets';
 import { ImportModal } from './transactions/ImportModal';
 
 function greeting() {
@@ -53,7 +53,7 @@ function MoneyCard({ onGoals }: { onGoals: () => void }) {
             <Wallet className="h-5 w-5" />
           </span>
           <div>
-            <h2 className="font-semibold">{t('Financial performance')}</h2>
+            <h2 className="font-semibold">{t('Profit')}</h2>
             <p className="muted text-xs">{t('Last 30 days')}</p>
           </div>
         </div>
@@ -75,13 +75,12 @@ function MoneyCard({ onGoals }: { onGoals: () => void }) {
           : p >= 0
             ? t('Revenue was {amount} more than expenses.', { amount: fmtMoney(p) })
             : t('Expenses were {amount} more than revenue.', { amount: fmtMoney(-p) })}
-        {change !== null && (
-          <span className="muted">
-            {' '}
-            {change >= 0 ? t('That is {amount} better than the 30 days before.', { amount: fmtMoney(change) }) : t('That is {amount} worse than the 30 days before.', { amount: fmtMoney(-change) })}
-          </span>
-        )}
       </p>
+      {change !== null && (
+        <p className="muted mt-1 text-xs">
+          {change >= 0 ? t('{amount} better than the 30 days before.', { amount: fmtMoney(change) }) : t('{amount} worse than the 30 days before.', { amount: fmtMoney(-change) })}
+        </p>
+      )}
 
       <div className="mt-5 grid grid-cols-2 gap-3">
         <div className="rounded-xl bg-gray-50 p-3 dark:bg-white/[0.03]">
@@ -116,7 +115,7 @@ function MoneyCard({ onGoals }: { onGoals: () => void }) {
 
 function ScoreCard({ onGoals }: { onGoals: () => void }) {
   useT();
-  const { score, scorePrev, goals, circ30 } = useStore();
+  const { score, scorePrev, goals } = useStore();
   const s = score.score;
   const change = s !== null && scorePrev.score !== null ? s - scorePrev.score : null;
   const levelText: Record<ScoreLevel, string> = {
@@ -125,14 +124,14 @@ function ScoreCard({ onGoals }: { onGoals: () => void }) {
     leader: t('Your business keeps most materials in use. Share this with your customers and lenders.'),
   };
   return (
-    <Card className="flex h-full flex-col p-5 sm:p-6">
+    <Card className="flex h-full flex-col p-5 sm:p-6" data-testid="home-score">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">
             <Leaf className="h-5 w-5" />
           </span>
           <div>
-            <h2 className="font-semibold">{t('Circularity performance')}</h2>
+            <h2 className="font-semibold">{t('Circularity')}</h2>
             <p className="muted text-xs">{t('Last 30 days')}</p>
           </div>
         </div>
@@ -155,12 +154,6 @@ function ScoreCard({ onGoals }: { onGoals: () => void }) {
           )}
         </div>
       </div>
-
-      {circ30.hasData && (
-        <p className="mt-4 rounded-xl bg-gray-50 p-3 text-sm dark:bg-white/[0.03]">
-          {t('{pct} of the materials in what you sold were recycled or reused.', { pct: fmtPct(circ30.rate, 0) })}
-        </p>
-      )}
 
       <div className="mt-auto pt-5">
         {goals.circularityScore ? (
@@ -250,70 +243,6 @@ function TwoBottomLines() {
   );
 }
 
-/** Each product's two grades: profit per item and circularity score. */
-function ProductsAtAGlance() {
-  useT();
-  const { products } = useStore();
-  const navigate = useNavigate();
-  const rows = [...products].sort((a, b) => b.circularityScore - a.circularityScore).slice(0, 5);
-  return (
-    <Card className="flex h-full flex-col">
-      <CardHeader
-        title={t('Your products')}
-        sub={t('What each one earns, and how circular it is')}
-        right={
-          <Link to="/app/products" className="text-xs font-medium text-brand-700 hover:underline dark:text-brand-300">
-            {t('See all')}
-          </Link>
-        }
-      />
-      {rows.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center p-6 text-center">
-          <p className="muted text-sm">{t('Add your products and what they are made of to see how each one is doing.')}</p>
-          <button className="btn-primary btn-sm mt-3" onClick={() => navigate('/app/products?new=product')}>
-            <Plus className="h-3.5 w-3.5" /> {t('Add product')}
-          </button>
-        </div>
-      ) : (
-        <div className="mt-2 overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr>
-                <th className="th">{t('Product')}</th>
-                <th className="th text-end">
-                  <Term label={t('Profit per unit')}>{t('Price minus unit cost: what you keep from each sale before fixed costs.')}</Term>
-                </th>
-                <th className="th text-end">
-                  <Term label={t('Circularity score')}>{t('For a product, the score is the share of its weight that comes from recycled or reused materials.')}</Term>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((p) => {
-                const per = p.price - p.unitCost;
-                return (
-                  <tr key={p.id} className="tr">
-                    <td className="td font-medium">{p.name}</td>
-                    <td className={clsx('td text-end tabular-nums', per < 0 && 'text-red-600 dark:text-red-400')}>{fmtMoney(per)}</td>
-                    <td className="td text-end">
-                      <span className="inline-flex items-center gap-2">
-                        <span className="hidden h-1.5 w-16 overflow-hidden rounded-full bg-gray-100 sm:block dark:bg-white/5">
-                          <span className="block h-full rounded-full bg-brand-600 dark:bg-brand-400" style={{ width: `${p.circularityScore}%` }} />
-                        </span>
-                        <span className="w-8 font-semibold tabular-nums">{p.circularityScore}</span>
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </Card>
-  );
-}
-
 export function GoalsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   useT();
   const { goals, setGoals } = useStore();
@@ -365,7 +294,7 @@ export function GoalsModal({ open, onClose }: { open: boolean; onClose: () => vo
 
 export default function Home() {
   useT();
-  const { profile } = useStore();
+  const { profile, transactions, insights } = useStore();
   const navigate = useNavigate();
   const ready = useSimulatedLoad('home', 500);
   const [importing, setImporting] = useState(false);
@@ -376,19 +305,11 @@ export default function Home() {
     <>
       <PageHeader
         title={firstName ? t('{greeting}, {name}', { greeting: greeting(), name: firstName }) : greeting()}
-        sub={profile.businessName ? t('{name}: financial and circularity performance', { name: profile.businessName }) : t('Your financial and circularity performance')}
+        sub={t('Here is how your business is doing.')}
         actions={
-          <>
-            <button className="btn-secondary" onClick={() => setGoalsOpen(true)}>
-              <Target className="h-4 w-4" /> {t('Goals')}
-            </button>
-            <button className="btn-secondary" onClick={() => setImporting(true)}>
-              <Upload className="h-4 w-4" /> {t('Import sales')}
-            </button>
-            <button className="btn-primary" onClick={() => navigate('/app/money?new=txn')}>
-              <Plus className="h-4 w-4" /> {t('Add transaction')}
-            </button>
-          </>
+          <button className="btn-primary" onClick={() => navigate('/app/money?new=txn')}>
+            <Plus className="h-4 w-4" /> {t('Record a sale or expense')}
+          </button>
         }
       />
       <LowStockBanner />
@@ -397,25 +318,16 @@ export default function Home() {
         <div className="grid gap-5 lg:grid-cols-2">
           <CardSkeleton className="h-[380px]" lines={6} />
           <CardSkeleton className="h-[380px]" lines={6} />
-          <CardSkeleton chart className="h-[360px] lg:col-span-2" />
         </div>
       ) : (
-        <div className="grid grid-cols-12 gap-5">
-          <div className="col-span-12 lg:col-span-6">
+        <div className="space-y-5">
+          <div className="grid gap-5 lg:grid-cols-2">
             <MoneyCard onGoals={() => setGoalsOpen(true)} />
-          </div>
-          <div className="col-span-12 lg:col-span-6">
             <ScoreCard onGoals={() => setGoalsOpen(true)} />
           </div>
-          <div className="col-span-12">
-            <TwoBottomLines />
-          </div>
-          <div className="col-span-12 xl:col-span-7">
-            <ProductsAtAGlance />
-          </div>
-          <div className="col-span-12 xl:col-span-5">
-            <InsightsFeed title={t('Next steps')} />
-          </div>
+          {(insights.length > 0 || transactions.length > 0) && <NextStep />}
+          {/* The month-by-month chart only appears once there is something to show. */}
+          {transactions.length > 0 && <TwoBottomLines />}
         </div>
       )}
       <ImportModal open={importing} onClose={() => setImporting(false)} mode="sales" />

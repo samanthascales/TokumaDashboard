@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
-import { AlertTriangle, Check, Lightbulb, Sparkles, Upload, X, Zap } from 'lucide-react';
+import { AlertTriangle, Check, Lightbulb, ScanLine, Sparkles, Upload, X, Zap } from 'lucide-react';
 import { useStore } from '../../store/AppStore';
 import { tk, useT } from '../../i18n';
 import { Badge, Card, CardHeader, EmptyState, Segmented } from '../../components/ui';
@@ -145,59 +145,102 @@ export function InsightsFeed({ title }: { title?: string } = {}) {
   );
 }
 
+/* ---------------- Next step (home) ---------------- */
+
+/** The one most useful suggestion, with the rest one click away. */
+export function NextStep() {
+  const t = useT();
+  const { insights, dismissInsight, applyMaterialSwitch } = useStore();
+  const navigate = useNavigate();
+  const [more, setMore] = useState(false);
+  const run = (i: (typeof insights)[number]) => {
+    if (i.action.type === 'navigate') navigate(i.action.to);
+    else {
+      applyMaterialSwitch(i.action.productId, i.action.materialName);
+      dismissInsight(i.id);
+    }
+  };
+  const [first, ...rest] = insights;
+  return (
+    <Card className="p-5" data-testid="next-step">
+      <p className="flex items-center gap-2 text-sm font-semibold text-brand-700 dark:text-brand-300">
+        <Lightbulb className="h-4 w-4" /> {t('Your next step')}
+      </p>
+      {!first ? (
+        <p className="muted mt-2 text-sm">{t('Nothing to do right now. New suggestions appear as you add products and sales.')}</p>
+      ) : (
+        <>
+          <p className="mt-2 font-semibold">{first.title}</p>
+          <p className="muted mt-1 text-sm leading-relaxed">{first.body}</p>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <button className="btn-primary btn-sm" onClick={() => run(first)}>
+              {first.actionLabel}
+            </button>
+            <button className="btn-ghost btn-sm" onClick={() => dismissInsight(first.id)}>
+              {t('Not now')}
+            </button>
+            {rest.length > 0 && (
+              <button className="btn-ghost btn-sm ms-auto" onClick={() => setMore((m) => !m)} aria-expanded={more}>
+                {more ? t('Hide other suggestions') : t('{count} more suggestions', { count: rest.length })}
+              </button>
+            )}
+          </div>
+          {more && (
+            <ul className="mt-4 divide-y divide-gray-100 border-t border-gray-100 dark:divide-white/5 dark:border-white/5">
+              {rest.map((i) => (
+                <li key={i.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
+                  <span className="min-w-0 text-sm">{i.title}</span>
+                  <button className="btn-secondary btn-sm" onClick={() => run(i)}>
+                    {i.actionLabel}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </Card>
+  );
+}
+
 /* ---------------- Getting started (new accounts) ---------------- */
 
+/** Two steps that fill the dashboard: a product with its materials, then a sale. */
 export function GettingStarted({ onImportSales }: { onImportSales: () => void }) {
   const t = useT();
-  const { profile, products, suppliers, transactions } = useStore();
+  const { products, transactions } = useStore();
   const navigate = useNavigate();
   const steps = [
-    { label: t('Complete your business profile'), body: t('Name, industry and what you make.'), done: !!profile.businessName.trim(), to: '/onboarding', cta: t('Set up profile') },
-    { label: t('Add your first product'), body: t('List its materials so Tokuma can score circularity.'), done: products.length > 0, to: '/app/products?new=product', cta: t('Add product') },
-    { label: t('Add a supplier'), body: t('Lead times drive your automatic reorder points.'), done: suppliers.length > 0, to: '/app/products/suppliers?new=supplier', cta: t('Add supplier') },
-    { label: t('Log your first sale'), body: t('Sales power revenue, circularity and customer insights. Log one, or import a sales export.'), done: transactions.some((x) => x.type === 'inflow'), to: '/app/money?new=txn', cta: t('Log sale'), sale: true },
+    { label: t('Add a product'), body: t('What you sell and what it is made of.'), done: products.length > 0, cta: t('Add product'), go: () => navigate('/app/products?new=product'), alt: t('Scan an invoice'), altIcon: ScanLine, altGo: () => navigate('/app/products?new=scan') },
+    { label: t('Record your first sale'), body: t('Money that came in from a customer.'), done: transactions.some((x) => x.type === 'inflow'), cta: t('Record a sale'), go: () => navigate('/app/money?new=txn'), alt: t('Import sales'), altIcon: Upload, altGo: onImportSales },
   ];
   const done = steps.filter((s) => s.done).length;
   if (done === steps.length) return null;
   const next = steps.findIndex((s) => !s.done);
   return (
-    <Card className="mb-6 overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-4">
-        <div>
-          <h3 className="card-title">{t('Get started with Tokuma')}</h3>
-          <p className="card-sub mt-0.5">{t('Your dashboard fills in as you add your own data.')}</p>
-        </div>
-        <span className="text-xs font-semibold tabular-nums text-brand-700 dark:text-brand-400">
-          {t('{done} of {total} done', { done, total: steps.length })}
-        </span>
+    <Card className="mb-6 p-5" data-testid="getting-started">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="font-semibold">{t('Set up your dashboard')}</h3>
+        <span className="muted text-sm">{t('{done} of {total} done', { done, total: steps.length })}</span>
       </div>
-      <div className="mx-5 mt-3 h-1.5 overflow-hidden rounded-full bg-gray-100 dark:bg-white/5">
-        <div className="h-full rounded-full bg-brand-600 transition-all duration-700 dark:bg-brand-400" style={{ width: `${(done / steps.length) * 100}%` }} />
-      </div>
-      <ol className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-4">
+      <ol className="mt-4 space-y-3">
         {steps.map((s, i) => (
-          <li
-            key={s.to}
-            className={clsx(
-              'flex flex-col rounded-xl border p-4 transition',
-              s.done ? 'border-gray-100 bg-gray-50/60 dark:border-white/5 dark:bg-white/[0.02]' : i === next ? 'border-brand-200 bg-brand-50/50 dark:border-brand-500/30 dark:bg-brand-500/[0.06]' : 'border-gray-200 dark:border-white/10',
-            )}
-          >
-            <span className={clsx('flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold', s.done ? 'bg-brand-600 text-white' : 'bg-white text-gray-500 ring-1 ring-gray-200 dark:bg-ink-850 dark:text-gray-300 dark:ring-white/10')}>
+          <li key={s.label} className={clsx('flex flex-wrap items-center gap-3 rounded-xl border p-3', i === next ? 'border-brand-200 bg-brand-50/50 dark:border-brand-500/30 dark:bg-brand-500/[0.06]' : 'border-gray-100 dark:border-white/5')}>
+            <span className={clsx('flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold', s.done ? 'bg-brand-600 text-white' : 'bg-white text-gray-500 ring-1 ring-gray-200 dark:bg-ink-850 dark:text-gray-300 dark:ring-white/10')}>
               {s.done ? <Check className="h-4 w-4" /> : i + 1}
             </span>
-            <p className={clsx('mt-3 text-sm font-semibold', s.done && 'text-gray-400 line-through dark:text-gray-500')}>{s.label}</p>
-            <p className="muted mt-1 flex-1 text-xs">{s.body}</p>
+            <div className="min-w-0 flex-1">
+              <p className={clsx('text-sm font-semibold', s.done && 'text-gray-400 line-through dark:text-gray-500')}>{s.label}</p>
+              <p className="muted text-xs">{s.body}</p>
+            </div>
             {!s.done && (
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button className={i === next ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'} onClick={() => navigate(s.to)}>
+              <div className="flex flex-wrap gap-2">
+                <button className={i === next ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'} onClick={s.go}>
                   {s.cta}
                 </button>
-                {'sale' in s && (
-                  <button className="btn-secondary btn-sm" onClick={onImportSales}>
-                    <Upload className="h-3.5 w-3.5" /> {t('Import sales')}
-                  </button>
-                )}
+                <button className="btn-ghost btn-sm" onClick={s.altGo}>
+                  <s.altIcon className="h-3.5 w-3.5" /> {s.alt}
+                </button>
               </div>
             )}
           </li>

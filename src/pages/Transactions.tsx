@@ -148,7 +148,7 @@ export default function Transactions() {
   const { transactions, products, customers, pnl30 } = useStore();
   const [params, setParams] = useSearchParams();
   const [adding, setAdding] = useState(false);
-  const [importing, setImporting] = useState(false);
+  const [importing, setImporting] = useState<false | 'transactions' | 'sales'>(false);
   const [type, setType] = useState<'all' | 'inflow' | 'outflow'>('all');
   const [cat, setCat] = useState('All');
   const [q, setQ] = useState('');
@@ -159,7 +159,7 @@ export default function Transactions() {
     const n = params.get('new');
     if (n === 'txn' || n === 'import') {
       if (n === 'txn') setAdding(true);
-      else setImporting(true);
+      else setImporting('transactions');
       setParams({}, { replace: true });
     }
   }, [params, setParams]);
@@ -204,7 +204,10 @@ export default function Transactions() {
                 <Download className="h-4 w-4" /> {t('Export CSV')}
               </button>
             )}
-            <button className="btn-secondary" onClick={() => setImporting(true)}>
+            <button className="btn-secondary" onClick={() => setImporting('sales')}>
+              <Upload className="h-4 w-4" /> {t('Import sales')}
+            </button>
+            <button className="btn-secondary" onClick={() => setImporting('transactions')}>
               <Upload className="h-4 w-4" /> {t('Import CSV / Excel')}
             </button>
             <button className="btn-primary" onClick={() => setAdding(true)}>
@@ -229,7 +232,7 @@ export default function Transactions() {
         ))}
       </div>
       <div className="mb-5">
-        <RevenueChart onImportSales={() => setImporting(true)} />
+        <RevenueChart onImportSales={() => setImporting('sales')} />
       </div>
       {!ready ? (
         <TableSkeleton rows={10} cols={6} />
@@ -257,7 +260,7 @@ export default function Transactions() {
               body={transactions.length ? t('Adjust the filters or log a new transaction.') : t('Log sales and expenses one at a time, or import them from a CSV or Excel file.')}
               action={
                 <div className="flex gap-2">
-                  <button className="btn-secondary btn-sm" onClick={() => setImporting(true)}>
+                  <button className="btn-secondary btn-sm" onClick={() => setImporting('transactions')}>
                     <Upload className="h-3.5 w-3.5" /> {t('Import file')}
                   </button>
                   <button className="btn-primary btn-sm" onClick={() => setAdding(true)}>
@@ -330,7 +333,7 @@ export default function Transactions() {
         </Card>
       )}
       <AddTransactionModal open={adding} onClose={() => setAdding(false)} />
-      <ImportModal open={importing} onClose={() => setImporting(false)} />
+      <ImportModal open={!!importing} mode={importing || 'transactions'} onClose={() => setImporting(false)} />
     </>
   );
 }

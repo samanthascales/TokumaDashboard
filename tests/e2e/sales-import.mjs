@@ -27,9 +27,9 @@ await page.evaluate(() => localStorage.setItem('tokuma-state-v2', JSON.stringify
 })));
 await page.goto(B + 'app'); await page.reload(); await page.waitForTimeout(1500);
 
-await step('home shows Import sales in the header and the first-sale step', async () => {
-  const n = await page.getByRole('button', { name: /Import sales/ }).count();
-  if (n !== 2) throw new Error('found ' + n + ' Import sales buttons');
+await step('home shows Import sales in the first-sale step', async () => {
+  const n = await page.getByTestId('getting-started').getByRole('button', { name: /Import sales/ }).count();
+  if (n !== 1) throw new Error('found ' + n + ' Import sales buttons');
   await page.screenshot({ path: SP + '/shots3/dash-import-buttons.png' });
 });
 await step('Shopify export: uses line price × qty, not the order Total', async () => {
@@ -47,6 +47,7 @@ await step('Shopify export: uses line price × qty, not the order Total', async 
   await page.getByText('Imported 3 sales').first().waitFor();
 });
 await step('Square export: net sales, category left as Product sale, identical rows both kept', async () => {
+  await page.goto(B + 'app/money'); await page.waitForTimeout(900);
   await page.getByRole('button', { name: /Import sales/ }).first().click();
   await page.setInputFiles('#import-file', FIX + '/square_items.csv');
   await dlg().getByText('match your columns').waitFor();
@@ -61,6 +62,7 @@ await step('Square export: net sales, category left as Product sale, identical r
   await page.getByText('Imported 3 sales').first().waitFor();
 });
 await step('Etsy export: 2-digit year dates, new buyer added, negative total recorded as refund', async () => {
+  await page.goto(B + 'app/money'); await page.waitForTimeout(900);
   await page.getByRole('button', { name: /Import sales/ }).first().click();
   await page.setInputFiles('#import-file', FIX + '/etsy_sold_items.csv');
   await dlg().getByText('match your columns').waitFor();
@@ -80,9 +82,9 @@ await step('imported revenue shows on the money page and the home checklist', as
   console.log('     revenue chart:', card.split('\n').slice(0, 6).join(' | '));
   if (!card.includes('$400')) throw new Error('expected $400 total revenue');
   await page.goto(B + 'app'); await page.waitForTimeout(1200);
-  if (await page.getByText('Get started with Tokuma').count()) {
-    const gs = await page.locator('.card', { hasText: 'Get started with Tokuma' }).innerText();
-    if (!gs.includes('Log your first sale') || gs.match(/Log your first sale[\s\S]*Import sales/)) throw new Error('sale step not done');
+  if (await page.getByTestId('getting-started').count()) {
+    const gs = await page.getByTestId('getting-started').innerText();
+    if (!gs.includes('Record your first sale') || gs.match(/Record your first sale[\s\S]*Import sales/)) throw new Error('sale step not done');
   }
 });
 console.log(errors.length ? 'ERRORS:\n' + errors.join('\n') : 'NO RUNTIME ERRORS');

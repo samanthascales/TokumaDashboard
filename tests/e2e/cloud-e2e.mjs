@@ -45,19 +45,11 @@ await step('sign-up creates an account and a workspace, then onboarding', async 
   if (s.workspaces.length !== 1) throw new Error('workspaces=' + s.workspaces.length);
 });
 await step('changes save to the database and survive a reload', async () => {
-  await alice.getByPlaceholder('Jane Doe').fill('Alice Ng');
-  await alice.getByPlaceholder('you@company.com').fill('alice@shop.co');
-  await alice.getByPlaceholder('Founder & CEO').fill('Founder');
-  await alice.getByRole('button', { name: /Next step/ }).click();
   await alice.getByPlaceholder('Your business name').fill('Alice Goods');
-  await alice.getByPlaceholder('Canada').fill('Canada');
-  await alice.getByPlaceholder(/e.g. We make bags/).fill('We make bags from reclaimed sailcloth and canvas.');
-  await alice.getByRole('button', { name: /Next step/ }).click();
-  await alice.getByRole('button', { name: 'Reused canvas' }).click();
-  await alice.getByRole('button', { name: 'Reuse & resale' }).click();
-  await alice.getByRole('button', { name: /Next step/ }).click();
-  await alice.locator('select').first().selectOption('Pre-revenue');
-  await alice.getByRole('button', { name: /Finish/ }).click();
+  await alice.getByPlaceholder('Jane').fill('Alice');
+  await alice.getByRole('button', { name: 'Continue' }).click();
+  await alice.getByRole('button', { name: 'Clothing & textiles' }).click();
+  await alice.getByRole('button', { name: /Look around first/ }).click();
   await alice.waitForURL(/#\/app$/);
   await saved(alice);
   let s = await state();

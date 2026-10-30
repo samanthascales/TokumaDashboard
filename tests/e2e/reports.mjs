@@ -92,7 +92,7 @@ await step('dashboard shows profit and the score side by side; loans are not pro
   if (!(await page.locator('main').innerText()).includes('Revenue was $150 more than expenses.')) throw new Error('missing plain sentence');
 });
 await step('goals: set both, progress bars appear', async () => {
-  await page.getByRole('button', { name: 'Goals' }).click();
+  await page.getByRole('button', { name: 'Set a profit goal' }).click();
   const d = page.getByRole('dialog');
   await d.locator('label:has-text("Monthly net profit goal") input').fill('300');
   await d.locator('label:has-text("Circularity score goal") input').fill('70');
