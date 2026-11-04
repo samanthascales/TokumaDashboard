@@ -74,6 +74,7 @@ await step('one product, no sales: circularity is "—" everywhere', async () =>
   const c = await page.getByTestId('score-breakdown').innerText();
   if (!c.includes('—')) throw new Error('circularity score should be a dash: ' + c.slice(0, 120));
   await page.goto(B + 'app/learn/funding'); await page.waitForTimeout(1200);
+  await page.getByRole('button', { name: 'Explore funding options and estimates' }).click();
   const f = await text();
   if (/Estimated APR\s+\d/.test(f) || /Max eligibility\s+\$/.test(f)) throw new Error('funding shows numbers: ' + f.slice(0, 300));
   await page.screenshot({ path: SP + '/funding-nosales.png' });

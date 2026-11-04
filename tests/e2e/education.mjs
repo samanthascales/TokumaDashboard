@@ -42,6 +42,8 @@ await step('program: six phases, diagnostic call to action, modules locked', asy
 
 await step('scores and matching never show a made-up number', async () => {
   await page.goto(B + 'app/learn'); await page.waitForTimeout(800);
+  if (await page.getByTestId('edu-scores').count()) throw new Error('details should start hidden');
+  await page.getByRole('button', { name: /Show progress details/ }).click();
   const s = await page.getByTestId('edu-scores').innerText();
   if ((s.match(/how the score is weighted has not been decided/g) ?? []).length !== 2) throw new Error('scores: ' + s);
   if (/\d/.test(s)) throw new Error('a number appears in scores: ' + s);

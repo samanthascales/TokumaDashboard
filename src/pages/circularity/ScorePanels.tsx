@@ -7,7 +7,7 @@ import { fmtDate, fmtKg, fmtMoney2, fmtNum, fmtPct, startOfToday, toISO } from '
 import { lastNDays } from '../../lib/metrics';
 import { GLOBAL_CIRCULARITY_PCT, LEVEL_FROM, PRODUCTIVITY_RANGE, ROUTE_WEIGHT, ROUTES, SCORE_VERSION, type Pillar, type PillarKey, type ScoreLevel } from '../../lib/score';
 import { tk, useT } from '../../i18n';
-import { Badge, Card, CardHeader, EmptyState, Field, Gauge, Modal, Term } from '../../components/ui';
+import { Badge, Card, CardHeader, Field, Gauge, Modal, Term } from '../../components/ui';
 import { levelName, levelTone, ScoreExplainer } from '../../components/ScoreBits';
 import type { RecoveryRoute } from '../../types';
 
@@ -308,7 +308,7 @@ export function WasteLog({ open, setOpen }: { open: boolean; setOpen: (v: boolea
         }
       />
       {rows.length === 0 ? (
-        <EmptyState icon={<Trash2 className="h-6 w-6" />} title={t('No waste recorded yet')} body={t('Add your scraps, packaging and returned products to measure your circular outflow.')} />
+        <p className="muted px-5 pb-5 pt-3 text-sm">{t('Add your scraps, packaging and returned products to measure your circular outflow.')}</p>
       ) : (
         <div className="mt-2 overflow-x-auto">
           <table className="w-full">

@@ -218,6 +218,8 @@ function Inventory({ onOpen }: { onOpen: (p: Product) => void }) {
   const [restocking, setRestocking] = useState<InventoryRow | null>(null);
   const [qty, setQty] = useState(0);
   const [filter, setFilter] = useState<'all' | 'attention'>('all');
+  // The planning numbers behind the reorder point stay one click away.
+  const [details, setDetails] = useState(false);
   const critical = inventory.filter((r) => r.status === 'critical').length;
   const reorder = inventory.filter((r) => r.status === 'reorder').length;
   const value = inventory.reduce((s, r) => s + r.product.stockOnHand * r.product.unitCost, 0);
@@ -227,15 +229,14 @@ function Inventory({ onOpen }: { onOpen: (p: Product) => void }) {
     .sort((a, b) => ({ critical: 0, reorder: 1, healthy: 2 })[a.status] - ({ critical: 0, reorder: 1, healthy: 2 })[b.status] || a.daysOfCover - b.daysOfCover);
 
   const tiles = [
-    { label: t('Units on hand'), value: fmtInt(units), sub: t('{count} SKUs', { count: inventory.length }) },
+    { label: t('Items in stock'), value: fmtInt(units), sub: t('{count} products', { count: inventory.length }) },
     { label: t('Inventory value'), value: fmtMoney(value), sub: t('at unit cost'), explain: t('The cost of all the inventory you have. It appears on your balance sheet as an asset.') },
-    { label: t('Below threshold'), value: critical, sub: t('critical — order now'), tone: critical ? 'text-red-600 dark:text-red-400' : '' },
-    { label: t('At reorder point'), value: reorder, sub: t('order within lead time'), tone: reorder ? 'text-amber-600 dark:text-amber-400' : '' },
+    { label: t('Need restocking'), value: critical + reorder, sub: critical + reorder ? t('Order more soon') : t('All well stocked'), tone: critical ? 'text-red-600 dark:text-red-400' : reorder ? 'text-amber-600 dark:text-amber-400' : '' },
   ];
 
   return (
     <>
-      <div className="mb-5 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="mb-5 grid grid-cols-2 gap-4 lg:grid-cols-3">
         {tiles.map((x) => (
           <Card key={x.label} className="p-4">
             <p className="muted text-xs">{'explain' in x && x.explain ? <Term label={x.label}>{x.explain}</Term> : x.label}</p>
@@ -246,13 +247,13 @@ function Inventory({ onOpen }: { onOpen: (p: Product) => void }) {
       </div>
       <Card className="overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
-          <div>
-            <h3 className="card-title">{t('Stock levels')}</h3>
-            <p className="card-sub flex items-center gap-1">
-              <Calculator className="h-3.5 w-3.5" /> {t('Reorder point = (avg daily sales × supplier lead time) + safety stock')}
-            </p>
+          <h3 className="card-title">{t('Stock levels')}</h3>
+          <div className="flex flex-wrap items-center gap-2">
+            <Segmented value={filter} onChange={setFilter} options={[{ value: 'all', label: t('All') }, { value: 'attention', label: t('Needs attention ({count})', { count: critical + reorder }) }]} />
+            <button className="btn-ghost btn-sm" onClick={() => setDetails((d) => !d)} aria-pressed={details}>
+              <Calculator className="h-3.5 w-3.5" /> {details ? t('Hide planning details') : t('Show planning details')}
+            </button>
           </div>
-          <Segmented value={filter} onChange={setFilter} options={[{ value: 'all', label: t('All') }, { value: 'attention', label: t('Needs attention ({count})', { count: critical + reorder }) }]} />
         </div>
         {rows.length === 0 ? (
           <EmptyState icon={<Boxes className="h-6 w-6" />} title={t('Everything is well stocked')} body={t('No products are at or below their reorder point.')} />
@@ -262,12 +263,16 @@ function Inventory({ onOpen }: { onOpen: (p: Product) => void }) {
               <thead className="bg-gray-50/60 dark:bg-white/[0.02]">
                 <tr>
                   <th className="th">{t('Product')}</th>
-                  <th className="th min-w-[200px]">{t('Stock vs threshold')}</th>
-                  <th className="th text-end"><Term label={t('Avg / day')}>{t('How many of this product you sell on an average day (last 30 days).')}</Term></th>
-                  <th className="th text-end"><Term label={t('Lead time')}>{t('How many days your supplier takes to deliver after you order.')}</Term></th>
-                  <th className="th text-end"><Term label={t('Safety')}>{t('Extra items you keep in case sales jump or a delivery is late.')}</Term></th>
-                  <th className="th text-end"><Term label={t('Reorder pt')}>{t('When your stock falls to this number, order more so you do not run out before the delivery arrives.')}</Term></th>
-                  <th className="th text-end"><Term label={t('Cover')}>{t('How many days your current stock will last at your normal sales speed.')}</Term></th>
+                  <th className="th min-w-[200px]">{t('In stock')}</th>
+                  <th className="th text-end"><Term label={t('Lasts about')}>{t('How many days your current stock will last at your normal sales speed.')}</Term></th>
+                  {details && (
+                    <>
+                      <th className="th text-end"><Term label={t('Avg / day')}>{t('How many of this product you sell on an average day (last 30 days).')}</Term></th>
+                      <th className="th text-end"><Term label={t('Lead time')}>{t('How many days your supplier takes to deliver after you order.')}</Term></th>
+                      <th className="th text-end"><Term label={t('Safety')}>{t('Extra items you keep in case sales jump or a delivery is late.')}</Term></th>
+                      <th className="th text-end"><Term label={t('Reorder pt')}>{t('When your stock falls to this number, order more so you do not run out before the delivery arrives. Reorder point = (average daily sales × supplier lead time) + safety stock.')}</Term></th>
+                    </>
+                  )}
                   <th className="th">{t('Status')}</th>
                   <th className="th" />
                 </tr>
@@ -286,23 +291,27 @@ function Inventory({ onOpen }: { onOpen: (p: Product) => void }) {
                     <td className="td">
                       <StockBar stock={r.product.stockOnHand} threshold={r.product.lowStockThreshold} reorderPoint={r.reorderPoint} />
                     </td>
-                    <td className="td text-end tabular-nums">{fmtNum(r.avgDaily, 2)}</td>
-                    <td className="td text-end tabular-nums">
-                      {r.leadTime === null ? (
-                        <Tip content={r.supplier ? t('{name} has no lead time entered', { name: r.supplier.name }) : t('Link a supplier to this product')}>
-                          <span className="text-gray-400">—</span>
-                        </Tip>
-                      ) : (
-                        <Tip content={t('From {name}', { name: r.supplier!.name })}>
-                          <span className="border-b border-dashed border-gray-300 dark:border-gray-600">{t('{n}d', { n: r.leadTime })}</span>
-                        </Tip>
-                      )}
-                    </td>
-                    <td className="td text-end tabular-nums">{r.product.safetyStock}</td>
-                    <td className="td text-end font-semibold tabular-nums">{r.reorderPoint ?? <span className="font-normal text-gray-400">—</span>}</td>
                     <td className={clsx('td text-end tabular-nums', r.leadTime !== null && r.daysOfCover < r.leadTime && 'font-semibold text-red-600 dark:text-red-400')}>
-                      {Number.isFinite(r.daysOfCover) ? t('{n}d', { n: Math.floor(r.daysOfCover) }) : '—'}
+                      {Number.isFinite(r.daysOfCover) ? t('{count} days', { count: Math.floor(r.daysOfCover) }) : '—'}
                     </td>
+                    {details && (
+                      <>
+                      <td className="td text-end tabular-nums">{fmtNum(r.avgDaily, 2)}</td>
+                      <td className="td text-end tabular-nums">
+                        {r.leadTime === null ? (
+                          <Tip content={r.supplier ? t('{name} has no lead time entered', { name: r.supplier.name }) : t('Link a supplier to this product')}>
+                            <span className="text-gray-400">—</span>
+                          </Tip>
+                        ) : (
+                          <Tip content={t('From {name}', { name: r.supplier!.name })}>
+                            <span className="border-b border-dashed border-gray-300 dark:border-gray-600">{t('{n}d', { n: r.leadTime })}</span>
+                          </Tip>
+                        )}
+                      </td>
+                      <td className="td text-end tabular-nums">{r.product.safetyStock}</td>
+                      <td className="td text-end font-semibold tabular-nums">{r.reorderPoint ?? <span className="font-normal text-gray-400">—</span>}</td>
+                      </>
+                    )}
                     <td className="td">
                       <StatusBadge status={r.status} />
                     </td>

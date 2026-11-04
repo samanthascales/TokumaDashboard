@@ -26,35 +26,24 @@ export interface NavItem {
   end?: boolean;
 }
 
+// One flat list of plain names: sub-pages (Inventory, Suppliers, the report tabs)
+// are tabs inside their page, so nothing appears twice.
 export const businessNav: NavItem[] = [
   { to: '/app', label: tk('Dashboard'), icon: LayoutDashboard, end: true },
   { to: '/app/money', label: tk('Revenue & expenses'), icon: ArrowLeftRight },
-  {
-    to: '/app/products',
-    label: tk('Products'),
-    icon: Package,
-    end: true,
-    children: [
-      { to: '/app/products/inventory', label: tk('Inventory'), icon: Boxes },
-      { to: '/app/products/suppliers', label: tk('Suppliers'), icon: Truck },
-    ],
-  },
+  { to: '/app/products', label: tk('Products'), icon: Package },
   { to: '/app/circularity', label: tk('Circularity'), icon: Recycle },
-  {
-    to: '/app/reports',
-    label: tk('Reports'),
-    icon: FileBarChart,
-    end: true,
-    children: [{ to: '/app/share', label: tk('Share a report'), icon: Share2, badge: 'new' }],
-  },
-  {
-    to: '/app/learn',
-    label: tk('Learn'),
-    icon: GraduationCap,
-    end: true,
-    children: [{ to: '/app/learn/funding', label: tk('Funding'), icon: Landmark }],
-  },
+  { to: '/app/reports', label: tk('Reports'), icon: FileBarChart },
+  { to: '/app/learn/funding', label: tk('Funding'), icon: Landmark },
+  { to: '/app/learn', label: tk('Learn'), icon: GraduationCap, end: true },
   { to: '/app/settings', label: tk('Settings'), icon: Settings },
+];
+
+/** Pages that are reached from inside another page; listed so search still finds them. */
+const subPages: NavItem[] = [
+  { to: '/app/products/inventory', label: tk('Inventory'), icon: Boxes },
+  { to: '/app/products/suppliers', label: tk('Suppliers'), icon: Truck },
+  { to: '/app/share', label: tk('Share a report'), icon: Share2 },
 ];
 
 export const investorNav: NavItem[] = [
@@ -69,7 +58,8 @@ export const investorNav: NavItem[] = [
 export const adminNavItem: NavItem = { to: '/app/admin', label: tk('Admin'), icon: ShieldAlert };
 
 export const allPages = [
-  ...businessNav.flatMap((n) => [n, ...(n.children ?? [])]),
+  ...businessNav,
+  ...subPages,
   { to: '/app/investor', label: tk('Investor Overview'), icon: BriefcaseBusiness },
 ];
 

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 import { ArrowRight, ClipboardCheck, Lock, LockOpen } from 'lucide-react';
@@ -97,6 +98,8 @@ export default function Program() {
   const { modules, milestones, scores, matching } = learning;
   const reached = milestones.filter((m) => m.done).length;
   const completed = modules.filter((m) => m.complete).length;
+  // Milestones, scores and investor matching are summed up in the stepper above; the full lists open on request.
+  const [details, setDetails] = useState(false);
 
   if (!ready)
     return (
@@ -151,109 +154,114 @@ export default function Program() {
         })}
       </div>
 
-      <div className="grid grid-cols-12 gap-5">
-        <Card className="col-span-12 lg:col-span-4">
-          <CardHeader title={t('Milestones')} sub={t('{done} of {total} done', { done: reached, total: milestones.length })} right={<Ring value={(reached / milestones.length) * 100} />} />
-          <div className="space-y-4 p-5" data-testid="milestones">
-            {[undefined, ...modules.map((m) => m.module.id)].map((id) => {
-              const items = milestones.filter((x) => x.moduleId === id);
-              const mod = modules.find((m) => m.module.id === id);
-              return (
-                <div key={id ?? 'start'}>
-                  {mod && <p className="mb-1.5 text-xs font-semibold">{t(mod.module.title)}</p>}
-                  <ul className="space-y-1.5">
-                    {items.map((x) => (
-                      <li key={x.id} className={clsx('flex items-center gap-2 text-sm', x.done && 'muted')}>
-                        <MilestoneIcon done={x.done} /> {t(x.label)}
+      <button className="btn-secondary w-full justify-center" onClick={() => setDetails((d) => !d)} aria-expanded={details}>
+        {details ? t('Hide progress details') : t('Show progress details: milestones, scores and investor matching')}
+      </button>
+      {details && (
+        <div className="mt-5 grid grid-cols-12 gap-5">
+          <Card className="col-span-12 lg:col-span-4">
+            <CardHeader title={t('Milestones')} sub={t('{done} of {total} done', { done: reached, total: milestones.length })} right={<Ring value={(reached / milestones.length) * 100} />} />
+            <div className="space-y-4 p-5" data-testid="milestones">
+              {[undefined, ...modules.map((m) => m.module.id)].map((id) => {
+                const items = milestones.filter((x) => x.moduleId === id);
+                const mod = modules.find((m) => m.module.id === id);
+                return (
+                  <div key={id ?? 'start'}>
+                    {mod && <p className="mb-1.5 text-xs font-semibold">{t(mod.module.title)}</p>}
+                    <ul className="space-y-1.5">
+                      {items.map((x) => (
+                        <li key={x.id} className={clsx('flex items-center gap-2 text-sm', x.done && 'muted')}>
+                          <MilestoneIcon done={x.done} /> {t(x.label)}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+
+          <Card className="col-span-12 lg:col-span-4">
+            <CardHeader title={t('Your scores')} sub={t('Given when you finish all four modules. Investors see them on your profile.')} />
+            <div className="grid grid-cols-2 gap-4 p-5" data-testid="edu-scores">
+              {(Object.keys(scores) as EduScoreKey[]).map((key) => {
+                const s = scores[key];
+                return (
+                  <div key={key} className="flex flex-col items-center text-center">
+                    <Gauge value={s.value} />
+                    <p className="mt-2 text-sm font-semibold">{t(SCORE_NAMES[key])}</p>
+                    {!s.weightsSet ? (
+                      <p className="muted mt-1 text-xs">{t('Not calculated yet: how the score is weighted has not been decided.')}</p>
+                    ) : s.missing.length ? (
+                      <p className="muted mt-1 text-xs">{t('Finish these modules first: {modules}', { modules: s.missing.map((id) => t(modules.find((m) => m.module.id === id)!.module.title)).join(', ') })}</p>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+
+          <Card className="col-span-12 lg:col-span-4" data-testid="matching">
+            <CardHeader
+              title={t('Investor matching')}
+              right={
+                matching.unlocked ? (
+                  <Badge tone="green">
+                    <LockOpen className="h-3 w-3" /> {t('Unlocked')}
+                  </Badge>
+                ) : (
+                  <Badge>
+                    <Lock className="h-3 w-3" /> {t('Locked')}
+                  </Badge>
+                )
+              }
+            />
+            <div className="p-5 text-sm">
+              {matching.unlocked ? (
+                <>
+                  <p>{t('Investors can now find your business. Your profile shows them:')}</p>
+                  <ul className="mt-3 space-y-1.5">
+                    <li className="flex items-center gap-2">
+                      <MilestoneIcon done /> {t('Modules completed: {done} of {total}', { done: completed, total: modules.length })}
+                    </li>
+                    {(Object.keys(scores) as EduScoreKey[]).map((key) => (
+                      <li key={key} className="flex items-center gap-2">
+                        <MilestoneIcon done /> {t(SCORE_NAMES[key])}: {scores[key].value}
+                      </li>
+                    ))}
+                    <li className="flex items-center gap-2">
+                      <MilestoneIcon done /> {t('Sales, materials and money from your records')}
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <MilestoneIcon done /> {t('Supplier risk')}
+                    </li>
+                  </ul>
+                  <button className="btn-primary mt-4" onClick={() => navigate('/app/investor')}>
+                    {t('Preview your investor profile')} <ArrowRight className="h-4 w-4 rtl:rotate-180" />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="muted">{t('Your profile opens to investors once both scores reach the minimum.')}</p>
+                  <ul className="mt-3 space-y-2">
+                    {matching.checks.map((c) => (
+                      <li key={c.key} className="flex items-center justify-between gap-3">
+                        <span className="flex items-center gap-2">
+                          <MilestoneIcon done={c.met} /> {t(SCORE_NAMES[c.key])}
+                        </span>
+                        <span className="tabular-nums text-gray-600 dark:text-gray-300">
+                          {c.score ?? '—'} / {c.threshold ?? '—'}
+                        </span>
                       </li>
                     ))}
                   </ul>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-
-        <Card className="col-span-12 lg:col-span-4">
-          <CardHeader title={t('Your scores')} sub={t('Given when you finish all four modules. Investors see them on your profile.')} />
-          <div className="grid grid-cols-2 gap-4 p-5" data-testid="edu-scores">
-            {(Object.keys(scores) as EduScoreKey[]).map((key) => {
-              const s = scores[key];
-              return (
-                <div key={key} className="flex flex-col items-center text-center">
-                  <Gauge value={s.value} />
-                  <p className="mt-2 text-sm font-semibold">{t(SCORE_NAMES[key])}</p>
-                  {!s.weightsSet ? (
-                    <p className="muted mt-1 text-xs">{t('Not calculated yet: how the score is weighted has not been decided.')}</p>
-                  ) : s.missing.length ? (
-                    <p className="muted mt-1 text-xs">{t('Finish these modules first: {modules}', { modules: s.missing.map((id) => t(modules.find((m) => m.module.id === id)!.module.title)).join(', ') })}</p>
-                  ) : null}
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-
-        <Card className="col-span-12 lg:col-span-4" data-testid="matching">
-          <CardHeader
-            title={t('Investor matching')}
-            right={
-              matching.unlocked ? (
-                <Badge tone="green">
-                  <LockOpen className="h-3 w-3" /> {t('Unlocked')}
-                </Badge>
-              ) : (
-                <Badge>
-                  <Lock className="h-3 w-3" /> {t('Locked')}
-                </Badge>
-              )
-            }
-          />
-          <div className="p-5 text-sm">
-            {matching.unlocked ? (
-              <>
-                <p>{t('Investors can now find your business. Your profile shows them:')}</p>
-                <ul className="mt-3 space-y-1.5">
-                  <li className="flex items-center gap-2">
-                    <MilestoneIcon done /> {t('Modules completed: {done} of {total}', { done: completed, total: modules.length })}
-                  </li>
-                  {(Object.keys(scores) as EduScoreKey[]).map((key) => (
-                    <li key={key} className="flex items-center gap-2">
-                      <MilestoneIcon done /> {t(SCORE_NAMES[key])}: {scores[key].value}
-                    </li>
-                  ))}
-                  <li className="flex items-center gap-2">
-                    <MilestoneIcon done /> {t('Sales, materials and money from your records')}
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <MilestoneIcon done /> {t('Supplier risk')}
-                  </li>
-                </ul>
-                <button className="btn-primary mt-4" onClick={() => navigate('/app/investor')}>
-                  {t('Preview your investor profile')} <ArrowRight className="h-4 w-4 rtl:rotate-180" />
-                </button>
-              </>
-            ) : (
-              <>
-                <p className="muted">{t('Your profile opens to investors once both scores reach the minimum.')}</p>
-                <ul className="mt-3 space-y-2">
-                  {matching.checks.map((c) => (
-                    <li key={c.key} className="flex items-center justify-between gap-3">
-                      <span className="flex items-center gap-2">
-                        <MilestoneIcon done={c.met} /> {t(SCORE_NAMES[c.key])}
-                      </span>
-                      <span className="tabular-nums text-gray-600 dark:text-gray-300">
-                        {c.score ?? '—'} / {c.threshold ?? '—'}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                {!matching.thresholdsSet && <p className="muted mt-3 text-xs">{t('The minimum scores have not been decided yet.')}</p>}
-              </>
-            )}
-          </div>
-        </Card>
-      </div>
+                  {!matching.thresholdsSet && <p className="muted mt-3 text-xs">{t('The minimum scores have not been decided yet.')}</p>}
+                </>
+              )}
+            </div>
+          </Card>
+        </div>
+      )}
     </>
   );
 }

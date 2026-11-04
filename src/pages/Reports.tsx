@@ -590,8 +590,8 @@ export default function Reports() {
             <button className="btn-secondary no-print" onClick={() => window.print()}>
               {t('Print or save as PDF')}
             </button>
-            <Link to="/app/share?type=lender" className="btn-primary no-print">
-              <Share2 className="h-4 w-4" /> {t('Share with a lender')}
+            <Link to="/app/share" className="btn-primary no-print">
+              <Share2 className="h-4 w-4" /> {t('Share a report')}
             </Link>
           </>
         }
