@@ -42,7 +42,7 @@ await step('circularity score: three measured pillars, geometric mean', async ()
   if ((await sidebarScore()) !== '55') throw new Error('sidebar score ' + (await sidebarScore()));
   await page.goto(B + 'app/circularity'); await page.waitForTimeout(2200);
   const b = await page.getByTestId('score-breakdown').innerText();
-  for (const s of ['55', 'Circular Grower', 'Research-based']) if (!b.includes(s)) throw new Error('breakdown missing ' + s);
+  for (const s of ['55', 'Circular Grower', 'Based on research']) if (!b.includes(s)) throw new Error('breakdown missing ' + s);
   if (!(await pillar('inflow')).includes('50')) throw new Error('inflow ' + (await pillar('inflow')));
   if (!(await pillar('inflow')).includes('world average 6.9%')) throw new Error('no global benchmark');
   if (!(await pillar('productivity')).includes('65') || !(await pillar('productivity')).includes('$100.00 revenue per kg')) throw new Error('productivity ' + (await pillar('productivity')));
@@ -64,7 +64,7 @@ await step('waste sent to landfill pulls the score down; reuse lifts it', async 
   await add('Packaging', 2, 'Landfill or incineration');
   // A measured zero counts as 0.01, so the geometric score drops to 20 while a plain average would give 41.
   if ((await sidebarScore()) !== '20') throw new Error('after landfill ' + (await sidebarScore()));
-  if (!(await page.getByTestId('score-range').innerText()).includes('Between 20 and 41')) throw new Error('range');
+  if (!(await page.getByTestId('score-range').innerText()).includes('Could be 20 to 41')) throw new Error('range');
   await add('Offcuts', 8, 'Reuse or repair');
   // (8 kg × 1 + 2 kg × 0) / 10 kg = 0.8 → score 60.
   if (!(await pillar('outflow')).includes('80')) throw new Error('outflow ' + (await pillar('outflow')));

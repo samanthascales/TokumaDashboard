@@ -52,7 +52,7 @@ await step('add product', async () => {
   const d = page.getByRole('dialog');
   await d.getByPlaceholder('e.g. Organic Cotton T-Shirt').fill('Sailcloth Tote');
   await d.locator('label:has-text("Price") input').fill('45');
-  await d.locator('label:has-text("Unit cost") input').fill('12');
+  await d.locator('label:has-text("Cost to make or buy one") input').fill('12');
   await d.getByPlaceholder('Material name').fill('Reclaimed sailcloth');
   await d.getByPlaceholder('0.00').fill('0.4');
   await d.getByLabel('Material type', { exact: true }).selectOption('Reused');

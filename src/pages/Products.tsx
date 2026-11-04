@@ -57,13 +57,13 @@ function ProductCard({ r, onOpen }: { r: InventoryRow; onOpen: () => void }) {
         </div>
         <div>
           <p className="muted text-[11px]">
-            <Term label={t('Unit cost')}>{t('What one item costs you to make or buy, including its materials.')}</Term>
+            <Term label={t('Cost each')}>{t('What one item costs you to make or buy, including its materials.')}</Term>
           </p>
           <p className="num">{fmtMoney2(p.unitCost)}</p>
         </div>
         <div>
           <p className="muted text-[11px]">
-            <Term label={t('Profit per unit')}>{t('Price minus unit cost: what you keep from each sale.')} {t('Margin: {pct} of the price.', { pct: fmtPct(margin, 0) })}</Term>
+            <Term label={t('Profit each')}>{t('Price minus unit cost: what you keep from each sale.')} {t('Margin: {pct} of the price.', { pct: fmtPct(margin, 0) })}</Term>
           </p>
           <p className={clsx('num', p.price - p.unitCost < 0 && 'text-red-600 dark:text-red-400')}>{fmtMoney2(p.price - p.unitCost)}</p>
         </div>
@@ -131,7 +131,7 @@ function Catalog({ onOpen }: { onOpen: (p: Product) => void }) {
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <div className="relative w-full max-w-xs">
           <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <input className="input ps-9" placeholder={t('Search by name or SKU')} value={q} onChange={(e) => setQ(e.target.value)} />
+          <input className="input ps-9" placeholder={t('Search by name or code')} value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
         <Segmented value={cat} onChange={setCat} options={cats.map((c) => ({ value: c, label: t(c) }))} />
         <Segmented
@@ -168,7 +168,7 @@ function Catalog({ onOpen }: { onOpen: (p: Product) => void }) {
                 {th('name', t('Product'))}
                 <th className="th">{t('Materials')}</th>
                 {th('price', t('Price'), true)}
-                {th('margin', t('Profit per unit'), true)}
+                {th('margin', t('Profit each'), true)}
                 {th('circularityScore', t('Circularity score'), true)}
                 {th('stockOnHand', t('Inventory'))}
                 <th className="th text-end">{t('Status')}</th>
@@ -230,7 +230,7 @@ function Inventory({ onOpen }: { onOpen: (p: Product) => void }) {
 
   const tiles = [
     { label: t('Items in stock'), value: fmtInt(units), sub: t('{count} products', { count: inventory.length }) },
-    { label: t('Inventory value'), value: fmtMoney(value), sub: t('at unit cost'), explain: t('The cost of all the inventory you have. It appears on your balance sheet as an asset.') },
+    { label: t('Inventory value'), value: fmtMoney(value), sub: t('what your stock cost you'), explain: t('The cost of all the inventory you have. It appears on your balance sheet as an asset.') },
     { label: t('Need restocking'), value: critical + reorder, sub: critical + reorder ? t('Order more soon') : t('All well stocked'), tone: critical ? 'text-red-600 dark:text-red-400' : reorder ? 'text-amber-600 dark:text-amber-400' : '' },
   ];
 

@@ -99,7 +99,7 @@ await step('impact report has the circularity story and no financial figures', a
   watch(other);
   await other.goto(link); await other.waitForTimeout(1200);
   const v = await other.getByTestId('report-view').innerText();
-  for (const s of ['Circularity impact report', 'Circular materials', 'Waste kept out of landfill', 'Circular inflow']) if (!v.includes(s)) throw new Error('impact missing ' + s);
+  for (const s of ['Circularity impact report', 'Circular materials', 'Waste kept out of landfill', 'Recycled & reused materials']) if (!v.includes(s)) throw new Error('impact missing ' + s);
   for (const s of ['Revenue', 'Net profit', 'Balance sheet', 'Funding readiness']) if (v.includes(s)) throw new Error('impact report shows ' + s);
   const overflow = await other.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   if (overflow > 1) throw new Error('phone overflow ' + overflow);

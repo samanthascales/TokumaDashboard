@@ -192,7 +192,7 @@ export function ProductModal({ open, onClose, product, startScanning }: { open: 
             <Field label={t('Product name')} error={show('name')} className="sm:col-span-2">
               <input className={`input ${show('name') ? 'input-error' : ''}`} value={d.name} onChange={(e) => set('name', e.target.value)} placeholder={t('e.g. Organic Cotton T-Shirt')} />
             </Field>
-            <Field label={t('SKU')}>
+            <Field label={t('Product code (optional)')}>
               <input className="input" value={d.sku} onChange={(e) => set('sku', e.target.value)} placeholder="TKM-XX-000" />
             </Field>
             <Field label={t('Category')}>
@@ -209,14 +209,14 @@ export function ProductModal({ open, onClose, product, startScanning }: { open: 
             <Field label={t('Price ($)')} error={show('price')}>
               <input type="number" min={0} step="0.01" className={`input ${show('price') ? 'input-error' : ''}`} value={d.price ?? ''} onChange={(e) => set('price', num(e.target.value))} />
             </Field>
-            <Field label={t('Unit cost ($)')} error={show('unitCost')} hint={margin !== null ? t('{pct} gross margin', { pct: fmtPct(margin, 0) }) : undefined}>
+            <Field label={t('Cost to make or buy one ($)')} error={show('unitCost')} hint={margin !== null ? t('{pct} gross margin', { pct: fmtPct(margin, 0) }) : undefined}>
               <input type="number" min={0} step="0.01" className={`input ${show('unitCost') ? 'input-error' : ''}`} value={d.unitCost ?? ''} onChange={(e) => set('unitCost', num(e.target.value))} />
             </Field>
           </div>
 
           <div>
             <div className="mb-2 flex flex-wrap items-center justify-between gap-1">
-              <span className="label mb-0">{t('Bill of materials')}</span>
+              <span className="label mb-0">{t('What it is made of')}</span>
               <button className="btn-ghost btn-sm" onClick={() => setD((x) => ({ ...x, materials: [...x.materials, blankMaterial()] }))}>
                 <Plus className="h-3.5 w-3.5" /> {t('Add material')}
               </button>
@@ -264,7 +264,7 @@ export function ProductModal({ open, onClose, product, startScanning }: { open: 
                 <p>{t('Recycled: made from material that was used before and processed again.')}</p>
                 <p>{t('Reused: used again as it is, like offcuts or second-hand fabric.')}</p>
                 <p>{t('Renewable: grown and certified as sustainably sourced, like organic cotton or FSC wood.')}</p>
-                <p>{t('Virgin: new material made for the first time.')}</p>
+                <p>{t('New material: made for the first time, not recycled or reused.')}</p>
                 <p className="text-gray-300">{t('Recycled, reused and renewable count as circular in your score.')}</p>
               </Term>
             </p>

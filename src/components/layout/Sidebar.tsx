@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import clsx from 'clsx';
 import { ChevronDown, Sparkles, X } from 'lucide-react';
@@ -141,8 +141,15 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
         </div>
         <nav className="scrollbar-thin flex-1 overflow-y-auto px-3 pb-4">
           <ul className="space-y-0.5">
-            {nav.map((n) => (
-              <Item key={n.to} item={n} onNavigate={onClose} />
+            {nav.map((n, i) => (
+              <Fragment key={n.to}>
+                {n.section && (
+                  <li role="presentation" className={clsx('px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-500', i > 0 && 'pt-4')}>
+                    {t(n.section)}
+                  </li>
+                )}
+                <Item item={n} onNavigate={onClose} />
+              </Fragment>
             ))}
           </ul>
         </nav>

@@ -52,7 +52,7 @@ await step('product: material type must be chosen', async () => {
   if (!(await d.locator('aside').innerText()).includes('—')) throw new Error('score ring should be blank');
   await d.getByPlaceholder('e.g. Organic Cotton T-Shirt').fill('Sailcloth Tote');
   await d.locator('label:has-text("Price") input').fill('45');
-  await d.locator('label:has-text("Unit cost") input').fill('12');
+  await d.locator('label:has-text("Cost to make or buy one") input').fill('12');
   await d.getByPlaceholder('Material name').fill('Reclaimed sailcloth');
   await d.getByPlaceholder('0.00').fill('0.4');
   await d.getByPlaceholder('Units in stock').fill('40');
