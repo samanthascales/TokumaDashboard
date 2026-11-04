@@ -82,6 +82,7 @@ await step('product life fills the fifth pillar', async () => {
   // Lasts twice as long as a typical product → X = 2 → full marks; five pillars → 67.
   if (!(await pillar('life')).includes('100') || !(await pillar('life')).includes('2.0× the life')) throw new Error('life ' + (await pillar('life')));
   if ((await sidebarScore()) !== '67') throw new Error('five pillars ' + (await sidebarScore()));
+  await page.getByRole('button', { name: /More details: charts and how the score is built/ }).click();
   await page.getByTestId('research-basis').getByText('How the score is built').click();
   await page.getByText('ISO 59020', { exact: false }).first().waitFor();
 });

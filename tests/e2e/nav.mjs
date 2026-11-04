@@ -12,42 +12,29 @@ const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 const step = async (name, fn) => { try { await fn(); console.log('OK  ', name); } catch (e) { console.log('FAIL', name, '—', e.message.split('\n')[0]); } };
 const aside = () => page.locator('aside');
-const expanded = async (group) => (await aside().getByRole('button', { name: new RegExp('(Expand|Collapse) ' + group) }).getAttribute('aria-expanded')) === 'true';
-const visible = async (name) => { const box = await aside().getByRole('link', { name, exact: false }).boundingBox(); const nav = await aside().locator('nav').boundingBox(); return !!box && box.height > 4 && (await aside().getByRole('link', { name, exact: false }).evaluate((el) => { const r = el.getBoundingClientRect(); const ul = el.closest('ul'); const c = ul.getBoundingClientRect(); return c.height > 4 && r.top >= c.top - 1 && r.bottom <= c.bottom + 1; })); };
 await page.goto(B + 'app'); await page.waitForTimeout(1200);
-await step('the menu has the six main pages', async () => {
-  const names = (await aside().locator('nav > ul > li > a').allInnerTexts()).map((x) => x.replace(/\s*NEW\s*$/, '').trim());
-  const want = ['Dashboard', 'Revenue & expenses', 'Products', 'Circularity', 'Reports', 'Learn', 'Settings'];
+await step('the menu is one flat list of plain names', async () => {
+  const names = (await aside().locator('nav > ul > li > a').allInnerTexts()).map((x) => x.trim());
+  const want = ['Dashboard', 'Revenue & expenses', 'Products', 'Circularity', 'Reports', 'Funding', 'Learn', 'Settings'];
   if (want.join('|') !== names.join('|')) throw new Error('menu is ' + names.join(', '));
+  if (await aside().locator('nav button[aria-expanded]').count()) throw new Error('menu still has expandable groups');
+  await page.screenshot({ path: SP + '/shots3/nav-flat.png', clip: { x: 0, y: 0, width: 260, height: 600 } });
 });
-await step('groups start collapsed on the dashboard', async () => {
-  if (await expanded('Products') || await expanded('Learn')) throw new Error('a group is expanded');
-  if (await visible('Inventory')) throw new Error('Inventory visible');
-  if (await visible('Funding')) throw new Error('Funding visible');
-  await page.screenshot({ path: SP + '/shots3/nav-collapsed.png', clip: { x: 0, y: 0, width: 260, height: 600 } });
+await step('sub-pages light up their parent: Inventory under Products', async () => {
+  await page.goto(B + 'app/products/inventory'); await page.waitForTimeout(600);
+  const current = await aside().locator('nav a[aria-current="page"]').allInnerTexts();
+  if (current.map((x) => x.trim()).join() !== 'Products') throw new Error('active: ' + current);
 });
-await step('arrow opens Products and shows Inventory and Suppliers', async () => {
-  await aside().getByRole('button', { name: 'Expand Products' }).click();
-  await page.waitForTimeout(300);
-  if (!(await visible('Inventory')) || !(await visible('Suppliers'))) throw new Error('not shown');
-  await aside().getByRole('link', { name: /Inventory/ }).click();
-  await page.waitForURL(/inventory/);
+await step('Funding has its own menu item', async () => {
+  await aside().getByRole('link', { name: 'Funding' }).click();
+  await page.waitForURL(/learn\/funding/);
+  const current = await aside().locator('nav a[aria-current="page"]').allInnerTexts();
+  if (current.map((x) => x.trim()).join() !== 'Funding') throw new Error('active: ' + current);
 });
-await step('opening a page inside a group opens that group', async () => {
-  await page.goto(B + 'app/learn/funding'); await page.waitForTimeout(600);
-  if (!(await visible('Funding'))) throw new Error('not open');
-  await page.screenshot({ path: SP + '/shots3/nav-open.png', clip: { x: 0, y: 0, width: 260, height: 600 } });
-});
-await step('collapsed links are skipped by keyboard', async () => {
-  await aside().getByRole('button', { name: 'Collapse Learn' }).click();
-  await page.waitForTimeout(300);
-  const inert = await aside().locator('ul[inert]').count();
-  if (inert < 1) throw new Error('no inert group');
-});
-await step('the open/closed choice is remembered after reload', async () => {
-  await page.goto(B + 'app'); await page.reload(); await page.waitForTimeout(1000);
-  if (!(await visible('Inventory'))) throw new Error('Products should stay open');
-  if (await visible('Funding')) throw new Error('Learn should stay closed');
+await step('Reports links to Share a report', async () => {
+  await page.goto(B + 'app/reports'); await page.waitForTimeout(600);
+  await page.getByRole('link', { name: 'Share a report' }).click();
+  await page.waitForURL(/#\/app\/share$/);
 });
 await step('old addresses forward to the new pages', async () => {
   for (const [from, to] of [['app/transactions', '/app/money'], ['app/supply-chain', '/app/products/suppliers'], ['app/education', '/app/learn'], ['app/funding', '/app/learn/funding']]) {

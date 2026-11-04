@@ -12,6 +12,7 @@ export const en: Dict = {
   '{count} need restock': { one: '{count} needs restock', other: '{count} need restock' },
   '{count} products below low-stock threshold': { one: '{count} product below low-stock threshold', other: '{count} products below low-stock threshold' },
   '{count} results': { one: '{count} result', other: '{count} results' },
+  '{count} products': { one: '{count} product', other: '{count} products' },
   '{count} rows': { one: '{count} row', other: '{count} rows' },
   '{count} SKUs': { one: '{count} SKU', other: '{count} SKUs' },
   '{count} suppliers': { one: '{count} supplier', other: '{count} suppliers' },

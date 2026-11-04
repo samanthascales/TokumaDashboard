@@ -199,19 +199,11 @@ export default function Transactions() {
         sub={t('Record every sale and expense. Tokuma uses them for your profit & loss, reports and circularity score.')}
         actions={
           <>
-            {!IS_EMBEDDED && (
-              <button className="btn-secondary" onClick={exportCsv}>
-                <Download className="h-4 w-4" /> {t('Export CSV')}
-              </button>
-            )}
             <button className="btn-secondary" onClick={() => setImporting('sales')}>
               <Upload className="h-4 w-4" /> {t('Import sales')}
             </button>
-            <button className="btn-secondary" onClick={() => setImporting('transactions')}>
-              <Upload className="h-4 w-4" /> {t('Import CSV / Excel')}
-            </button>
             <button className="btn-primary" onClick={() => setAdding(true)}>
-              <Plus className="h-4 w-4" /> {t('Add transaction')}
+              <Plus className="h-4 w-4" /> {t('Record a sale or expense')}
             </button>
           </>
         }
@@ -243,7 +235,7 @@ export default function Transactions() {
               <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input className="input ps-9" placeholder={t('Search product, customer, note…')} value={q} onChange={(e) => setQ(e.target.value)} />
             </div>
-            <Segmented value={type} onChange={setType} options={[{ value: 'all', label: t('All') }, { value: 'inflow', label: t('In') }, { value: 'outflow', label: t('Out') }]} />
+            <Segmented value={type} onChange={setType} options={[{ value: 'all', label: t('All') }, { value: 'inflow', label: t('Revenue') }, { value: 'outflow', label: t('Expenses') }]} />
             <select className="input w-auto" value={cat} onChange={(e) => setCat(e.target.value)}>
               {cats.map((c) => (
                 <option key={c} value={c}>
@@ -252,6 +244,15 @@ export default function Transactions() {
               ))}
             </select>
             <span className="muted ms-auto text-xs tabular-nums">{t('{count} transactions', { count: rows.length })}</span>
+            {/* Less common file tools sit with the list instead of in the page header. */}
+            <button className="btn-ghost btn-sm" onClick={() => setImporting('transactions')}>
+              <Upload className="h-3.5 w-3.5" /> {t('Import CSV / Excel')}
+            </button>
+            {!IS_EMBEDDED && (
+              <button className="btn-ghost btn-sm" onClick={exportCsv}>
+                <Download className="h-3.5 w-3.5" /> {t('Export CSV')}
+              </button>
+            )}
           </div>
           {rows.length === 0 ? (
             <EmptyState

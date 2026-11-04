@@ -20,19 +20,19 @@ The app uses hash routing (`/#/app/...`) and a relative base path, so `dist/` ca
 | Page | Route | What the owner can do |
 |---|---|---|
 | Landing / Sign in | `/`, `/signin` | Learn what Tokuma does; sign up or sign in |
-| Onboarding | `/onboarding` | Answer 4 short steps about the business |
-| **Dashboard** | `/app` | Two cards side by side: **Financial performance** (net profit for the last 30 days, revenue, expenses, progress toward a goal) and **Circularity performance** (circularity score, level, progress toward a goal). Also: profit and score month by month, products at a glance, and next steps |
+| Onboarding | `/onboarding` | Three short questions: the business name (the only required field), what kind of business it is, and what to do first |
+| **Dashboard** | `/app` | One main action (record a sale or expense), a two-step setup checklist for new accounts, two cards side by side: **Profit** (net profit for the last 30 days, revenue, expenses, progress toward a goal) and **Circularity** (circularity score, level, progress toward a goal), one suggested next step, and profit and score month by month once there is data |
 | Revenue & expenses | `/app/money` | Record sales and expenses by category, including circular revenue (repairs, resale, rental, take-back). Import from CSV / Excel or a Shopify, Square or Etsy export |
 | Products | `/app/products` | Each product shows its **profit per unit** and its **circularity score**; edit what it is made of |
-| Inventory | `/app/products/inventory` | Stock levels, low-stock warnings, when to reorder, one-click restock |
+| Inventory | `/app/products/inventory` | Stock levels, how long stock will last, low-stock warnings and one-click restock. The planning numbers (daily sales, lead time, safety stock, reorder point) are behind **Show planning details** |
 | Suppliers | `/app/products/suppliers` | Supplier sustainability ratings (part of the score), reliability, carbon |
-| **Circularity** | `/app/circularity` | The score and its five pillars, the research basis, the waste & returned-products log, ideas to raise it, materials breakdown and trend |
+| **Circularity** | `/app/circularity` | The score and its five pillars, ideas to raise it, each product's score and the waste & returned-products log. The materials chart, the trend and the research basis are behind **More details** |
 | **Reports** | `/app/reports` | Basic accounting, each with a "what is this?" box: **Profit & loss**, **Balance sheet** (assets, liabilities, owner’s equity), **Cash flow** (including cash runway) and a **Break-even** calculator. Printable |
 | **Share a report** | `/app/share` | A read-only snapshot link (or PDF) for a lender, investor or mentor: financial summary, balance sheet, funding readiness and circularity. Or a **circularity impact report** for customers, with no financial figures. The report travels inside the link (`#/r/…`): nothing is stored on a server, the reader needs no account, and every field is checked when the link is opened |
-| Learn | `/app/learn` | Short lessons on the circularity score, the circular economy, profit & loss, the balance sheet, cash flow and break-even, each linked to the matching page. Funding is under Learn. The Funding page shows a **funding readiness** meter (0–100): a checklist of what lenders look for (records and performance), with next steps. It is not a credit score or a loan offer |
+| Learn | `/app/learn` | Short lessons on the circularity score, the circular economy, profit & loss, the balance sheet, cash flow and break-even, each linked to the matching page. The progress details (milestones, scores, investor matching) open on request. The **Funding** page shows a **funding readiness** meter (0–100): a checklist of what lenders look for (records and performance), with next steps. It is not a credit score or a loan offer. Funding estimates and requests are behind **Explore funding options** |
 | Settings | `/app/settings` | Your profile and photo, language, theme, business profile, notifications, delete data |
 
-The menu groups pages so an owner sees six main pages. Labels use standard business terms (revenue, expenses, net profit, assets, liabilities, owner’s equity, fixed costs), and each has a plain-language explanation. The customers page, the supplier reliability detail and the investor view still exist but are no longer in the menu. Old links (`/app/transactions`, `/app/supply-chain`, `/app/education`, `/app/funding`) forward to the new pages.
+The menu is one flat list of eight pages (Dashboard, Revenue & expenses, Products, Circularity, Reports, Funding, Learn, Settings); Inventory and Suppliers are tabs inside Products, and Share a report opens from Reports and Circularity. Labels use standard business terms (revenue, expenses, net profit, assets, liabilities, owner’s equity, fixed costs), and each has a plain-language explanation. The customers page, the supplier reliability detail and the investor view still exist but are no longer in the menu. Old links (`/app/transactions`, `/app/supply-chain`, `/app/education`, `/app/funding`) forward to the new pages.
 
 These work on every page: the **explanation buttons** (the small "i" next to a number or word; they open on hover, keyboard focus or tap), the language menu, the Ctrl K command palette, notifications and toasts.
 
@@ -170,7 +170,7 @@ psql -d scratch -f supabase/tests/local_auth_stub.sql -f supabase/migrations/001
 ## Testing
 
 ```bash
-npm run test:e2e      # 111 browser checks across 11 suites
+npm run test:e2e      # 109 browser checks across 11 suites
 npm run i18n:check    # every language has every text
 ```
 

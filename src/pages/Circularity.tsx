@@ -109,6 +109,8 @@ export default function Circularity() {
   const trend = useMemo(() => buildSeries(ledger, products, lastNDays(365)), [ledger, products, lang]);
   const classColor: Record<MaterialClass, string> = { Recycled: c.primary, Reused: c.secondary, Renewable: '#F59E0B', Virgin: c.tertiary };
   const [wasteOpen, setWasteOpen] = useState(false);
+  // Charts and the research method are useful but not needed every day: tucked behind one button.
+  const [more, setMore] = useState(false);
 
   const composition =
     compView === 'material'
@@ -142,14 +144,43 @@ export default function Circularity() {
           <div className="col-span-12">
             <ScoreBreakdown onAddWaste={() => setWasteOpen(true)} />
           </div>
-          <div className="col-span-12">
-            <ResearchBasis />
+          <div className="col-span-12 lg:col-span-7">
+            <RecommendationCarousel />
           </div>
+          <Card className="col-span-12 lg:col-span-5">
+            <CardHeader
+              title={<Term label={t('Circularity score by product')}>{t('For a product, the score is the share of its weight that comes from recycled or reused materials.')}</Term>}
+              sub={t('Click a product for its material breakdown')}
+            />
+            <ul className="space-y-1 p-3">
+              {circ30.byProduct.length === 0 && <li className="muted px-2 py-8 text-center text-sm">{t('Products you add will be ranked here by circularity.')}</li>}
+              {circ30.byProduct.map((p, i) => (
+                <li key={p.id}>
+                  <button onClick={() => setDrill(p.id)} className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-start transition hover:bg-gray-50 dark:hover:bg-white/[0.03]">
+                    <span className="w-5 text-center text-xs font-semibold text-gray-400">{i + 1}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium">{p.name}</span>
+                      <span className="mt-1 block h-1.5 overflow-hidden rounded-full bg-gray-100 dark:bg-white/5">
+                        <span className="block h-full rounded-full bg-brand-600 transition-all duration-700 dark:bg-brand-400" style={{ width: `${p.score}%` }} />
+                      </span>
+                    </span>
+                    <span className="w-12 text-end text-sm font-semibold tabular-nums">{fmtPct(p.score, 0)}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </Card>
           <div className="col-span-12">
             <WasteLog open={wasteOpen} setOpen={setWasteOpen} />
           </div>
-
-          <Card className="col-span-12 lg:col-span-7">
+          <div className="col-span-12">
+            <button className="btn-secondary w-full justify-center" onClick={() => setMore((m) => !m)} aria-expanded={more}>
+              {more ? t('Hide charts and how the score is built') : t('More details: charts and how the score is built')}
+            </button>
+          </div>
+          {more && (
+            <>
+          <Card className="col-span-12 lg:col-span-6">
             <CardHeader
               title={
                 <Term label={t('What your products are made of')}>
@@ -187,12 +218,7 @@ export default function Circularity() {
               </ResponsiveContainer>
             </div>
           </Card>
-
-          <div className="col-span-12 lg:col-span-5">
-            <RecommendationCarousel />
-          </div>
-
-          <Card className="col-span-12 lg:col-span-7">
+          <Card className="col-span-12 lg:col-span-6">
             <CardHeader title={t('Circular materials over time')} sub={t('Share of the weight you sold that was recycled, reused or renewable, week by week, last 12 months')} />
             <div className="h-[260px] px-2 pb-3 pt-4" dir="ltr">
               <ResponsiveContainer width="100%" height="100%">
@@ -212,30 +238,11 @@ export default function Circularity() {
               </ResponsiveContainer>
             </div>
           </Card>
-
-          <Card className="col-span-12 lg:col-span-5">
-            <CardHeader
-              title={<Term label={t('Circularity score by product')}>{t('For a product, the score is the share of its weight that comes from recycled or reused materials.')}</Term>}
-              sub={t('Click a product for its material breakdown')}
-            />
-            <ul className="space-y-1 p-3">
-              {circ30.byProduct.length === 0 && <li className="muted px-2 py-8 text-center text-sm">{t('Products you add will be ranked here by circularity.')}</li>}
-              {circ30.byProduct.map((p, i) => (
-                <li key={p.id}>
-                  <button onClick={() => setDrill(p.id)} className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-start transition hover:bg-gray-50 dark:hover:bg-white/[0.03]">
-                    <span className="w-5 text-center text-xs font-semibold text-gray-400">{i + 1}</span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium">{p.name}</span>
-                      <span className="mt-1 block h-1.5 overflow-hidden rounded-full bg-gray-100 dark:bg-white/5">
-                        <span className="block h-full rounded-full bg-brand-600 transition-all duration-700 dark:bg-brand-400" style={{ width: `${p.score}%` }} />
-                      </span>
-                    </span>
-                    <span className="w-12 text-end text-sm font-semibold tabular-nums">{fmtPct(p.score, 0)}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </Card>
+          <div className="col-span-12">
+            <ResearchBasis />
+          </div>
+            </>
+          )}
         </div>
       )}
       <Modal open={!!drillProduct} onClose={() => setDrill(null)} title={drillProduct?.name ?? ''} sub={t('Material breakdown per unit')}>

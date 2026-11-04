@@ -16,7 +16,7 @@ npm run test:e2e -- --no-build   # reuse the last build
 | `inputs` | Adding products, materials, suppliers and sales; form validation |
 | `import` | Importing product lists from Shopify, Etsy and Square exports |
 | `sales-import` | Importing sales history from CSV and Excel; charts update |
-| `nav` | The menu's six main pages, collapsible groups, and old links forwarding to new pages |
+| `nav` | The menu is one flat list of eight pages; sub-pages light up their parent; Funding has its own item; Reports links to Share a report; old links forward to new pages |
 | `share` | Funding readiness adds up and moves with data; lender report preview and toggles; the link opens read-only in a browser with no account or data; impact report has no financial figures and fits a phone; broken or edited links are handled safely |
 | `docread` | Reading materials from documents is optional and closed by default; a text invoice gives the right materials, types and weights; the review step skips unticked rows and divides weights per product; PDF and photo (OCR) invoices are read; unsupported files get a clear message; Spanish labels and material names; fits a phone; no request leaves the site |
 | `reports` | The circularity score's five pillars and geometric mean (including waste and product life), profit on the dashboard, goals, explanation buttons (hover, Escape, tap on a phone), profit & loss, balance sheet, cash flow, break-even, lessons |

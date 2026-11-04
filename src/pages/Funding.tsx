@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
-import { BadgeCheck, Coins, FileClock, Gift, HandCoins, Landmark, PieChart, Sparkles, TrendingDown } from 'lucide-react';
+import { Coins, FileClock, Gift, HandCoins, Landmark, PieChart, Sparkles, TrendingDown } from 'lucide-react';
 import { useStore } from '../store/AppStore';
 import { useSimulatedLoad } from '../lib/hooks';
 import { fmtDate, fmtMoney, fmtPct } from '../lib/format';
@@ -22,7 +22,7 @@ const statusTone: Record<FundingStatus, 'amber' | 'blue' | 'green' | 'red'> = { 
 
 export default function Funding() {
   const t = useT();
-  const { verification, funding, circ30, score, fundingSeen, markFundingSeen, flashFunding, fundingRequests, requestFunding, suppliers, ledger, role } = useStore();
+  const { funding, circ30, fundingSeen, markFundingSeen, flashFunding, fundingRequests, requestFunding, suppliers, ledger, role } = useStore();
   const ready = useSimulatedLoad('funding');
   const [req, setReq] = useState<FundingType | null>(null);
   const [amount, setAmount] = useState<number | null>(null);
@@ -30,6 +30,8 @@ export default function Funding() {
   const [touched, setTouched] = useState(false);
   const [sim, setSim] = useState(circ30.hasData ? Math.round(circ30.rate) : 50);
   const [flash, setFlash] = useState(false);
+  // Estimates and funding requests are for later; readiness comes first. Open if there is history to see.
+  const [options, setOptions] = useState(fundingRequests.length > 0);
   const seenRef = useRef(fundingSeen);
 
   // Highlight numbers when they've moved since the last visit or while on the page.
@@ -79,41 +81,15 @@ export default function Funding() {
 
   return (
     <>
-      <PageHeader title={t('Funding')} sub={t('Your circular data, turned into access to capital')} />
-
-      <div className="relative mb-5 overflow-hidden rounded-xl bg-gradient-to-br from-brand-700 to-brand-900 p-6 text-white shadow-lift">
-        <div className="absolute -end-10 -top-10 h-48 w-48 rounded-full bg-white/5" />
-        <div className="absolute -bottom-16 end-24 h-40 w-40 rounded-full bg-white/5" />
-        <div className="relative flex flex-col gap-4 md:flex-row md:items-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/20">
-            <BadgeCheck className="h-6 w-6" />
-          </div>
-          <div className="flex-1">
-            {verification.verified ? (
-              <>
-                <p className="text-lg font-semibold">{t('Verified Circular Business')}</p>
-                <p className="text-sm text-brand-100/80">{t('Your sales, materials and supplier records are complete. Share a report to show lenders your numbers and your circularity score of {n}.', { n: score.score ?? '—' })}</p>
-              </>
-            ) : (
-              <>
-                <p className="text-lg font-semibold">{t('Get verified to unlock funding')}</p>
-                <ul className="mt-1.5 flex flex-wrap gap-x-5 gap-y-1 text-sm text-brand-100/90">
-                  {verification.steps.map((s) => (
-                    <li key={s.label} className="flex items-center gap-1.5">
-                      <span className={clsx('flex h-4 w-4 items-center justify-center rounded-full text-[10px]', s.done ? 'bg-white text-brand-800' : 'ring-1 ring-white/40')}>{s.done ? '✓' : ''}</span>
-                      {s.label}
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
+      <PageHeader title={t('Funding')} sub={t('How ready your business is to borrow money or win a grant, and what to do next.')} />
 
       <ReadinessCard />
 
-      {changed && (
+      <button className="btn-secondary mb-5 w-full justify-center" onClick={() => setOptions((o) => !o)} aria-expanded={options}>
+        {options ? t('Hide funding options') : t('Explore funding options and estimates')}
+      </button>
+
+      {options && changed && (
         <div className="mb-5 flex animate-page-in items-center gap-3 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-800 dark:border-brand-500/20 dark:bg-brand-500/[0.07] dark:text-brand-200">
           <Sparkles className="h-4 w-4 shrink-0" />
           {prev!.maxEligibility !== null && funding.maxEligibility !== null
@@ -134,126 +110,128 @@ export default function Funding() {
         </div>
       )}
 
-      <div className="grid grid-cols-12 gap-5">
-        <Card className={clsx('col-span-12 p-6 md:col-span-4', flash && 'animate-flash')}>
-          <p className="muted flex items-center gap-1.5 text-xs">
-            <Coins className="h-3.5 w-3.5" /> {t('Max eligibility')}
-          </p>
-          {funding.maxEligibility === null ? (
-            <p className="mt-2 text-4xl font-bold tracking-tight text-gray-300 dark:text-gray-600">—</p>
-          ) : (
-            <AnimatedNumber value={funding.maxEligibility} format={fmtMoney} duration={1200} className="mt-2 block text-4xl font-bold tracking-tight" />
-          )}
-          <p className="muted mt-2 text-xs">
-            {funding.maxEligibility !== null
-              ? t('≈ {pct} of your last 12 months of revenue ({revenue})', { pct: fmtPct((funding.maxEligibility / funding.annualRevenue) * 100, 0), revenue: fmtMoney(funding.annualRevenue) })
-              : t('Log sales of products with materials to calculate this')}
-          </p>
-        </Card>
-        <Card className={clsx('col-span-12 p-6 md:col-span-4', flash && 'animate-flash')}>
-          <p className="muted flex items-center gap-1.5 text-xs">
-            <TrendingDown className="h-3.5 w-3.5" /> {t('Estimated APR')}
-          </p>
-          {funding.apr === null ? (
-            <p className="mt-2 text-4xl font-bold tracking-tight text-gray-300 dark:text-gray-600">—</p>
-          ) : (
-            <AnimatedNumber value={funding.apr} format={(n) => fmtPct(n, 2)} duration={1200} className="mt-2 block text-4xl font-bold tracking-tight text-brand-700 dark:text-brand-400" />
-          )}
-          <p className="muted mt-2 text-xs">{funding.apr !== null ? t('Estimated from your circularity rate and supplier ratings') : t('Log sales of products with materials to calculate this')}</p>
-        </Card>
-        <Card className="col-span-12 p-6 md:col-span-4">
-          <p className="muted flex items-center gap-1.5 text-xs">
-            <Sparkles className="h-3.5 w-3.5" /> {t('What if circularity were…')}
-          </p>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-4xl font-bold tabular-nums">{fmtPct(sim, 0)}</span>
-            <span className="muted text-xs">({t('now {pct}', { pct: circ30.hasData ? fmtPct(circ30.rate, 0) : '—' })})</span>
+      {options && (
+        <div className="grid grid-cols-12 gap-5">
+          <Card className={clsx('col-span-12 p-6 md:col-span-4', flash && 'animate-flash')}>
+            <p className="muted flex items-center gap-1.5 text-xs">
+              <Coins className="h-3.5 w-3.5" /> {t('Max eligibility')}
+            </p>
+            {funding.maxEligibility === null ? (
+              <p className="mt-2 text-4xl font-bold tracking-tight text-gray-300 dark:text-gray-600">—</p>
+            ) : (
+              <AnimatedNumber value={funding.maxEligibility} format={fmtMoney} duration={1200} className="mt-2 block text-4xl font-bold tracking-tight" />
+            )}
+            <p className="muted mt-2 text-xs">
+              {funding.maxEligibility !== null
+                ? t('≈ {pct} of your last 12 months of revenue ({revenue})', { pct: fmtPct((funding.maxEligibility / funding.annualRevenue) * 100, 0), revenue: fmtMoney(funding.annualRevenue) })
+                : t('Log sales of products with materials to calculate this')}
+            </p>
+          </Card>
+          <Card className={clsx('col-span-12 p-6 md:col-span-4', flash && 'animate-flash')}>
+            <p className="muted flex items-center gap-1.5 text-xs">
+              <TrendingDown className="h-3.5 w-3.5" /> {t('Estimated APR')}
+            </p>
+            {funding.apr === null ? (
+              <p className="mt-2 text-4xl font-bold tracking-tight text-gray-300 dark:text-gray-600">—</p>
+            ) : (
+              <AnimatedNumber value={funding.apr} format={(n) => fmtPct(n, 2)} duration={1200} className="mt-2 block text-4xl font-bold tracking-tight text-brand-700 dark:text-brand-400" />
+            )}
+            <p className="muted mt-2 text-xs">{funding.apr !== null ? t('Estimated from your circularity rate and supplier ratings') : t('Log sales of products with materials to calculate this')}</p>
+          </Card>
+          <Card className="col-span-12 p-6 md:col-span-4">
+            <p className="muted flex items-center gap-1.5 text-xs">
+              <Sparkles className="h-3.5 w-3.5" /> {t('What if circularity were…')}
+            </p>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-4xl font-bold tabular-nums">{fmtPct(sim, 0)}</span>
+              <span className="muted text-xs">({t('now {pct}', { pct: circ30.hasData ? fmtPct(circ30.rate, 0) : '—' })})</span>
+            </div>
+            <input type="range" min={0} max={100} value={sim} onChange={(e) => setSim(+e.target.value)} className="mt-3 w-full accent-brand-600" aria-label={t('Simulated circularity rate')} />
+            {simTerms.ready ? (
+              <div className="mt-2 flex justify-between text-xs">
+                <span>
+                  {t('APR')} <b className="tabular-nums">{fmtPct(simTerms.apr!, 2)}</b>
+                </span>
+                <span>
+                  {t('Eligibility')} <b className="tabular-nums">{fmtMoney(simTerms.maxEligibility!)}</b>
+                </span>
+              </div>
+            ) : (
+              <p className="muted mt-2 text-xs">{t('Needs your logged revenue to project terms.')}</p>
+            )}
+          </Card>
+
+          <div className="col-span-12 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {TYPES.map((x) => (
+              <Card key={x.type} hover className="flex flex-col p-5">
+                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">
+                  <x.icon className="h-5 w-5" />
+                </span>
+                <p className="mt-3 font-semibold">{t(x.type)}</p>
+                <p className="muted mt-1 flex-1 text-sm">{t(x.desc)}</p>
+                <p className="mt-3 text-xs font-medium text-gray-500">
+                  {x.type === 'Loan'
+                    ? funding.ready
+                      ? t('Up to {amount} at ~{apr} (estimate)', { amount: fmtMoney(funding.maxEligibility!), apr: fmtPct(funding.apr!, 2) })
+                      : t('Estimate available once you log sales')
+                    : t(x.range)}
+                </p>
+                {role === 'business' && (
+                  <button
+                    className="btn-secondary btn-sm mt-3"
+                    onClick={() => {
+                      setReq(x.type);
+                      setAmount(null);
+                      setPurpose('');
+                      setTouched(false);
+                    }}
+                  >
+                    {t(requestLabel[x.type])}
+                  </button>
+                )}
+              </Card>
+            ))}
           </div>
-          <input type="range" min={0} max={100} value={sim} onChange={(e) => setSim(+e.target.value)} className="mt-3 w-full accent-brand-600" aria-label={t('Simulated circularity rate')} />
-          {simTerms.ready ? (
-            <div className="mt-2 flex justify-between text-xs">
-              <span>
-                {t('APR')} <b className="tabular-nums">{fmtPct(simTerms.apr!, 2)}</b>
-              </span>
-              <span>
-                {t('Eligibility')} <b className="tabular-nums">{fmtMoney(simTerms.maxEligibility!)}</b>
-              </span>
-            </div>
-          ) : (
-            <p className="muted mt-2 text-xs">{t('Needs your logged revenue to project terms.')}</p>
-          )}
-        </Card>
 
-        <div className="col-span-12 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {TYPES.map((x) => (
-            <Card key={x.type} hover className="flex flex-col p-5">
-              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">
-                <x.icon className="h-5 w-5" />
-              </span>
-              <p className="mt-3 font-semibold">{t(x.type)}</p>
-              <p className="muted mt-1 flex-1 text-sm">{t(x.desc)}</p>
-              <p className="mt-3 text-xs font-medium text-gray-500">
-                {x.type === 'Loan'
-                  ? funding.ready
-                    ? t('Up to {amount} at ~{apr} (estimate)', { amount: fmtMoney(funding.maxEligibility!), apr: fmtPct(funding.apr!, 2) })
-                    : t('Estimate available once you log sales')
-                  : t(x.range)}
-              </p>
-              {role === 'business' && (
-                <button
-                  className="btn-secondary btn-sm mt-3"
-                  onClick={() => {
-                    setReq(x.type);
-                    setAmount(null);
-                    setPurpose('');
-                    setTouched(false);
-                  }}
-                >
-                  {t(requestLabel[x.type])}
-                </button>
-              )}
-            </Card>
-          ))}
-        </div>
-
-        <Card className="col-span-12 overflow-hidden">
-          <CardHeader title={t('Request history')} sub={t('{pending} pending · {amount} funded to date', { pending, amount: fmtMoney(funded) })} />
-          {fundingRequests.length === 0 ? (
-            <EmptyState icon={<FileClock className="h-6 w-6" />} title={t('No funding requests yet')} body={t('Request a loan, grant, equity or reward campaign — your verified data is attached automatically.')} />
-          ) : (
-            <div className="mt-3 overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50/60 dark:bg-white/[0.02]">
-                  <tr>
-                    <th className="th">{t('Submitted')}</th>
-                    <th className="th">{t('Type')}</th>
-                    <th className="th">{t('Purpose')}</th>
-                    <th className="th text-end">{t('Amount')}</th>
-                    <th className="th text-end">{t('APR')}</th>
-                    <th className="th">{t('Status')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {fundingRequests.map((r) => (
-                    <tr key={r.id} className="tr">
-                      <td className="td text-gray-500">{fmtDate(r.submittedDate)}</td>
-                      <td className="td font-medium">{t(r.type)}</td>
-                      <td className="td">{r.purpose}</td>
-                      <td className="td text-end font-semibold tabular-nums">{fmtMoney(r.amount)}</td>
-                      <td className="td text-end tabular-nums">{r.apr ? fmtPct(r.apr, 2) : '—'}</td>
-                      <td className="td">
-                        <Badge tone={statusTone[r.status]} dot>
-                          {t(r.status)}
-                        </Badge>
-                      </td>
+          <Card className="col-span-12 overflow-hidden">
+            <CardHeader title={t('Request history')} sub={t('{pending} pending · {amount} funded to date', { pending, amount: fmtMoney(funded) })} />
+            {fundingRequests.length === 0 ? (
+              <EmptyState icon={<FileClock className="h-6 w-6" />} title={t('No funding requests yet')} body={t('Request a loan, grant, equity or reward campaign — your verified data is attached automatically.')} />
+            ) : (
+              <div className="mt-3 overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50/60 dark:bg-white/[0.02]">
+                    <tr>
+                      <th className="th">{t('Submitted')}</th>
+                      <th className="th">{t('Type')}</th>
+                      <th className="th">{t('Purpose')}</th>
+                      <th className="th text-end">{t('Amount')}</th>
+                      <th className="th text-end">{t('APR')}</th>
+                      <th className="th">{t('Status')}</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </Card>
-      </div>
+                  </thead>
+                  <tbody>
+                    {fundingRequests.map((r) => (
+                      <tr key={r.id} className="tr">
+                        <td className="td text-gray-500">{fmtDate(r.submittedDate)}</td>
+                        <td className="td font-medium">{t(r.type)}</td>
+                        <td className="td">{r.purpose}</td>
+                        <td className="td text-end font-semibold tabular-nums">{fmtMoney(r.amount)}</td>
+                        <td className="td text-end tabular-nums">{r.apr ? fmtPct(r.apr, 2) : '—'}</td>
+                        <td className="td">
+                          <Badge tone={statusTone[r.status]} dot>
+                            {t(r.status)}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        </div>
+      )}
 
       <Modal
         open={!!req}

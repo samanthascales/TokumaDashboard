@@ -185,6 +185,7 @@ for (const [lang] of Object.entries(langs)) {
   });
   await step('numbers follow the language (French percent spacing)', async () => {
     await page.goto(B + 'app/learn/funding'); await page.waitForTimeout(1200);
+    await page.getByRole('button', { name: 'Voir les options de financement et les estimations' }).click();
     const txt = await page.locator('main').innerText();
     if (!/\d[\u202f\u00a0]%/.test(txt)) throw new Error('no French-style percent found');
   });
