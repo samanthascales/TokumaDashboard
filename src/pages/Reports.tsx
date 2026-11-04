@@ -127,7 +127,7 @@ function ProfitLoss() {
           <Card className="p-5">
             <p className="muted flex items-center gap-1.5 text-sm">
               <Recycle className="h-4 w-4 text-brand-600 dark:text-brand-400" />
-              <Term label={t('Circular revenue')}>
+              <Term label={t('Repair, resale & rental')}>
                 <p>{t('Revenue from activities that keep products in use: repairs, resale or second-hand sales, rental, and take-back or refurbishing.')}</p>
                 <p>{t('It shows that being circular can also earn money, and it counts toward your circularity score.')}</p>
               </Term>

@@ -123,7 +123,7 @@ export function ReportView({ report: r }: { report: SharedReport }) {
                   {levelName(c.level)}
                 </Badge>
               )}
-              {c.range && c.range[0] !== c.range[1] && <p className="muted mt-1.5 text-xs">{t('Between {a} and {b} depending on the method', { a: c.range[0], b: c.range[1] })}</p>}
+              {c.range && c.range[0] !== c.range[1] && <p className="muted mt-1.5 text-xs">{t('Could be {a} to {b}, depending on how it is counted', { a: c.range[0], b: c.range[1] })}</p>}
             </div>
             <ul className="space-y-3">
               {c.pillars.map((p) => {

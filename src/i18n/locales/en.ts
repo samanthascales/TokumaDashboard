@@ -1,7 +1,10 @@
 import type { Dict } from '..';
 
-// English is the source text used as keys, so only plural forms are listed here.
+// English is the source text used as keys, so only plural forms are listed here,
+// plus data values whose stored name differs from what owners see.
 export const en: Dict = {
+  // Material type stored as "Virgin"; shown in plain words.
+  Virgin: 'New material',
   '{count} more suggestions': { one: '{count} more suggestion', other: '{count} more suggestions' },
   '{count} materials found. Check them before adding.': { one: '{count} material found. Check it before adding.', other: '{count} materials found. Check them before adding.' },
   '{count} at reorder point': { one: '{count} at reorder point', other: '{count} at reorder point' },

@@ -13,35 +13,35 @@ import type { RecoveryRoute } from '../../types';
 
 export const PILLAR_COPY: Record<PillarKey, { label: string; explain: string; source: string; tip: string; missing: string }> = {
   inflow: {
-    label: tk('Circular inflow'),
+    label: tk('Recycled & reused materials'),
     explain: tk('The share of the weight of everything you sold in the last 30 days made from recycled, reused or sustainably sourced renewable materials.'),
     source: 'WBCSD Circular Transition Indicators · Ellen MacArthur Foundation MCI',
     tip: tk('Switch a new material to a recycled, reused or certified renewable one. See the ideas below.'),
     missing: tk('Sell a product that has its materials filled in.'),
   },
   outflow: {
-    label: tk('Circular outflow'),
+    label: tk('Where your waste goes'),
     explain: tk('Of the waste and returned products you recorded, how much was kept in use. Reuse and repair count most, then refurbishing, then recycling or composting, then energy recovery. Landfill counts nothing.'),
     source: 'WBCSD Circular Transition Indicators · R-ladder (PBL Netherlands)',
     tip: tk('Take products back for repair or resale, and send scraps to reuse or recycling instead of the bin.'),
     missing: tk('Record your production waste and returned products below.'),
   },
   life: {
-    label: tk('Product life & use'),
+    label: tk('How long products last'),
     explain: tk('How long your products last, and how much they are used, compared with typical similar products. A product that lasts twice as long, or gets twice the use because it is shared or rented, gets full marks.'),
     source: 'Ellen MacArthur Foundation MCI (utility factor)',
     tip: tk('Make products last longer, offer repairs and warranties, or rent and share them.'),
     missing: tk('Add how long each product lasts in its product details.'),
   },
   productivity: {
-    label: tk('Resource productivity'),
+    label: tk('Money made per kg of new material'),
     explain: tk('Revenue for each kilogram of new (virgin) material in what you sell. More revenue from less new material is more circular.'),
     source: 'WBCSD Circular Transition Indicators (circular material productivity)',
     tip: tk('Use less new material per product, or replace it with recycled or reused material.'),
     missing: tk('Sell a product that has its materials filled in.'),
   },
   businessModel: {
-    label: tk('Circular business model'),
+    label: tk('Repair, resale & rental sales'),
     explain: tk('The share of your revenue from repairs, resale, rental or sharing, take-back and recycling services.'),
     source: 'MSCI circular economy indexes · WBCSD CTI revenue',
     tip: tk('Offer repairs, resell used items, rent products out, or take old products back.'),
@@ -101,7 +101,7 @@ export function ScoreBreakdown({ onAddWaste }: { onAddWaste: () => void }) {
           )}
           {score.range && score.range[0] !== score.range[1] && (
             <p className="muted mt-2 text-xs" data-testid="score-range">
-              <Term label={t('Between {a} and {b} depending on the method', { a: score.range[0], b: score.range[1] })}>
+              <Term label={t('Could be {a} to {b}, depending on how it is counted', { a: score.range[0], b: score.range[1] })}>
                 <p>{t('Your score uses a geometric mean, so one weak pillar pulls it down. Simply averaging the pillars instead would give {n}.', { n: score.linear! })}</p>
                 <p>{t('Showing both is a check the research recommends: the closer they are, the more balanced your business is across the pillars.')}</p>
               </Term>
@@ -111,10 +111,10 @@ export function ScoreBreakdown({ onAddWaste }: { onAddWaste: () => void }) {
 
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="card-title">{t('The five pillars of your score')}</h3>
-            <Badge tone="blue">{t('Research-based · {version}', { version: SCORE_VERSION })}</Badge>
+            <h3 className="card-title">{t('What makes up your score')}</h3>
+            <Badge tone="blue">{t('Based on research · {version}', { version: SCORE_VERSION })}</Badge>
           </div>
-          <p className="muted mt-1 text-sm">{t('Each pillar is scored from 0 to 100 and counts equally. Pillars without data yet are left out instead of counted as zero.')}</p>
+          <p className="muted mt-1 text-sm">{t('Each part is scored from 0 to 100 and counts the same. Parts with no data yet are left out.')}</p>
           <ul className="mt-4 space-y-4">
             {score.pillars.map((p) => {
               const copy = PILLAR_COPY[p.key];

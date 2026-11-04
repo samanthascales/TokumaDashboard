@@ -22,21 +22,23 @@ export interface NavItem {
   label: string;
   icon: LucideIcon;
   badge?: 'new';
+  /** A small heading shown above this item, starting a new section of the menu. */
+  section?: string;
   children?: NavItem[];
   end?: boolean;
 }
 
-// One flat list of plain names: sub-pages (Inventory, Suppliers, the report tabs)
-// are tabs inside their page, so nothing appears twice.
+// One flat list in three labelled sections: sub-pages (Inventory, Suppliers, the
+// report tabs) are tabs inside their page, so nothing appears twice.
 export const businessNav: NavItem[] = [
-  { to: '/app', label: tk('Dashboard'), icon: LayoutDashboard, end: true },
+  { to: '/app', label: tk('Dashboard'), icon: LayoutDashboard, end: true, section: tk('Run your business') },
   { to: '/app/money', label: tk('Revenue & expenses'), icon: ArrowLeftRight },
   { to: '/app/products', label: tk('Products'), icon: Package },
-  { to: '/app/circularity', label: tk('Circularity'), icon: Recycle },
-  { to: '/app/reports', label: tk('Reports'), icon: FileBarChart },
+  { to: '/app/circularity', label: tk('Circularity'), icon: Recycle, section: tk('Your impact') },
+  { to: '/app/reports', label: tk('Reports'), icon: FileBarChart, section: tk('Grow') },
   { to: '/app/learn/funding', label: tk('Funding'), icon: Landmark },
   { to: '/app/learn', label: tk('Learn'), icon: GraduationCap, end: true },
-  { to: '/app/settings', label: tk('Settings'), icon: Settings },
+  { to: '/app/settings', label: tk('Settings'), icon: Settings, section: tk('Account') },
 ];
 
 /** Pages that are reached from inside another page; listed so search still finds them. */

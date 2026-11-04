@@ -13,11 +13,13 @@ page.on('pageerror', (e) => errors.push(e.message));
 const step = async (name, fn) => { try { await fn(); console.log('OK  ', name); } catch (e) { console.log('FAIL', name, '—', e.message.split('\n')[0]); } };
 const aside = () => page.locator('aside');
 await page.goto(B + 'app'); await page.waitForTimeout(1200);
-await step('the menu is one flat list of plain names', async () => {
+await step('the menu is one flat list in labelled sections', async () => {
   const names = (await aside().locator('nav > ul > li > a').allInnerTexts()).map((x) => x.trim());
   const want = ['Dashboard', 'Revenue & expenses', 'Products', 'Circularity', 'Reports', 'Funding', 'Learn', 'Settings'];
   if (want.join('|') !== names.join('|')) throw new Error('menu is ' + names.join(', '));
   if (await aside().locator('nav button[aria-expanded]').count()) throw new Error('menu still has expandable groups');
+  const headings = (await aside().locator('nav li[role="presentation"]').allInnerTexts()).map((x) => x.trim().toLowerCase());
+  if (headings.join('|') !== 'run your business|your impact|grow|account') throw new Error('sections are ' + headings.join(', '));
   await page.screenshot({ path: SP + '/shots3/nav-flat.png', clip: { x: 0, y: 0, width: 260, height: 600 } });
 });
 await step('sub-pages light up their parent: Inventory under Products', async () => {

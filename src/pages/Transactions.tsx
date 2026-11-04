@@ -213,7 +213,7 @@ export default function Transactions() {
           { label: t('Revenue (30 days)'), value: fmtMoney(pnl30.incomeTotal), icon: ArrowDownLeft, explain: t('Sales of products and services in the last 30 days. Loans and grants are not included.') },
           { label: t('Expenses (30 days)'), value: fmtMoney(pnl30.expenseTotal), icon: ArrowUpRight, explain: t('Costs of running the business in the last 30 days.') },
           { label: t('Profit (30 days)'), value: fmtMoney(pnl30.profit), icon: Receipt, explain: t('Revenue minus expenses. Above zero means the business was profitable.') },
-          { label: t('Circular revenue (30 days)'), value: fmtMoney(pnl30.circularIncome), icon: Recycle, explain: t('Revenue from repairs, resale, rental and take-back. It counts toward your circularity score.') },
+          { label: t('Repair, resale & rental (30 days)'), value: fmtMoney(pnl30.circularIncome), icon: Recycle, explain: t('Revenue from repairs, resale, rental and take-back. It counts toward your circularity score.') },
         ].map((k) => (
           <Card key={k.label} className="p-4">
             <p className="muted flex items-center gap-1.5 text-xs">
