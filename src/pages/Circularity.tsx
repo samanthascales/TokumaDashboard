@@ -110,8 +110,9 @@ export default function Circularity() {
   const classColor: Record<MaterialClass, string> = { Recycled: c.primary, Reused: c.secondary, Renewable: '#F59E0B', Virgin: c.tertiary };
   // /app/circularity?new=waste opens the waste form (used by the setup checklist).
   const [params, setParams] = useSearchParams();
-  const [wasteOpen, setWasteOpen] = useState(params.get('new') === 'waste');
+  const [wasteOpen, setWasteOpen] = useState(false);
   useEffect(() => {
+    if (params.get('new') === 'waste') setWasteOpen(true);
     if (params.get('new')) setParams({}, { replace: true });
   }, [params, setParams]);
   // Charts and the research method are useful but not needed every day: tucked behind one button.
