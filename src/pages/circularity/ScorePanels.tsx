@@ -66,11 +66,15 @@ export function rawText(t: (k: string, v?: Record<string, string | number>) => s
   }
 }
 
+const PRODUCT_PILLARS = new Set<PillarKey>(['inflow', 'life', 'productivity']);
+
 export function ScoreBreakdown({ onAddWaste }: { onAddWaste: () => void }) {
   const t = useT();
   const navigate = useNavigate();
-  const { score, scorePrev } = useStore();
+  const { score, scorePrev, profile } = useStore();
   const change = score.score !== null && scorePrev.score !== null ? score.score - scorePrev.score : null;
+  // A service business has no products: those parts are left out, and the score uses waste and repair/resale/rental sales.
+  const servicesOnly = profile.offering === 'services';
   const levels: { key: ScoreLevel; from: number; to: number }[] = [
     { key: 'starter', from: LEVEL_FROM.starter, to: LEVEL_FROM.grower - 1 },
     { key: 'grower', from: LEVEL_FROM.grower, to: LEVEL_FROM.leader - 1 },
@@ -119,7 +123,8 @@ export function ScoreBreakdown({ onAddWaste }: { onAddWaste: () => void }) {
             {score.pillars.map((p) => {
               const copy = PILLAR_COPY[p.key];
               const raw = rawText(t, p);
-              const act = action[p.key];
+              const notForServices = servicesOnly && p.value === null && PRODUCT_PILLARS.has(p.key);
+              const act = notForServices ? undefined : action[p.key];
               return (
                 <li key={p.key} data-testid={`pillar-${p.key}`}>
                   <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
@@ -128,13 +133,13 @@ export function ScoreBreakdown({ onAddWaste }: { onAddWaste: () => void }) {
                       <p className="text-gray-300">{t('How to raise it: {tip}', { tip: t(copy.tip) })}</p>
                       <p className="text-xs text-gray-400">{t('Based on: {source}', { source: copy.source })}</p>
                     </Term>
-                    <span className={clsx('text-sm font-semibold tabular-nums', p.value === null && 'font-normal text-gray-400')}>{p.value === null ? t('not measured yet') : Math.round(p.value * 100)}</span>
+                    <span className={clsx('text-sm font-semibold tabular-nums', p.value === null && 'font-normal text-gray-400')}>{p.value === null ? (notForServices ? t('not used') : t('not measured yet')) : Math.round(p.value * 100)}</span>
                   </div>
                   <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-gray-100 dark:bg-white/5">
                     {p.value !== null && <div className="h-full rounded-full bg-brand-600 transition-all duration-700 dark:bg-brand-400" style={{ width: `${p.value * 100}%` }} />}
                   </div>
                   <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-xs">
-                    <span className="muted">{raw ?? t(copy.missing)}</span>
+                    <span className="muted">{raw ?? (notForServices ? t('Only for businesses that sell products.') : t(copy.missing))}</span>
                     {act && (p.value === null || p.value < 0.5) && (
                       <button className="font-medium text-brand-700 hover:underline dark:text-brand-300" onClick={act.run}>
                         {act.label}

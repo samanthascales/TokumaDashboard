@@ -3,7 +3,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 
 const ROOT = new URL('../../', import.meta.url).pathname;
-const suites = ['fresh', 'inputs', 'import', 'sales-import', 'nav', 'reports', 'share', 'docread', 'i18n', 'profile', 'education'];
+const suites = ['fresh', 'inputs', 'import', 'sales-import', 'nav', 'reports', 'share', 'docread', 'services', 'i18n', 'profile', 'education'];
 const PORT = 4173;
 const BASE_URL = `http://localhost:${PORT}/#/`;
 

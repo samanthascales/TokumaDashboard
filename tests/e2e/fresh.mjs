@@ -34,7 +34,9 @@ await step('onboarding: three short questions, then the dashboard', async () => 
   await page.getByPlaceholder('Your business name').fill('Loopy Goods');
   await page.getByPlaceholder('Jane').fill('Sam');
   await page.getByRole('button', { name: 'Continue' }).click();
-  await page.getByRole('button', { name: 'Clothing & textiles' }).click();
+  await page.getByRole('button', { name: 'Clothing and bags' }).click();
+  await page.getByRole('button', { name: /^Products/ }).click();
+  await page.getByRole('button', { name: 'Continue' }).click();
   await page.getByRole('button', { name: /Look around first/ }).click();
   await page.getByText('Good', { exact: false }).first().waitFor();
   await page.getByText('Sam', { exact: false }).first().waitFor();

@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
-import { ArrowLeft, ArrowRight, Compass, Cpu, Package, PackagePlus, Receipt, Shirt, Sofa, Sparkles, Store, UtensilsCrossed } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Compass, Package, PackagePlus, Receipt, Store, Wrench } from 'lucide-react';
 import { useStore } from '../store/AppStore';
 import { Logo } from '../components/layout/Sidebar';
 import type { BusinessProfile } from '../types';
@@ -9,19 +9,19 @@ import { tk, useT } from '../i18n';
 import { LanguageMenu } from '../components/layout/LanguageMenu';
 
 /**
- * Three short questions, one per screen: the business name, what kind of
- * business it is (optional), and what to do first. Everything else in the
- * business profile is optional and lives under Settings → Business profile.
+ * Three short screens: the business name, what the business does in the
+ * owner's own words and whether it sells products, services or both (optional),
+ * and what to do first. Everything else in the business profile is optional
+ * and lives under Settings → Business profile.
  */
 
-const KINDS = [
-  { value: 'Apparel & Textiles', label: tk('Clothing & textiles'), icon: Shirt },
-  { value: 'Food & Beverage', label: tk('Food & drink'), icon: UtensilsCrossed },
-  { value: 'Furniture & Home', label: tk('Furniture & home'), icon: Sofa },
-  { value: 'Beauty & Personal care', label: tk('Beauty & personal care'), icon: Sparkles },
-  { value: 'Electronics', label: tk('Electronics'), icon: Cpu },
-  { value: 'Packaging', label: tk('Packaging'), icon: Package },
-  { value: 'Other', label: tk('Something else'), icon: Store },
+// Examples only: tapping one fills the answer, which the owner can then change.
+const EXAMPLES = [tk('Clothing and bags'), tk('Café or food'), tk('Repair shop'), tk('Furniture'), tk('Cleaning service'), tk('Beauty and skin care')];
+
+const OFFERINGS: { value: NonNullable<BusinessProfile['offering']>; label: string; body: string; icon: typeof Package }[] = [
+  { value: 'products', label: tk('Products'), body: tk('Things you make or resell'), icon: Package },
+  { value: 'services', label: tk('Services'), body: tk('Work you do for customers, like repairs or cleaning'), icon: Wrench },
+  { value: 'both', label: tk('Both'), body: tk('Products and services'), icon: Store },
 ];
 
 type Screen = 'name' | 'kind' | 'start';
@@ -112,32 +112,37 @@ export default function Onboarding() {
           )}
 
           {screen === 'kind' && (
-            <>
-              <h1 className="text-2xl font-semibold">{t('What kind of business is it?')}</h1>
-              <p className="muted mt-1">{t('Pick the closest one. You can change it later.')}</p>
-              <div className="mt-6 grid gap-2 sm:grid-cols-2">
-                {KINDS.map((k) => (
-                  <Choice
-                    key={k.value}
-                    icon={<k.icon className="h-5 w-5" />}
-                    title={t(k.label)}
-                    selected={p.industry === k.value}
-                    onClick={() => {
-                      setP({ ...p, industry: k.value });
-                      setScreen('start');
-                    }}
-                  />
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                setScreen('start');
+              }}
+            >
+              <h1 className="text-2xl font-semibold">{t('What does your business do?')}</h1>
+              <p className="muted mt-1">{t('Describe it in your own words. You can change it later.')}</p>
+              <input autoFocus className="input mt-6 text-base" value={p.industry} onChange={(e) => setP({ ...p, industry: e.target.value })} placeholder={t('e.g. We repair bikes and sell used parts')} aria-label={t('What does your business do?')} />
+              <div className="mt-3 flex flex-wrap gap-2">
+                {EXAMPLES.map((x) => (
+                  <button key={x} type="button" onClick={() => setP({ ...p, industry: t(x) })} className="rounded-full px-3 py-1.5 text-sm text-gray-600 ring-1 ring-inset ring-gray-200 transition hover:ring-brand-300 dark:text-gray-300 dark:ring-white/10">
+                    {t(x)}
+                  </button>
+                ))}
+              </div>
+              <p className="label mt-8">{t('What do you sell?')}</p>
+              <div className="space-y-2">
+                {OFFERINGS.map((o) => (
+                  <Choice key={o.value} icon={<o.icon className="h-5 w-5" />} title={t(o.label)} body={t(o.body)} selected={p.offering === o.value} onClick={() => setP({ ...p, offering: o.value })} />
                 ))}
               </div>
               <div className="mt-8 flex items-center justify-between">
-                <button className="btn-ghost" onClick={() => setScreen('name')}>
+                <button type="button" className="btn-ghost" onClick={() => setScreen('name')}>
                   <ArrowLeft className="h-4 w-4 rtl:-scale-x-100" /> {t('Back')}
                 </button>
-                <button className="btn-ghost" onClick={() => setScreen('start')}>
-                  {t('Skip this question')}
+                <button type="submit" className="btn-primary">
+                  {p.industry.trim() || p.offering ? t('Continue') : t('Skip this question')} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
                 </button>
               </div>
-            </>
+            </form>
           )}
 
           {screen === 'start' && (
@@ -145,7 +150,7 @@ export default function Onboarding() {
               <h1 className="text-2xl font-semibold">{t('What would you like to do first?')}</h1>
               <p className="muted mt-1">{t('You can do the others anytime.')}</p>
               <div className="mt-6 space-y-2">
-                <Choice icon={<PackagePlus className="h-5 w-5" />} title={t('Add a product')} body={t('Tell Tokuma what you sell and what it is made of.')} onClick={() => finish('/app/products?new=product')} />
+                {p.offering !== 'services' && <Choice icon={<PackagePlus className="h-5 w-5" />} title={t('Add a product')} body={t('Tell Tokuma what you sell and what it is made of.')} onClick={() => finish('/app/products?new=product')} />}
                 <Choice icon={<Receipt className="h-5 w-5" />} title={t('Record a sale')} body={t('Write down money that came in or went out.')} onClick={() => finish('/app/money?new=txn')} />
                 <Choice icon={<Compass className="h-5 w-5" />} title={t('Look around first')} body={t('Go to your dashboard.')} onClick={() => finish('/app')} />
               </div>

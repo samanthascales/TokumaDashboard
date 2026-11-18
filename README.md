@@ -20,7 +20,7 @@ The app uses hash routing (`/#/app/...`) and a relative base path, so `dist/` ca
 | Page | Route | What the owner can do |
 |---|---|---|
 | Landing / Sign in | `/`, `/signin` | Learn what Tokuma does; sign up or sign in |
-| Onboarding | `/onboarding` | Three short questions: the business name (the only required field), what kind of business it is, and what to do first |
+| Onboarding | `/onboarding` | Three short screens: the business name (the only required field); what the business does, in the owner’s own words, and whether it sells products, services or both; and what to do first. Service businesses don’t need products: their setup checklist asks for a sale and their waste, and the circularity score uses the parts that work without products (where waste goes, and repair, resale & rental sales) |
 | **Dashboard** | `/app` | One main action (record a sale or expense), a two-step setup checklist for new accounts, two cards side by side: **Profit** (net profit for the last 30 days, revenue, expenses, progress toward a goal) and **Circularity** (circularity score, level, progress toward a goal), one suggested next step, and profit and score month by month once there is data |
 | Revenue & expenses | `/app/money` | Record sales and expenses by category, including circular revenue (repairs, resale, rental, take-back). Import from CSV / Excel or a Shopify, Square or Etsy export |
 | Products | `/app/products` | Each product shows its **profit per unit** and its **circularity score**; edit what it is made of |
@@ -170,7 +170,7 @@ psql -d scratch -f supabase/tests/local_auth_stub.sql -f supabase/migrations/001
 ## Testing
 
 ```bash
-npm run test:e2e      # 109 browser checks across 11 suites
+npm run test:e2e      # 115 browser checks across 12 suites
 npm run i18n:check    # every language has every text
 ```
 

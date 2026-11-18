@@ -14,7 +14,7 @@ import { RevenueChart } from './dashboard/RevenueChart';
 import { Badge, Card, EmptyState, Field, Modal, PageHeader, Segmented, TableSkeleton, Term } from '../components/ui';
 import type { Transaction } from '../types';
 
-const INFLOW_CATS = [tk('Product sale'), tk('Repair service'), tk('Resale / second-hand'), tk('Rental'), tk('Take-back / refurbish'), tk('Recycling service'), tk('Other income'), tk('Grant'), tk('Loan')];
+const INFLOW_CATS = [tk('Product sale'), tk('Service sale'), tk('Repair service'), tk('Resale / second-hand'), tk('Rental'), tk('Take-back / refurbish'), tk('Recycling service'), tk('Other income'), tk('Grant'), tk('Loan')];
 const OUTFLOW_CATS = [tk('Materials'), tk('Logistics'), tk('Payroll'), tk('Rent & utilities'), tk('Marketing'), tk('Packaging'), tk('Inventory purchase'), tk('Other expense')];
 const PAGE = 15;
 
@@ -22,7 +22,9 @@ function AddTransactionModal({ open, onClose }: { open: boolean; onClose: () => 
   const t = useT();
   const { products, customers, addTransaction, addCustomer } = useStore();
   const [type, setType] = useState<'inflow' | 'outflow'>('inflow');
-  const [category, setCategory] = useState('Product sale');
+  // Service businesses may have no products: their first sale is a service.
+  const firstSale = products.length ? 'Product sale' : 'Service sale';
+  const [category, setCategory] = useState(firstSale);
   const [productId, setProductId] = useState(products[0]?.id ?? '');
   const [quantity, setQuantity] = useState(1);
   const [amount, setAmount] = useState(0);
@@ -37,8 +39,8 @@ function AddTransactionModal({ open, onClose }: { open: boolean; onClose: () => 
     if (isSale && product) setAmount(+(product.price * quantity).toFixed(2));
   }, [isSale, product, quantity]);
   useEffect(() => {
-    setCategory(type === 'inflow' ? 'Product sale' : 'Materials');
-  }, [type]);
+    setCategory(type === 'inflow' ? firstSale : 'Materials');
+  }, [type, firstSale]);
   useEffect(() => {
     if (open) {
       setTouched(false);
