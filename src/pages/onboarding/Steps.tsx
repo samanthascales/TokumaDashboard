@@ -1,6 +1,6 @@
-import type { InputHTMLAttributes } from 'react';
+import { useState, type InputHTMLAttributes } from 'react';
 import clsx from 'clsx';
-import { Building2, Check, Globe, Landmark, Leaf, Recycle, User } from 'lucide-react';
+import { Building2, Check, Globe, Landmark, Leaf, Recycle, User, X } from 'lucide-react';
 import { Avatar, Badge, Field, Toggle } from '../../components/ui';
 import type { BusinessProfile } from '../../types';
 import { t, tk, useT } from '../../i18n';
@@ -15,7 +15,8 @@ export const STEPS: { key: StepKey; label: string; icon: typeof User }[] = [
 
 const MATERIALS = [tk('Recycled cotton'), tk('Reclaimed denim'), tk('Hemp'), tk('Recycled polyester'), tk('Reclaimed wool'), tk('Bamboo'), tk('Reused canvas'), tk('Recycled nylon'), tk('Cork'), tk('Reclaimed wood')];
 const MODELS = [tk('Recycled inputs'), tk('Reuse & resale'), tk('Repair & refurbish'), tk('Product-as-a-service'), tk('Recycled inputs + take-back')];
-const INDUSTRIES = [tk('Apparel & Textiles'), tk('Food & Beverage'), tk('Furniture & Home'), tk('Electronics'), tk('Packaging'), tk('Beauty & Personal care'), tk('Other')];
+const INDUSTRIES = [tk('Apparel & Textiles'), tk('Food & Beverage'), tk('Furniture & Home'), tk('Electronics'), tk('Packaging'), tk('Beauty & Personal care'), tk('Repair & maintenance'), tk('Cleaning services')];
+const OFFERING_LABELS = { products: tk('Products'), services: tk('Services'), both: tk('Products and services') } as const;
 const TEAM_SIZES = [tk('Just me'), '2–5', '6–10', '11–50', '50+'];
 const REVENUE_BANDS = [tk('Pre-revenue'), '<$100k', '$100k–$250k', '$250k–$1M', '$1M+'];
 
@@ -42,6 +43,63 @@ export const stepValid = (step: StepKey, p: BusinessProfile) => Object.values(va
 
 function Ok({ show }: { show: boolean }) {
   return show ? <Check className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-600" /> : null;
+}
+
+/** Main materials as free tags: type any material, or tap a suggestion. */
+function MaterialTags({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+  const t = useT();
+  const [draft, setDraft] = useState('');
+  const add = (m: string) => {
+    const v = m.trim();
+    if (v && !value.some((x) => x.toLowerCase() === v.toLowerCase())) onChange([...value, v]);
+    setDraft('');
+  };
+  const suggestions = MATERIALS.map((m) => t(m)).filter((m) => !value.includes(m));
+  return (
+    <div>
+      <span className="label">{t('Main materials (optional)')}</span>
+      {value.length > 0 && (
+        <div className="mb-2 flex flex-wrap gap-2">
+          {value.map((m) => (
+            <span key={m} className="inline-flex items-center gap-1 rounded-full bg-brand-600 py-1.5 pe-2 ps-3 text-sm text-white">
+              {t(m)}
+              <button type="button" onClick={() => onChange(value.filter((x) => x !== m))} className="rounded-full p-0.5 hover:bg-white/20" aria-label={t('Remove {name}', { name: t(m) })}>
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="flex gap-2">
+        <input
+          className="input"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              add(draft);
+            }
+          }}
+          placeholder={t('Type a material, e.g. coffee grounds')}
+          aria-label={t('Add a material')}
+        />
+        <button type="button" className="btn-secondary" onClick={() => add(draft)} disabled={!draft.trim()}>
+          {t('Add')}
+        </button>
+      </div>
+      {suggestions.length > 0 && (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <span className="muted text-xs">{t('Suggestions:')}</span>
+          {suggestions.map((m) => (
+            <button key={m} type="button" onClick={() => add(m)} className="rounded-full px-2.5 py-1 text-xs text-gray-600 ring-1 ring-inset ring-gray-200 hover:ring-gray-300 dark:text-gray-300 dark:ring-white/10">
+              + {m}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function StepFields({ step, p, set, touched }: { step: StepKey; p: BusinessProfile; set: <K extends keyof BusinessProfile>(k: K, v: BusinessProfile[K]) => void; touched: Partial<Record<keyof BusinessProfile, boolean>> }) {
@@ -77,11 +135,19 @@ export function StepFields({ step, p, set, touched }: { step: StepKey; p: Busine
         <Field label={t('Business name')} error={err('businessName')} className="sm:col-span-2">
           {input('businessName', { placeholder: t('Your business name') })}
         </Field>
-        <Field label={t('Industry')}>
-          <select className="input" value={p.industry} onChange={(e) => set('industry', e.target.value)}>
-            <option value="">{t('Select an industry')}</option>
+        <Field label={t('Type of business')} hint={t('In your own words, or pick a suggestion')}>
+          <input className="input" list="industry-suggestions" value={p.industry} onChange={(e) => set('industry', e.target.value)} placeholder={t('e.g. Bike repair shop')} />
+          <datalist id="industry-suggestions">
             {INDUSTRIES.map((i) => (
-              <option key={i} value={i}>{t(i)}</option>
+              <option key={i} value={t(i)} />
+            ))}
+          </datalist>
+        </Field>
+        <Field label={t('What do you sell?')}>
+          <select className="input" value={p.offering ?? ''} onChange={(e) => set('offering', (e.target.value || undefined) as BusinessProfile['offering'])}>
+            <option value="">{t('Select…')}</option>
+            {(Object.keys(OFFERING_LABELS) as (keyof typeof OFFERING_LABELS)[]).map((k) => (
+              <option key={k} value={k}>{t(OFFERING_LABELS[k])}</option>
             ))}
           </select>
         </Field>
@@ -111,44 +177,15 @@ export function StepFields({ step, p, set, touched }: { step: StepKey; p: Busine
   if (step === 'products')
     return (
       <div className="space-y-5">
-        <div>
-          <span className="label">{t('Primary materials')}</span>
-          <div className="flex flex-wrap gap-2">
-            {MATERIALS.map((m) => {
-              const on = p.primaryMaterials.includes(m);
-              return (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => set('primaryMaterials', on ? p.primaryMaterials.filter((x) => x !== m) : [...p.primaryMaterials, m])}
-                  className={clsx('rounded-full px-3 py-1.5 text-sm ring-1 ring-inset transition', on ? 'bg-brand-600 text-white ring-brand-600' : 'text-gray-600 ring-gray-200 hover:ring-gray-300 dark:text-gray-300 dark:ring-white/10')}
-                >
-                  {on && <Check className="-ms-0.5 me-1 inline h-3.5 w-3.5" />}
-                  {t(m)}
-                </button>
-              );
-            })}
-          </div>
-          {err('primaryMaterials') && <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{err('primaryMaterials')}</p>}
-        </div>
-        <div>
-          <span className="label">{t('Circular business model')}</span>
-          <div className="grid gap-2 sm:grid-cols-2">
+        <MaterialTags value={p.primaryMaterials} onChange={(v) => set('primaryMaterials', v)} />
+        <Field label={t('How do you keep things in use?')} hint={t('Optional. In your own words, or pick a suggestion')}>
+          <input className="input" list="model-suggestions" value={p.circularModel} onChange={(e) => set('circularModel', e.target.value)} placeholder={t('e.g. We repair and resell used bikes')} />
+          <datalist id="model-suggestions">
             {MODELS.map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => set('circularModel', m)}
-                className={clsx('flex items-center gap-3 rounded-lg border px-3 py-2.5 text-start text-sm transition', p.circularModel === m ? 'border-brand-600 bg-brand-50 dark:border-brand-400 dark:bg-brand-500/10' : 'border-gray-200 hover:border-gray-300 dark:border-white/10')}
-              >
-                <span className={clsx('flex h-4 w-4 items-center justify-center rounded-full border', p.circularModel === m ? 'border-brand-600 bg-brand-600' : 'border-gray-300')}>
-                  {p.circularModel === m && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
-                </span>
-                {t(m)}
-              </button>
+              <option key={m} value={t(m)} />
             ))}
-          </div>
-        </div>
+          </datalist>
+        </Field>
       </div>
     );
 

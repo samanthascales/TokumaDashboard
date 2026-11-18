@@ -122,7 +122,10 @@ export interface BusinessProfile {
   avatar: string;
   phone: string;
   businessName: string;
+  /** What the business does, in the owner's own words (e.g. "Bike repair shop"). */
   industry: string;
+  /** Whether it sells products, services or both. Products are optional for service businesses. */
+  offering?: 'products' | 'services' | 'both';
   country: string;
   founded: string;
   description: string;

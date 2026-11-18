@@ -38,6 +38,8 @@ export interface ReadinessInputs {
   openingCashSet: boolean;
   products: number;
   productsWithMaterials: number;
+  /** Sells services only: product records are not needed, and two score parts can be measured instead of three. */
+  servicesOnly?: boolean;
   /** Circularity pillars with data. */
   pillarsMeasured: number;
   /** Net profit over the last 90 days. */
@@ -60,8 +62,8 @@ export function fundingReadiness(i: ReadinessInputs): Readiness {
     item('sales', 15, i.salesDays / 90, '/app/money?new=import'),
     item('expenses', 10, i.hasExpenses ? 1 : 0, '/app/money?new=txn'),
     item('cash', 5, i.openingCashSet ? 1 : 0, '/app/reports?tab=balance'),
-    item('products', 10, i.products ? i.productsWithMaterials / i.products : 0, '/app/products'),
-    item('circularity', 10, i.pillarsMeasured / 3, '/app/circularity'),
+    item('products', 10, i.servicesOnly ? 1 : i.products ? i.productsWithMaterials / i.products : 0, '/app/products'),
+    item('circularity', 10, i.pillarsMeasured / (i.servicesOnly ? 2 : 3), '/app/circularity'),
     // How the business is doing.
     item('profit', 15, i.profit90 > 0 ? 1 : 0, '/app/reports'),
     item('runway', 10, i.runwayMonths === null ? 0 : i.runwayMonths / 3, '/app/reports?tab=cash'),

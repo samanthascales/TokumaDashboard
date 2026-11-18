@@ -48,7 +48,9 @@ await step('changes save to the database and survive a reload', async () => {
   await alice.getByPlaceholder('Your business name').fill('Alice Goods');
   await alice.getByPlaceholder('Jane').fill('Alice');
   await alice.getByRole('button', { name: 'Continue' }).click();
-  await alice.getByRole('button', { name: 'Clothing & textiles' }).click();
+  await alice.getByRole('button', { name: 'Clothing and bags' }).click();
+  await alice.getByRole('button', { name: /^Products/ }).click();
+  await alice.getByRole('button', { name: 'Continue' }).click();
   await alice.getByRole('button', { name: /Look around first/ }).click();
   await alice.waitForURL(/#\/app$/);
   await saved(alice);

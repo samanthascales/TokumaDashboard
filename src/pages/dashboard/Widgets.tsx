@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
-import { AlertTriangle, Check, Lightbulb, ScanLine, Sparkles, Upload, X, Zap } from 'lucide-react';
+import { AlertTriangle, Check, Lightbulb, Plus, ScanLine, Sparkles, Upload, X, Zap } from 'lucide-react';
 import { useStore } from '../../store/AppStore';
 import { tk, useT } from '../../i18n';
 import { Badge, Card, CardHeader, EmptyState, Segmented } from '../../components/ui';
@@ -208,12 +208,20 @@ export function NextStep() {
 /** Two steps that fill the dashboard: a product with its materials, then a sale. */
 export function GettingStarted({ onImportSales }: { onImportSales: () => void }) {
   const t = useT();
-  const { products, transactions } = useStore();
+  const { products, transactions, wasteLog, profile } = useStore();
   const navigate = useNavigate();
-  const steps = [
-    { label: t('Add a product'), body: t('What you sell and what it is made of.'), done: products.length > 0, cta: t('Add product'), go: () => navigate('/app/products?new=product'), alt: t('Scan an invoice'), altIcon: ScanLine, altGo: () => navigate('/app/products?new=scan') },
-    { label: t('Record your first sale'), body: t('Money that came in from a customer.'), done: transactions.some((x) => x.type === 'inflow'), cta: t('Record a sale'), go: () => navigate('/app/money?new=txn'), alt: t('Import sales'), altIcon: Upload, altGo: onImportSales },
-  ];
+  const sale = { label: t('Record your first sale'), body: t('Money that came in from a customer.'), done: transactions.some((x) => x.type === 'inflow'), cta: t('Record a sale'), go: () => navigate('/app/money?new=txn'), alt: t('Import sales'), altIcon: Upload, altGo: onImportSales };
+  // Products are optional: a service business starts with a sale and its waste instead.
+  const steps =
+    profile.offering === 'services'
+      ? [
+          sale,
+          { label: t('Record your waste'), body: t('What you throw away or send to recycling. This starts your circularity score.'), done: wasteLog.length > 0, cta: t('Record waste'), go: () => navigate('/app/circularity?new=waste'), alt: t('Add a product instead'), altIcon: Plus, altGo: () => navigate('/app/products?new=product') },
+        ]
+      : [
+          { label: t('Add a product'), body: t('What you sell and what it is made of.'), done: products.length > 0, cta: t('Add product'), go: () => navigate('/app/products?new=product'), alt: t('Scan an invoice'), altIcon: ScanLine, altGo: () => navigate('/app/products?new=scan') },
+          sale,
+        ];
   const done = steps.filter((s) => s.done).length;
   if (done === steps.length) return null;
   const next = steps.findIndex((s) => !s.done);

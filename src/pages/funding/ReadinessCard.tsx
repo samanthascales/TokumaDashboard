@@ -12,10 +12,16 @@ export const READINESS_LABEL: Record<ReadinessKey, string> = {
   expenses: tk('Expenses recorded'),
   cash: tk('Opening cash balance entered'),
   products: tk('Products have their materials listed'),
-  circularity: tk('At least 3 circularity pillars measured'),
+  circularity: tk('At least 3 parts of the circularity score measured'),
   profit: tk('Net profit over the last 90 days'),
   runway: tk('3 months of cash runway'),
   score: tk('Circularity score'),
+};
+
+/** Service businesses have no products to list, and two score parts they can measure. */
+const SERVICE_LABEL: Partial<Record<ReadinessKey, string>> = {
+  products: tk('Products listed (not needed for services)'),
+  circularity: tk('At least 2 parts of the circularity score measured'),
 };
 
 export const readinessLevelName = (l: ReadinessLevel) => (l === 'ready' ? tk('Ready to apply') : l === 'building' ? tk('Building') : tk('Getting started'));
@@ -24,7 +30,8 @@ export const readinessTone = (l: ReadinessLevel) => (l === 'ready' ? 'green' : l
 /** A meter that fills as the owner adds what lenders and investors look for. */
 export function ReadinessCard() {
   const t = useT();
-  const { readiness } = useStore();
+  const { readiness, profile } = useStore();
+  const label = (k: ReadinessKey) => t((profile.offering === 'services' && SERVICE_LABEL[k]) || READINESS_LABEL[k]);
   const next = readiness.items.filter((i) => !i.done).sort((a, b) => b.max - b.points - (a.max - a.points));
   const segments = [
     { from: READINESS_FROM.early, to: READINESS_FROM.building },
@@ -73,7 +80,7 @@ export function ReadinessCard() {
           {readiness.items.map((i) => (
             <li key={i.key} className="flex items-center gap-2.5 text-sm">
               <span className={clsx('flex h-5 w-5 shrink-0 items-center justify-center rounded-full', i.done ? 'bg-brand-600 text-white' : 'ring-1 ring-gray-300 dark:ring-white/20')}>{i.done && <Check className="h-3 w-3" />}</span>
-              <span className={clsx('flex-1', i.done && 'muted')}>{t(READINESS_LABEL[i.key])}</span>
+              <span className={clsx('flex-1', i.done && 'muted')}>{label(i.key)}</span>
               <span className="muted text-xs tabular-nums">
                 {i.points}/{i.max}
               </span>
@@ -86,7 +93,7 @@ export function ReadinessCard() {
             {next.slice(0, 3).map((i) => (
               <li key={i.key}>
                 <Link to={i.to} className="flex items-center justify-between gap-3 rounded-lg border border-gray-100 px-3 py-2 text-sm transition hover:border-brand-200 hover:bg-brand-50/50 dark:border-white/5 dark:hover:bg-brand-500/5">
-                  <span>{t(READINESS_LABEL[i.key])}</span>
+                  <span>{label(i.key)}</span>
                   <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-brand-700 dark:text-brand-300">
                     {t('+{n} points', { n: i.max - i.points })} <ArrowRight className="h-3.5 w-3.5 rtl:-scale-x-100" />
                   </span>

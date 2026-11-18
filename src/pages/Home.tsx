@@ -115,11 +115,11 @@ function MoneyCard({ onGoals }: { onGoals: () => void }) {
 
 function ScoreCard({ onGoals }: { onGoals: () => void }) {
   useT();
-  const { score, scorePrev, goals } = useStore();
+  const { score, scorePrev, goals, profile } = useStore();
   const s = score.score;
   const change = s !== null && scorePrev.score !== null ? s - scorePrev.score : null;
   const levelText: Record<ScoreLevel, string> = {
-    starter: t('Most of what you sell is made from new materials. Small changes can raise your score quickly.'),
+    starter: profile.offering === 'services' ? t('Small changes, like recycling more of your waste or offering repairs, can raise your score quickly.') : t('Most of what you sell is made from new materials. Small changes can raise your score quickly.'),
     grower: t('You are on your way: a good part of your business is already circular.'),
     leader: t('Your business keeps most materials in use. Share this with your customers and lenders.'),
   };
@@ -146,7 +146,7 @@ function ScoreCard({ onGoals }: { onGoals: () => void }) {
               <ScoreExplainer />
             </Term>
           </p>
-          <p className="mt-1 text-sm">{score.level ? levelText[score.level] : t('Record a sale of a product with its materials to get your first score.')}</p>
+          <p className="mt-1 text-sm">{score.level ? levelText[score.level] : profile.offering === 'services' ? t('Record your waste and your sales to get your first score.') : t('Record a sale of a product with its materials to get your first score.')}</p>
           {change !== null && (
             <p className="muted mt-1 text-xs">
               {Math.abs(change) < 1 ? t('Same as the 30 days before.') : change > 0 ? t('Up {n} points from the 30 days before.', { n: change }) : t('Down {n} points from the 30 days before.', { n: -change })}
